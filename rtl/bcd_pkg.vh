@@ -30,15 +30,22 @@
 
 package bcd_pkg;
 
+  //
   typedef logic [3:0] char_t;
 
-
+  //
   typedef struct packed {
     // Dollar characters
     char_t [2:0] dollar;
     // Cent characters
     char_t [1:0] cents;
   } price_t;
+
+  // The largest possible price $999.99 (not present in a command).
+  localparam price_t PRICE_MAX = '1;
+
+  // The lowest possible price $000.00 (not present in a command). 
+  localparam price_t PRICE_MIN = '0;
   
 endpackage // bcd_pkg
 

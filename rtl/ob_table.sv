@@ -26,6 +26,7 @@
 //========================================================================== //
 
 `include "ob_pkg.vh"
+`include "bcd_pkg.vh"
 
 module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
@@ -44,11 +45,70 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   , input                                         reject_pop
 
   , output logic                                  reject_valid_r
+  , output ob_pkg::table_t                        reject_r
 
   // ======================================================================== //
   // Clk/Reset
   , input                                         clk
   , input                                         rst
 );
+
+  // is_ask == 'b0; Buy-Table; order entries such that greatest are at head.
+  // is_ask == 'b1; Ask-Table; order entries such that smallest are at head.
+
+  // Table ordered according to is_ask/!is_ask: zeroth entry is the head
+  // entry, the Nth entry is the reject.
+  ob_pkg::table_t [N:0]                 t_r;
+  ob_pkg::table_t [N:0]                 t_w;
+  logic [N:0]                           t_en;
+
+  // ------------------------------------------------------------------------ //
+  //
+  function logic price_compare(bcd_pkg::price_t x,
+			       bcd_pkg::price_r t); begin
+    return is_ask ? (x < t) : (x > t);
+  end endfunction
+
+  function logic [N:0] lzd(logic [N:0] x); begin
+    lzd = '0;
+    for (int i = N; i >= 0; i--)
+      if (x [i])
+	lzd = 'b1 << i;
+  end endfunction
+
+  logic [N:0]                           match;
+  
+  always_comb begin : match_PROC
+
+    match      = '0;
+    for (int i = 0; i < N + 1; i++) begin
+      match [i] = price_compare(install.price, t_r [i].price);
+    end
+
+  end // block: match_PROC
+  
+  // ------------------------------------------------------------------------ //
+  //
+  always_comb begin : t_PROC
+
+    // Defaults:
+    t_en = 'b0;
+    t_w  = t_r;
+
+
+  end // block: t_PROC
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_ff @(posedge clk) begin : t_FLOP
+    if (rst) begin
+      for (int i = 0; i < N + 1; i++)
+	t_r [i] <= is_ask ? bcd_pkg::PRICE_MAX : bcd_pkg::PRICE_MIN;
+    end else begin
+      for (int i = 0; i < N + 1; i++)
+	if (t_en [i])
+	  t_r [i] <= t_w [i];
+    end
+  end // block: t_FLOP
 
 endmodule // ob_table
