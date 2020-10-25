@@ -31,11 +31,13 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
   // ======================================================================== //
   // Head Status
-    output logic                                  head_vld
+    output logic                                  head_vld_r
+  , output ob_pkg::table_t                        head_r
 
   // ======================================================================== //
   // Install Interface
   , input                                         install_vld
+  , input ob_pkg::table_t                         install
 
   // ======================================================================== //
   // Reject Interface

@@ -30,10 +30,22 @@
 module ob_cntrl (
 
   // ======================================================================== //
+  //
+    output logic                                  ingress_consume
+
+  // ======================================================================== //
   // Clk/Reset
-    input                                         clk
+  , input                                         clk
   , input                                         rst
 );
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_comb begin : cntrl_PROC
+
+    ingress_consume = 'b1;
+
+  end // block: cntrl_PROC
 
 endmodule // ob_cntrl
 

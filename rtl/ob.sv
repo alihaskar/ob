@@ -75,9 +75,15 @@ module ob (
 
   `LIBV_REG_RST_R(logic, ingress_queue_empty, 'b1);
   `LIBV_REG_RST_R(logic, ingress_queue_full, 'b0);
-
+  logic                       ingress_consume;
+  //
+  logic 		      bid_tbl_install_vld;
+  logic 		      ask_tbl_install_vld;
+  ob_pkg::table_t             tbl_install;
+  
   always_comb begin : in_PROC
 
+    // -> OB interface
     ingress_queue_push 	    = cmd_vld_r;
     ingress_queue_push_data = cmd_r;
 
@@ -87,7 +93,86 @@ module ob (
 
     cmd_full_r 		    = ingress_queue_full_r;
 
+    // Q -> Table
+    ingress_queue_pop 	    = 'b0;
+    
+    bid_tbl_install_vld     = 'b0;
+    ask_tbl_install_vld     = 'b0;
+
+    tbl_install 	    = '0;
+
+    // Command decoder.
+    casez ({ingress_consume, ingress_queue_pop_data.opcode})
+      { 1'b1, ob_pkg::Op_Buy }: begin
+	ob_pkg::cmd_t cmd    = ingress_queue_pop_data;
+
+	bid_tbl_install_vld  = 'b1;
+
+	tbl_install.uid      = cmd.uid;
+	tbl_install.quantity = cmd.oprand.buy.quantity;
+	tbl_install.price    = cmd.oprand.buy.price;
+
+	ingress_queue_pop    = 'b1;
+      end
+      { 1'b1, ob_pkg::Op_Sell}: begin
+	ob_pkg::cmd_t cmd = ingress_queue_pop_data;
+
+	ask_tbl_install_vld = 'b1;
+
+	tbl_install.uid      = cmd.uid;
+	tbl_install.quantity = cmd.oprand.sell.quantity;
+	tbl_install.price    = cmd.oprand.sell.price;
+
+	ingress_queue_pop    = 'b1;
+      end
+      default: ;
+    endcase
+
   end // block: in_PROC
+
+  // ------------------------------------------------------------------------ //
+  //
+  ob_table #(.N(cfg_pkg::BID_TABLE_N), .is_ask('b0)) u_bid_table (
+    //
+      .head_vld_r        ()
+    , .head_r            ()
+    //
+    , .install_vld       (bid_tbl_install_vld     )
+    , .install           (tbl_install             )
+    //
+    , .reject_pop        ()
+    , .reject_valid_r    ()
+    //
+    , .clk               (clk                     )
+    , .rst               (rst                     )
+  );
+
+  // ------------------------------------------------------------------------ //
+  //
+  ob_table #(.N(cfg_pkg::ASK_TABLE_N), .is_ask('b1)) u_ask_table (
+    //
+      .head_vld_r        ()
+    , .head_r            ()
+    //
+    , .install_vld       (ask_tbl_install_vld     )
+    , .install           (tbl_install             )
+    //
+    , .reject_pop        ()
+    , .reject_valid_r    ()
+    //
+    , .clk               (clk                     )
+    , .rst               (rst                     )
+  );
+
+  // ------------------------------------------------------------------------ //
+  //
+  ob_cntrl u_ob_cntrl (
+    //
+      .ingress_consume   (ingress_consume         )
+    //
+    , .clk               (clk                     )
+    , .rst               (rst                     )
+  );
 
   // ------------------------------------------------------------------------ //
   //
@@ -121,45 +206,6 @@ module ob (
     , .full_w            (egress_queue_full_w     )
     //
     , .clk               (clk                     )
-    , .rst               (rst                     )
-  );
-
-  // ------------------------------------------------------------------------ //
-  //
-  ob_table #(.N(cfg_pkg::BID_TABLE_N), .is_ask('b0)) u_bid_table (
-    //
-      .head_vld          ()
-    //
-    , .install_vld       ()
-    //
-    , .reject_pop        ()
-    , .reject_valid_r    ()
-    //
-    , .clk               (clk                     )
-    , .rst               (rst                     )
-  );
-
-  // ------------------------------------------------------------------------ //
-  //
-  ob_table #(.N(cfg_pkg::ASK_TABLE_N), .is_ask('b1)) u_ask_table (
-    //
-      .head_vld          ()
-    //
-    , .install_vld       ()
-    //
-    , .reject_pop        ()
-    , .reject_valid_r    ()
-    //
-    , .clk               (clk                     )
-    , .rst               (rst                     )
-  );
-
-  // ------------------------------------------------------------------------ //
-  //
-  ob_cntrl u_ob_cntrl (
-    //
-    //
-      .clk               (clk                     )
     , .rst               (rst                     )
   );
 

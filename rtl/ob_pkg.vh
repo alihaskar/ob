@@ -37,22 +37,24 @@ package ob_pkg;
 
   // Number of shares to trade.
   typedef logic [15:0] quantity_t;
-  
+
+  //
   typedef enum logic [2:0] {
-			    // No operation; NOP.
-			    Op_Nop 	 = 3'b000,
+    // No operation; NOP.
+    Op_Nop 	 = 3'b000,
 					 
-			    // Qry current bid-/ask- spread
-			    Op_QryBidAsk = 3'b001,
+    // Qry current bid-/ask- spread
+    Op_QryBidAsk = 3'b001,
 					 
-			    // Buy transaction
-			    Op_Buy 	 = 3'b010,
+    // Buy transaction
+    Op_Buy 	 = 3'b010,
 					 
-			    // Sell transaction
-			    Op_Sell 	 = 3'b011
+    // Sell transaction
+    Op_Sell 	 = 3'b011
 
-			    } opcode_t;
+  } opcode_t;
 
+  //
   typedef struct packed {
     // Number of equities to trade.
     quantity_t quantity;
@@ -61,6 +63,7 @@ package ob_pkg;
     bcd_pkg::price_t price;
   } oprand_buy_t;
 
+  //
   typedef struct packed {
     // Number of equities to trade.
     quantity_t quantity;
@@ -69,11 +72,13 @@ package ob_pkg;
     bcd_pkg::price_t price;
   } oprand_sell_t;
 
+  //
   typedef union packed {
     oprand_buy_t buy;
     oprand_sell_t sell;
   } oprand_t;
-  
+
+  //
   typedef struct packed {
     // Unique command identifier.
     uid_t           uid;
@@ -85,15 +90,17 @@ package ob_pkg;
     oprand_t        oprand;
   } cmd_t;
 
+  //
   typedef enum logic [2:0] {  
-			      // Command executed 
-			      S_Okay   = 3'b000,
+    // Command executed 
+    S_Okay   = 3'b000,
 
-			      // Command rejected (table is full).
-			      S_ErrRejectTableFull = 3'b001
+    // Command rejected (table is full).
+    S_ErrRejectTableFull = 3'b001
 
-			      } status_t;
+  } status_t;
 
+  //
   typedef struct packed {
     // Unique command identifier.
     uid_t           uid;
