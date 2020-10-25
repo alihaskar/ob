@@ -128,7 +128,11 @@ module ob (
   //
   ob_table #(.N(cfg_pkg::BID_TABLE_N), .is_ask('b0)) u_bid_table (
     //
-      .reject_pop        ()
+      .head_vld          ()
+    //
+    , .install_vld       ()
+    //
+    , .reject_pop        ()
     , .reject_valid_r    ()
     //
     , .clk               (clk                     )
@@ -139,8 +143,11 @@ module ob (
   //
   ob_table #(.N(cfg_pkg::ASK_TABLE_N), .is_ask('b1)) u_ask_table (
     //
+      .head_vld          ()
     //
-      .reject_pop        ()
+    , .install_vld       ()
+    //
+    , .reject_pop        ()
     , .reject_valid_r    ()
     //
     , .clk               (clk                     )

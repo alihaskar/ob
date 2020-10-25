@@ -28,11 +28,16 @@
 `ifndef OB_RTL_OB_PKG_VH
 `define OB_RTL_OB_PKG_VH
 
+`include "bcd_pkg.vh"
+
 package ob_pkg;
 
   // Command unique identifier (UID).
   typedef logic [31:0] uid_t;
 
+  // Number of shares to trade.
+  typedef logic [15:0] quantity_t;
+  
   typedef enum logic [2:0] {
 			    // No operation; NOP.
 			    Op_Nop 	 = 3'b000,
@@ -49,11 +54,35 @@ package ob_pkg;
 			    } opcode_t;
 
   typedef struct packed {
+    // Number of equities to trade.
+    quantity_t quantity;
+
+    // Price at which to buy.
+    bcd_pkg::price_t price;
+  } oprand_buy_t;
+
+  typedef struct packed {
+    // Number of equities to trade.
+    quantity_t quantity;
+
+    // Price at which to sell.
+    bcd_pkg::price_t price;
+  } oprand_sell_t;
+
+  typedef union packed {
+    oprand_buy_t buy;
+    oprand_sell_t sell;
+  } oprand_t;
+  
+  typedef struct packed {
     // Unique command identifier.
     uid_t           uid;
 
     // Command opcode.
     opcode_t        opcode;
+
+    // Command oprand.
+    oprand_t        oprand;
   } cmd_t;
 
   typedef enum logic [2:0] {  
@@ -61,7 +90,7 @@ package ob_pkg;
 			      S_Okay   = 3'b000,
 
 			      // Command rejected (table is full).
-			      S_RejectTableFull = 3'b001
+			      S_ErrRejectTableFull = 3'b001
 
 			      } status_t;
 
@@ -72,6 +101,16 @@ package ob_pkg;
     // Command opcode.
     status_t        status;
   } rsp_t;
+
+  // Order-book table (bid/ask) entry.
+  typedef struct packed {
+    // Unique command identifier.
+    uid_t                uid;
+    // Number of shares to trade.
+    quantity_t           quantity;
+    // Price at which to trade.
+    bcd_pkg::price_t     price;
+  } table_t;
 
 endpackage // ob_pkg
 

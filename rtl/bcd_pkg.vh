@@ -25,28 +25,22 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-`include "ob_pkg.vh"
+`ifndef OB_RTL_BCD_PKG_VH
+`define OB_RTL_BCD_PKG_VH
 
-module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
+package bcd_pkg;
 
-  // ======================================================================== //
-  // Head Status
-    output logic                                  head_vld
+  typedef logic [3:0] char_t;
 
-  // ======================================================================== //
-  // Install Interface
-  , input                                         install_vld
 
-  // ======================================================================== //
-  // Reject Interface
-  , input                                         reject_pop
+  typedef struct packed {
+    // Dollar characters
+    char_t [2:0] dollar;
+    // Cent characters
+    char_t [1:0] cents;
+  } price_t;
+  
+endpackage // bcd_pkg
 
-  , output logic                                  reject_valid_r
+`endif
 
-  // ======================================================================== //
-  // Clk/Reset
-  , input                                         clk
-  , input                                         rst
-);
-
-endmodule // ob_table

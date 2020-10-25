@@ -90,6 +90,7 @@ target_link_libraries(runtime PRIVATE
   ${vtb_ob}
   v
   )
+add_dependencies(runtime verilate_tb_ob)
 
 macro (create_test testname testfile)
   add_executable(test_${testname} ${testfile})
