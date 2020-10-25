@@ -27,6 +27,7 @@
 
 `include "ob_pkg.vh"
 `include "macros_pkg.vh"
+`include "cfg_pkg.vh"
 
 module ob (
   // ======================================================================== //
@@ -125,20 +126,25 @@ module ob (
 
   // ------------------------------------------------------------------------ //
   //
-  ob_bid_table u_bid_table (
+  ob_table #(.N(cfg_pkg::BID_TABLE_N), .is_ask('b0)) u_bid_table (
     //
+      .reject_pop        ()
+    , .reject_valid_r    ()
     //
-      .clk               (clk                )
-    , .rst               (rst                )
+    , .clk               (clk                     )
+    , .rst               (rst                     )
   );
 
   // ------------------------------------------------------------------------ //
   //
-  ob_ask_table u_ask_table (
+  ob_table #(.N(cfg_pkg::ASK_TABLE_N), .is_ask('b1)) u_ask_table (
     //
     //
-      .clk               (clk                )
-    , .rst               (rst                )
+      .reject_pop        ()
+    , .reject_valid_r    ()
+    //
+    , .clk               (clk                     )
+    , .rst               (rst                     )
   );
 
   // ------------------------------------------------------------------------ //
@@ -146,8 +152,8 @@ module ob (
   ob_cntrl u_ob_cntrl (
     //
     //
-      .clk               (clk                )
-    , .rst               (rst                )
+      .clk               (clk                     )
+    , .rst               (rst                     )
   );
 
 endmodule // ob

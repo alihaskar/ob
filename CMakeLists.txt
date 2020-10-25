@@ -31,6 +31,8 @@ project(ob)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/ob.cmake)
 
+option(BID_TABLE_N "Number of entries in the bid table." 16)
+option(ASK_TABLE_N "Number of entries in the ask table." 16)
 
 add_subdirectory(rtl)
 

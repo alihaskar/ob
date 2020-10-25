@@ -27,12 +27,18 @@
 
 `include "ob_pkg.vh"
 
-module ob_bid_table (
+module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
+
+  // ======================================================================== //
+  // Reject
+    input                                         reject_pop
+
+  , output logic                                  reject_valid_r
 
   // ======================================================================== //
   // Clk/Reset
-    input                                         clk
+  , input                                         clk
   , input                                         rst
 );
 
-endmodule // ob_bid_table
+endmodule // ob_table

@@ -25,15 +25,15 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-`include "ob_pkg.vh"
+`ifndef OB_TB_CFG_PKG_VH
+`define OB_TB_CFG_PKG_VH
 
-module ob_ask_table (
+package cfg_pkg;
 
-  // ======================================================================== //
-  // Clk/Reset
-    input                                         clk
-  , input                                         rst
-);
+  localparam int BID_TABLE_N = ${BID_TABLE_N};
 
-endmodule // ob_ask_table
+  localparam int ASK_TABLE_N = ${ASK_TABLE_N};
 
+endpackage // cfg_pkg
+
+`endif

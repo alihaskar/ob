@@ -40,13 +40,13 @@ set(Verilator_INCLUDE_DIR
   ${Verilator_INCLUDE_DIR}
   ${Verilator_INCLUDE_DIR}/vltstd
   )
-add_library(vcom STATIC ${Verilator_SRCS})
-target_include_directories(vcom PUBLIC
+add_library(v STATIC ${Verilator_SRCS})
+target_include_directories(v PUBLIC
   ${Verilator_INCLUDE_DIR}
   )
 if (OPT_FST_ENABLE)
   # Require GZLIB for FST
-  target_link_libraries(vcom
+  target_link_libraries(v
     z
     )
 endif ()
@@ -83,14 +83,27 @@ endmacro()
 
 verilate(verilate_tb_ob tb_ob.sv vtb_ob)
 
-add_library(tb
+add_library(runtime
   tb.cc
   )
-target_link_libraries(tb PRIVATE
+target_link_libraries(runtime PRIVATE
   ${vtb_ob}
-  vcom
+  v
   )
-add_dependencies(tb verilate_tb_ob)
-target_include_directories(tb PRIVATE
-  ${CMAKE_CURRENT_BINARY_DIR}
-  )
+
+macro (create_test testname testfile)
+  add_executable(test_${testname} ${testfile})
+  target_include_directories(test_${testname} PRIVATE
+    ${VerilatorDpi_INCLUDE_DIR}
+    ${Verilator_INCLUDE_DIR}
+    )
+  target_link_libraries(test_${testname}
+    runtime
+    gtest_main
+    gtest
+    pthread
+    )
+  add_test(NAME ${testname} COMMAND test_${testname})
+endmacro ()
+
+create_test(tb_ob_smoke tb_ob_smoke.cc)
