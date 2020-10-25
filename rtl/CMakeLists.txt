@@ -25,9 +25,6 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-add_subdirectory(common)
-add_subdirectory(ob)
-
 configure_file(cfg_pkg.vh.in cfg_pkg.vh)
 add_verilator_include_path(${CMAKE_CURRENT_BINARY_DIR})
 add_verilator_include_path(${CMAKE_CURRENT_SOURCE_DIR})

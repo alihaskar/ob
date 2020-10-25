@@ -39,6 +39,7 @@ set(BID_TABLE_N 16)
 # The number of entries in the ask table.
 set(ASK_TABLE_N 16)
 
+add_subdirectory(libv)
 add_subdirectory(rtl)
 
 # Configure TB
