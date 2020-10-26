@@ -65,7 +65,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   // ------------------------------------------------------------------------ //
   //
   function logic price_compare(bcd_pkg::price_t x,
-			       bcd_pkg::price_r t); begin
+			       bcd_pkg::price_t t); begin
     return is_ask ? (x < t) : (x > t);
   end endfunction
 
@@ -103,7 +103,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   always_ff @(posedge clk) begin : t_FLOP
     if (rst) begin
       for (int i = 0; i < N + 1; i++)
-	t_r [i] <= is_ask ? bcd_pkg::PRICE_MAX : bcd_pkg::PRICE_MIN;
+	t_r [i] <= is_ask ? ob_pkg::TABLE_ASK_INIT : ob_pkg::TABLE_BID_INIT;
     end else begin
       for (int i = 0; i < N + 1; i++)
 	if (t_en [i])

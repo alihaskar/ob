@@ -39,20 +39,26 @@ package ob_pkg;
   typedef logic [15:0] quantity_t;
 
   //
-  typedef enum logic [2:0] {
-    // No operation; NOP.
-    Op_Nop 	 = 3'b000,
-					 
-    // Qry current bid-/ask- spread
-    Op_QryBidAsk = 3'b001,
-					 
-    // Buy transaction
-    Op_Buy 	 = 3'b010,
-					 
-    // Sell transaction
-    Op_Sell 	 = 3'b011
+  typedef enum logic [3:0] {
+                            // No operation; NOP.
+                            Op_Nop        = 4'b0000,
+                                         
+                            // Qry current bid-/ask- spread
+                            Op_QryBidAsk  = 4'b0001,
+                                         
+                            // Buy transaction
+                            Op_Buy        = 4'b0010,
+                                         
+                            // Sell transaction
+                            Op_Sell       = 4'b0011,
+                                         
+                            // Remove winning bid from order book.
+                            Op_PopTopBid  = 4'b0100,
+                            
+                            // Remove winning ask from order book.
+                            Op_PopTopAsk  = 4'b0101
 
-  } opcode_t;
+                            } opcode_t;
 
   //
   typedef struct packed {
@@ -118,6 +124,18 @@ package ob_pkg;
     // Price at which to trade.
     bcd_pkg::price_t     price;
   } table_t;
+
+
+  //
+  localparam table_t TABLE_ASK_INIT  = '{ uid: '0,
+                                          quantity: '0,
+                                          price: bcd_pkg::PRICE_MAX };
+
+  //
+  localparam table_t TABLE_BID_INIT  = '{ uid: '0,
+                                          quantity: '0,
+                                          price: bcd_pkg::PRICE_MIN };
+  
 
 endpackage // ob_pkg
 

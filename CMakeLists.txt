@@ -31,6 +31,12 @@ project(ob)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/ob.cmake)
 
+set(CMAKE_CXX_STANDARD 17)
+
+option(OPT_VCD_ENABLE "Enable VCD waveform dumping." ON)
+
+option(OPT_TRACE_ENABLE "Enable log tracing." ON)
+
 # Configure RTL
 
 # The number of entries in the bid table.

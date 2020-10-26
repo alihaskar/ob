@@ -142,6 +142,7 @@ module ob (
     //
     , .reject_pop        ()
     , .reject_valid_r    ()
+    , .reject_r          ()
     //
     , .clk               (clk                     )
     , .rst               (rst                     )

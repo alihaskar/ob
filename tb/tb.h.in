@@ -1,0 +1,251 @@
+//========================================================================== //
+// Copyright (c) 2020, Stephen Henry
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//
+// * Redistributions of source code must retain the above copyright notice, this
+//   list of conditions and the following disclaimer.
+//
+// * Redistributions in binary form must reproduce the above copyright notice,
+//   this list of conditions and the following disclaimer in the documentation
+//   and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+// POSSIBILITY OF SUCH DAMAGE.
+//========================================================================== //
+
+#include "verilated.h"
+#include <deque>
+#include <string>
+
+// Enable waveform dumping.
+#cmakedefine OPT_VCD_ENABLE
+
+// Enable tracing to log file.
+#cmakedefine OPT_TRACE_ENABLE
+
+// Forwards:
+class Vtb_ob;
+
+namespace tb {
+
+// RTL parameterizations: Bid table size
+constexpr std::size_t BID_TABLE_N = ${BID_TABLE_N};
+
+// RTL parameterizations: Ask table size
+constexpr std::size_t ASK_TABLE_N = ${ASK_TABLE_N};
+
+// A simple BCD representation of values in [0.01, 999.99).
+//
+struct Bcd {
+  static Bcd from_string(const std::string& s);
+
+  Bcd();
+
+  // Render BCD to string.
+  std::string to_string() const;
+
+  // Pack BCD to bitvector.
+  vluint32_t pack() const;
+
+ private:
+  vluint8_t dollars[3];
+  vluint8_t cents[2];
+};
+
+// Commands:
+enum Opcode : vluint8_t {
+  //
+  Nop = 0,
+
+  // Query current bid/ask spread.
+  QryBidAsk = 1,
+
+  // Buy stock
+  Buy = 2,
+
+  // Sell stock
+  Sell = 3,
+
+  // Remove winning bid from table.
+  PopTopBid = 4,
+
+  // Remove winning ask from table.
+  PopTopAsk = 5
+};
+
+struct Command {
+  bool valid = false;
+  vluint8_t opcode;
+  vluint32_t uid;
+  union {
+    struct {
+      vluint16_t quantity;
+      vluint32_t price;
+    } buy;
+    struct {
+      vluint16_t quantity;
+      vluint32_t price;
+    } sell;
+  } oprands;
+};
+
+struct Response {
+  bool valid = false;
+  vluint32_t uid;
+  vluint8_t status;
+};
+
+// Compare reponses operator
+bool operator==(const Response& lhs, const Response& rhs);
+
+// Compare two respone structures.
+bool compare(const Response& lhs, const Response& rhs);
+
+struct VSignals {
+
+  template<typename U>
+  static VSignals bind(U* u) {
+    VSignals v;
+    v.cmd_vld_r = std::addressof(u->cmd_vld_r);
+    v.cmd_opcode_r = std::addressof(u->cmd_opcode_r);
+    v.cmd_uid_r = std::addressof(u->cmd_uid_r);
+    v.cmd_buy_quantity_r = std::addressof(u->cmd_buy_quantity_r);
+    v.cmd_buy_price_r = std::addressof(u->cmd_buy_price_r);
+    v.cmd_sell_quantity_r = std::addressof(u->cmd_ask_quantity_r);
+    v.cmd_sell_price_r = std::addressof(u->cmd_ask_price_r);
+    v.cmd_full_r = std::addressof(u->cmd_full_r);
+    v.rsp_accept = std::addressof(u->rsp_accept);
+    v.rsp_vld = std::addressof(u->rsp_vld);
+    v.rsp_uid = std::addressof(u->rsp_uid);
+    v.rsp_status = std::addressof(u->rsp_status);
+    v.clk = std::addressof(u->clk);
+    v.rst = std::addressof(u->rst);
+    return v;
+  }
+
+  //
+  void set_rsp_accept(bool rsp_accept);
+
+  //
+  void set_clk(bool clk);
+
+  //
+  void set_rst(bool rst);
+
+  //
+  void set(const Command& cmd);
+
+  //
+  bool get_cmd_full_r() const;
+
+  // Get clock
+  bool get_clk() const;
+
+  // Get reset
+  bool get_rst() const;
+
+  //
+  void get(Response& rsp);
+
+ private:
+
+  // Command interface
+  vluint8_t* cmd_vld_r;
+  //
+  vluint8_t* cmd_opcode_r;
+  vluint32_t* cmd_uid_r;
+  // Buy
+  vluint16_t* cmd_buy_quantity_r;
+  vluint32_t* cmd_buy_price_r;
+  // Ask
+  vluint16_t* cmd_sell_quantity_r;
+  vluint32_t* cmd_sell_price_r;
+  //
+  vluint8_t* cmd_full_r;
+
+  // Response interface
+  vluint8_t* rsp_accept;
+  vluint8_t* rsp_vld;
+  vluint32_t* rsp_uid;
+  vluint8_t* rsp_status;
+
+  // Clk/Rst
+  vluint8_t* clk;
+  vluint8_t* rst;
+};
+
+struct Options {
+  // Enable waveform dumping
+  bool wave_enable = false;
+
+  // Waveform dumpfile (when enabled).
+  std::string wave_name = "sim.vcd";
+};
+
+class TB {
+ public:
+  TB(const Options& opts = Options{});
+  ~TB();
+
+  // Current time.
+  vluint64_t time() const { return time_; }
+
+  // Current cycle.
+  vluint64_t cycle() const { return time_; }
+
+  // Add command.
+  void push_back(const Command& cmd) { cmds_.push_back(cmd); }
+
+  // Add (expected) response.
+  void push_back(const Response& rsp) { rsps_.push_back(rsp); }
+
+  // Run simulation.
+  void run();
+
+ private:
+  // Reset model.
+  void reset();
+
+  // Step one cycle.
+  void step(std::size_t n = 20);
+  
+  // Bound signals
+  VSignals vs_;
+  
+#ifdef OPT_VCD_ENABLE
+  // VCD instance.
+  VerilatedVcdC* wave_ = nullptr;
+#endif
+  
+  // Verilated RTL instance.
+  Vtb_ob* u_ = nullptr;
+
+  // Commands to issue to UUT.
+  std::deque<Command> cmds_;
+
+  // Responses to be received.
+  std::deque<Response> rsps_;
+
+  // Current execution time.
+  vluint64_t time_;
+
+  // Current operationg cycle.
+  vluint64_t cycle_;
+
+  // Testbench options.
+  Options opts_;
+};
+
+} // namespace tb

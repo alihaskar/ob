@@ -83,12 +83,20 @@ endmacro()
 
 verilate(verilate_tb_ob tb_ob.sv vtb_ob)
 
+configure_file(tb.h.in tb.h)
 add_library(runtime
   tb.cc
+  vsupport.cc
   )
-target_link_libraries(runtime PRIVATE
+target_include_directories(runtime PRIVATE
+  ${CMAKE_CURRENT_BINARY_DIR}
+  )
+target_link_libraries(runtime PUBLIC
   ${vtb_ob}
   v
+  gtest_main
+  gtest
+  pthread
   )
 add_dependencies(runtime verilate_tb_ob)
 
@@ -100,9 +108,6 @@ macro (create_test testname testfile)
     )
   target_link_libraries(test_${testname}
     runtime
-    gtest_main
-    gtest
-    pthread
     )
   add_test(NAME ${testname} COMMAND test_${testname})
 endmacro ()
