@@ -40,7 +40,7 @@ TEST(Smoke, TableSort) {
 
   // Cmd 0:
   cmd.valid = true;
-  cmd.opcode = tb::Opcode::Sell;
+  cmd.opcode = tb::Opcode::Buy;
   cmd.uid = 0;
   bcd = tb::Bcd::from_string("100.55");
   cmd.oprands.sell.quantity = 100;
@@ -49,7 +49,7 @@ TEST(Smoke, TableSort) {
 
   // Cmd 1:
   cmd.valid = true;
-  cmd.opcode = tb::Opcode::Sell;
+  cmd.opcode = tb::Opcode::Buy;
   cmd.uid = 1;
   bcd = tb::Bcd::from_string("100.60");
   cmd.oprands.sell.quantity = 100;
@@ -58,7 +58,7 @@ TEST(Smoke, TableSort) {
 
   // Cmd 2:
   cmd.valid = true;
-  cmd.opcode = tb::Opcode::Sell;
+  cmd.opcode = tb::Opcode::Buy;
   cmd.uid = 2;
   bcd = tb::Bcd::from_string("100.40");
   cmd.oprands.sell.quantity = 100;

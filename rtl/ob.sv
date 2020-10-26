@@ -134,11 +134,22 @@ module ob (
   //
   ob_table #(.N(cfg_pkg::BID_TABLE_N), .is_ask('b0)) u_bid_table (
     //
-      .head_vld_r        ()
+      .head_pop          ()
+    //
+    , .head_upt          ()
+    , .head_upt_tbl      ()
+    //
+    , .head_vld_r        ()
+    , .head_did_update_r ()
     , .head_r            ()
     //
-    , .install_vld       (bid_tbl_install_vld     )
-    , .install           (tbl_install             )
+    , .insert            (bid_tbl_install_vld     )
+    , .insert_tbl        (tbl_install             )
+    //
+    , .delete            ()
+    , .delete_uid        ()
+    , .delete_hit        ()
+    , .delete_hit_tbl    ()
     //
     , .reject_pop        ()
     , .reject_valid_r    ()
@@ -147,7 +158,7 @@ module ob (
     , .clk               (clk                     )
     , .rst               (rst                     )
   );
-
+/*
   // ------------------------------------------------------------------------ //
   //
   ob_table #(.N(cfg_pkg::ASK_TABLE_N), .is_ask('b1)) u_ask_table (
@@ -155,8 +166,8 @@ module ob (
       .head_vld_r        ()
     , .head_r            ()
     //
-    , .install_vld       (ask_tbl_install_vld     )
-    , .install           (tbl_install             )
+    , .push              (ask_tbl_install_vld     )
+    , .push_data         (tbl_install             )
     //
     , .reject_pop        ()
     , .reject_valid_r    ()
@@ -165,7 +176,7 @@ module ob (
     , .clk               (clk                     )
     , .rst               (rst                     )
   );
-
+*/
   // ------------------------------------------------------------------------ //
   //
   ob_cntrl u_ob_cntrl (

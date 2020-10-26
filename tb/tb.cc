@@ -34,6 +34,7 @@
 #ifdef OPT_TRACE_ENABLE
 #  include <iostream>
 #endif
+#include <algorithm>
 
 namespace tb {
 
@@ -49,7 +50,8 @@ Bcd Bcd::from_string(const std::string& s) {
     dollar.pop_back();
   }
   
-  const std::string cents{s.substr(i + 1)};
+  std::string cents{s.substr(i + 1)};
+  std::reverse(cents.begin(), cents.end());
   for (std::size_t i = 0; i < cents.size(); i++) {
     b.cents[i] = cents[i] - '0';
   }
