@@ -48,10 +48,28 @@ constexpr std::size_t ASK_TABLE_N = ${ASK_TABLE_N};
 
 // A simple BCD representation of values in [0.01, 999.99).
 //
-struct Bcd {
+class Bcd {
+
+  friend bool operator==(const Bcd& lhs, const Bcd& rhs);
+
+  friend bool operator!=(const Bcd& lhs, const Bcd& rhs);
+
+  static const Bcd MAX;
+
+  static const Bcd MIN;
+  
+ public:
+
+  // Generate from std::string (like ddd.cc).
   static Bcd from_string(const std::string& s);
 
+  // Generate from packed vluint32_t.
+  static Bcd from_packed(vluint32_t p);
+
   Bcd();
+
+  // Is valid BCD
+  bool is_valid() const;
 
   // Render BCD to string.
   std::string to_string() const;
@@ -60,9 +78,14 @@ struct Bcd {
   vluint32_t pack() const;
 
  private:
+  
   vluint8_t dollars[3];
   vluint8_t cents[2];
 };
+
+bool operator==(const Bcd& lhs, const Bcd& rhs);
+
+bool operator!=(const Bcd& lhs, const Bcd& rhs);
 
 // Commands:
 enum Opcode : vluint8_t {
@@ -86,6 +109,8 @@ enum Opcode : vluint8_t {
 };
 
 struct Command {
+  std::string to_string() const;
+  
   bool valid = false;
   vluint8_t opcode;
   vluint32_t uid;
@@ -118,6 +143,7 @@ struct VSignals {
   template<typename U>
   static VSignals bind(U* u) {
     VSignals v;
+    v.tb_cycle = std::addressof(u->tb_cycle);
     v.cmd_vld_r = std::addressof(u->cmd_vld_r);
     v.cmd_opcode_r = std::addressof(u->cmd_opcode_r);
     v.cmd_uid_r = std::addressof(u->cmd_uid_r);
@@ -134,6 +160,8 @@ struct VSignals {
     v.rst = std::addressof(u->rst);
     return v;
   }
+
+  vluint64_t cycle() const;
 
   //
   void set_rsp_accept(bool rsp_accept);
@@ -160,6 +188,8 @@ struct VSignals {
   void get(Response& rsp);
 
  private:
+  // TB utilitie
+  vluint64_t* tb_cycle;
 
   // Command interface
   vluint8_t* cmd_vld_r;
@@ -219,7 +249,7 @@ class TB {
   void reset();
 
   // Step one cycle.
-  void step(std::size_t n = 20);
+  void step(std::size_t n = 1);
   
   // Bound signals
   VSignals vs_;

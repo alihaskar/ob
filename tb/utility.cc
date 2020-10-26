@@ -25,53 +25,28 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef PA_VERIF_RUNTIME_VSUPPORT_H
-#define PA_VERIF_RUNTIME_VSUPPORT_H
-
-#include "verilated.h"
 #include "utility.h"
+#include <sstream>
 
-namespace tb::vsupport {
+namespace tb::utility {
 
-void set(vluint8_t* v, bool b);
-
-template<typename T>
-void set(T* v, T t) { *v = t; }
-
-template<typename T, std::size_t N>
-void set(T* t, const T (&u)[N]) {
-  for (std::size_t i = 0; i < N; i++) {
-    t[i] = u[i];
+std::string KVListRenderer::to_string() const {
+  std::stringstream ss;
+  ss << "'{";
+  for (std::size_t i = 0; i < kvs_.size(); i++) {
+    const kv_type& kv = kvs_[i];
+    if (i != 0) ss << ", ";
+    ss << kv.first << ":" << kv.second;
   }
+  ss << "}";
+  return ss.str();
 }
 
-template<typename T>
-T get(const T* t) { return *t; }
-
-template<typename T, std::size_t N>
-void get(T (&t)[N], const T* v) {
-  for (std::size_t i = 0; i < N; i++) {
-    t[i] = v[i];
-  }
+void KVListRenderer::add_field(const std::string& key,
+                               const std::string& value) {
+  kvs_.push_back(std::make_pair(key, value));
 }
 
+const char* to_string(bool b) { return b ? "1" : "0"; }
 
-bool get_as_bool(const vluint8_t* v);
-
-// Clean type 't' such that only 'bits' bits are set. Verilator requires
-// that bits outside of the valid range are set to zero for correctness.
-//
-template<typename T> void clean(T* t, std::size_t bits = 1) {
-  // Otherwise, apply mask
-  constexpr std::size_t type_bits = sizeof(T) * 8;
-  while (bits > type_bits) {
-    t++;
-    bits -= type_bits;
-  }
-  // TODO: check for overflow
-  *t &= utility::mask<T>(bits);
-}
-
-} // namespace tb::vsupport
-
-#endif
+} // namespace tb::utility

@@ -27,10 +27,11 @@
 
 #include "tb.h"
 #include "vsupport.h"
+#include "utility.h"
 #include "vobj/Vtb_ob.h"
 #include "verilated_vcd_c.h"
 #include "gtest/gtest.h"
-#ifdef OPT_LOGGING_ENABLE
+#ifdef OPT_TRACE_ENABLE
 #  include <iostream>
 #endif
 
@@ -55,6 +56,27 @@ Bcd Bcd::from_string(const std::string& s) {
 
   return b;
 }
+
+Bcd Bcd::from_packed(vluint32_t p) {
+  Bcd b;
+  // Cents:
+  for (std::size_t i = 0; i < 2; i++) {
+    b.cents[i] = (p & utility::mask<vluint32_t>(4));
+    p >>= 4;
+  }
+
+  // Dollars:
+  for (std::size_t i = 0; i < 3; i++) {
+    b.dollars[i] = (p & utility::mask<vluint32_t>(4));
+    p >>= 4;
+  }
+
+  return b;
+}
+
+const Bcd Bcd::MAX = Bcd::from_string("999.99");
+
+const Bcd Bcd::MIN = Bcd::from_string("000.00");
 
 Bcd::Bcd() {
   for (std::size_t i = 0; i < 3; i++) {
@@ -82,6 +104,10 @@ std::string Bcd::to_string() const {
   return s;
 }
 
+bool Bcd::is_valid() const {
+  return (*this != Bcd::MAX) || (*this != Bcd::MIN);
+}
+
 vluint32_t Bcd::pack() const {
   vluint32_t r = 0;
 
@@ -102,6 +128,62 @@ vluint32_t Bcd::pack() const {
   return r;
 }
 
+bool operator==(const Bcd& lhs, const Bcd& rhs) {
+  // Compare dollars
+  for (std::size_t i = 0; i < 3; i++) {
+    if (lhs.dollars[i] != rhs.dollars[i]) {
+      return false;
+    }
+  }
+
+  // Compare cents
+  for (std::size_t i = 0; i < 2; i++) {
+    if (lhs.cents [i] != rhs.cents [i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool operator!=(const Bcd& lhs, const Bcd& rhs) {
+  return !operator==(lhs, rhs);
+}
+
+
+const char* to_opcode_string(vluint8_t opcode) {
+  switch (opcode) {
+    case Opcode::Nop: return "Nop";
+    case Opcode::QryBidAsk: return "QryBidAsk";
+    case Opcode::Buy: return "Buy";
+    case Opcode::Sell: return "Sell";
+    case Opcode::PopTopBid: return "PopTopBid";
+    case Opcode::PopTopAsk: return "PopTopAsk";
+    default: return "Invalid";
+  }
+}
+
+std::string Command::to_string() const {
+  using std::to_string;
+
+  utility::KVListRenderer r;
+  r.add_field("opcode", to_opcode_string(opcode));
+  r.add_field("uid", utility::hex(uid));
+  switch (opcode) {
+    case Opcode::Buy: {
+      r.add_field("quantity", to_string(oprands.buy.quantity));
+      const Bcd bcd = Bcd::from_packed(oprands.buy.price);
+      r.add_field("price", bcd.to_string());
+    } break;
+    case Opcode::Sell: {
+      r.add_field("quantity", to_string(oprands.sell.quantity));
+      const Bcd bcd = Bcd::from_packed(oprands.sell.price);
+      r.add_field("price", bcd.to_string());
+    } break;
+  }
+  return r.to_string();
+}
+
 bool operator==(const Response& lhs, const Response& rhs) {
   if (lhs.uid != rhs.uid) return false;
   if (lhs.status != rhs.status) return false;
@@ -114,6 +196,10 @@ bool compare(const Response& lhs, const Response& rhs) {
   EXPECT_EQ(lhs.status, rhs.status);
 
   return (lhs == rhs);
+}
+
+vluint64_t VSignals::cycle() const {
+  return vsupport::get(tb_cycle);
 }
 
 //
@@ -186,7 +272,7 @@ TB::TB(const Options& opts) : opts_(opts) {
     wave_ = new VerilatedVcdC;
     u_->trace(wave_, 99);
     wave_->open(opts.wave_name.c_str());
-#ifdef OPT_LOGGING_ENABLE
+#ifdef OPT_TRACE_ENABLE
     std::cout << "[TB] Dumping to VCD: " << opts.wave_name << "\n";
 #endif
   }
@@ -222,13 +308,16 @@ void TB::run() {
     const bool cmd_full_r = vs_.get_cmd_full_r();
     if (!cmd_full_r && !cmds_.empty()) {
       // Apply input command.
-      const Command &cmd{cmds_.front()};
-#ifdef OPT_LOGGING_ENABLE
+      cmd = cmds_.front();
+#ifdef OPT_TRACE_ENABLE
       std::cout << "[TB] Issue command: " << cmd.to_string() << "\n";
 #endif
-      vs_.set(cmd);
       cmds_.pop_front();
+    } else {
+      // Idle
+      cmd.valid = false;
     }
+    vs_.set(cmd);
 
     Response actual;
     vs_.get(actual);
@@ -246,15 +335,21 @@ void TB::run() {
     stopped = (cmds_.empty() /*&& rsps_.empty()*/);
   }
 
+  // Set interfaces to idle.
+  cmd.valid = false;
+  vs_.set(cmd);
+
   // Wind-down simulation
   step(20);
 }
 
 void TB::reset() {
+  vs_.set_rst(false);
   for (vluint64_t i = 0; i < 20; i++) {
     vs_.set_rst((i > 5) && (i < 15));
     step();
   }
+  vs_.set_rst(false);
 }
 
 void TB::step(std::size_t n) {

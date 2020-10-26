@@ -25,53 +25,51 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef PA_VERIF_RUNTIME_VSUPPORT_H
-#define PA_VERIF_RUNTIME_VSUPPORT_H
+#ifndef M_TB_UTILITY_H
+#define M_TB_UTILITY_H
 
 #include "verilated.h"
-#include "utility.h"
+#include <vector>
+#include <utility>
+#include <sstream>
 
-namespace tb::vsupport {
-
-void set(vluint8_t* v, bool b);
-
-template<typename T>
-void set(T* v, T t) { *v = t; }
-
-template<typename T, std::size_t N>
-void set(T* t, const T (&u)[N]) {
-  for (std::size_t i = 0; i < N; i++) {
-    t[i] = u[i];
-  }
-}
+namespace tb::utility {
 
 template<typename T>
-T get(const T* t) { return *t; }
+T mask(std::size_t n) {
+  if (sizeof(T) * 8 == n) return ~0;
 
-template<typename T, std::size_t N>
-void get(T (&t)[N], const T* v) {
-  for (std::size_t i = 0; i < N; i++) {
-    t[i] = v[i];
-  }
+  return (static_cast<T>(1) << n) - 1;
 }
 
+// Helper to convert some 'T' into hexadecimal representation.
+template<typename T>
+std::string hex(const T & t) {
+  std::stringstream ss;
+  ss << "0x" << std::hex << static_cast<vluint64_t>(t);
+  return ss.str();
+}
 
-bool get_as_bool(const vluint8_t* v);
-
-// Clean type 't' such that only 'bits' bits are set. Verilator requires
-// that bits outside of the valid range are set to zero for correctness.
 //
-template<typename T> void clean(T* t, std::size_t bits = 1) {
-  // Otherwise, apply mask
-  constexpr std::size_t type_bits = sizeof(T) * 8;
-  while (bits > type_bits) {
-    t++;
-    bits -= type_bits;
-  }
-  // TODO: check for overflow
-  *t &= utility::mask<T>(bits);
-}
+class KVListRenderer {
+  using kv_type = std::pair<std::string, std::string>;
 
-} // namespace tb::vsupport
+ public:
+  KVListRenderer() = default;
+
+  //
+  std::string to_string() const;
+
+  //
+  void add_field(const std::string& key, const std::string& value);
+
+ private:
+  // Key/Value pairs
+  std::vector<kv_type> kvs_;
+};
+
+const char* to_string(bool b);
+
+} // namespace tb::utility
 
 #endif

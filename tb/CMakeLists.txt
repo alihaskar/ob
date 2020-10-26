@@ -86,6 +86,7 @@ verilate(verilate_tb_ob tb_ob.sv vtb_ob)
 configure_file(tb.h.in tb.h)
 add_library(runtime
   tb.cc
+  utility.cc
   vsupport.cc
   )
 target_include_directories(runtime PRIVATE

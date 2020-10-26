@@ -27,7 +27,7 @@
 
 #include "vsupport.h"
 
-namespace vsupport {
+namespace tb::vsupport {
 
 void set(vluint8_t* v, bool b) {
   *v = b ? 1 : 0;
@@ -37,4 +37,4 @@ bool get_as_bool(const vluint8_t* v) {
   return (*v != 0);
 }
 
-} // namespace vsupport
+} // namespace tb::vsupport
