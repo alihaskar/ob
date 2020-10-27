@@ -455,6 +455,10 @@ module ob_cntrl (
       end // case: FSM_CNTRL_IDLE
 
       FSM_CNTRL_CANCEL_RESP: begin
+	// In this state, the response to the prior cancel request has
+	// been collated and is known. From this, form the final response
+	// for the command to the egress queue and consume the command.
+	//
 
 	// Consume command.
 	cmd_consume = 'b1;
