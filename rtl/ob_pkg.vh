@@ -33,6 +33,9 @@
 package ob_pkg;
 
   // Command unique identifier (UID).
+  //
+  // Note: '1 indicates a OB initiated trade and cannot be issued as
+  // part of a command.
   typedef logic [31:0] uid_t;
 
   // Number of shares to trade.
@@ -101,10 +104,50 @@ package ob_pkg;
     // Command executed 
     S_Okay   = 3'b000,
 
+    // Command UID has been rejected by the OB
+    S_Reject = 3'b001,
+
     // Command rejected (table is full).
-    S_ErrRejectTableFull = 3'b001
+    S_ErrRejectTableFull = 3'b100,
+
+    // Attempt to pop from empty table.
+    S_BadPop = 3'b101
 
   } status_t;
+
+  typedef struct packed {
+    // Bid
+    uid_t       bid_uid;
+    // Ask
+    uid_t       ask_uid;
+    // Quantity (shares traded)
+    quantity_t  quantity;
+  } result_trade_t;
+
+  typedef struct packed {
+    // Current bid
+    bcd_pkg::price_t bid;
+    // Current ask
+    bcd_pkg::price_t ask;
+  } result_qrybidask_t;
+
+  typedef struct packed {
+    // Bid/Ask Price
+    bcd_pkg::price_t     price;
+    // Bid/Ask Quantity
+    quantity_t           quantity;
+    // Bid/Ask ID
+    uid_t                uid;
+  } result_poptop_t;
+  
+  typedef union packed {
+    // Query Bid/Ask spread
+    result_qrybidask_t qrybidask;
+    // Pop top Bid/Ask
+    result_poptop_t poptop;
+    // Trade result type
+    result_trade_t trade;
+  } result_t;
 
   //
   typedef struct packed {
@@ -113,6 +156,9 @@ package ob_pkg;
 
     // Command opcode.
     status_t        status;
+
+    // Response result.
+    result_t        result;
   } rsp_t;
 
   // Order-book table (bid/ask) entry.

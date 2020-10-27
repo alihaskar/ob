@@ -54,6 +54,23 @@ module ob (
   //
   `LIBV_QUEUE_WIRES(ingress_queue_, ob_pkg::cmd_t);
 
+  `LIBV_REG_RST_R(logic, ingress_queue_empty, 'b1);
+  `LIBV_REG_RST_R(logic, ingress_queue_full, 'b0);
+
+  always_comb begin : in_PROC
+
+    // -> OB interface
+    ingress_queue_push 	    = cmd_vld_r;
+    ingress_queue_push_data = cmd_r;
+
+    ingress_queue_flush     = 'b0;
+    ingress_queue_commit    = ingress_queue_push;
+    ingress_queue_replay    = 'b0;
+
+    cmd_full_r 		    = ingress_queue_full_r;
+
+  end // block: in_PROC
+
   libv_queue #(.W($bits(ob_pkg::cmd_t)), .N(4)) u_ingress_queue (
     //
       .push              (ingress_queue_push      )
@@ -73,69 +90,12 @@ module ob (
     , .rst               (rst                     )
   );
 
-  `LIBV_REG_RST_R(logic, ingress_queue_empty, 'b1);
-  `LIBV_REG_RST_R(logic, ingress_queue_full, 'b0);
-  logic                       ingress_consume;
-  //
-  logic 		      bid_tbl_install_vld;
-  logic 		      ask_tbl_install_vld;
-  ob_pkg::table_t             tbl_install;
-  
-  always_comb begin : in_PROC
-
-    // -> OB interface
-    ingress_queue_push 	    = cmd_vld_r;
-    ingress_queue_push_data = cmd_r;
-
-    ingress_queue_flush     = 'b0;
-    ingress_queue_commit    = ingress_queue_push;
-    ingress_queue_replay    = 'b0;
-
-    cmd_full_r 		    = ingress_queue_full_r;
-
-    // Q -> Table
-    ingress_queue_pop 	    = 'b0;
-    
-    bid_tbl_install_vld     = 'b0;
-    ask_tbl_install_vld     = 'b0;
-
-    tbl_install 	    = '0;
-
-    // Command decoder.
-    casez ({ingress_consume, ingress_queue_pop_data.opcode})
-      { 1'b1, ob_pkg::Op_Buy }: begin
-	ob_pkg::cmd_t cmd    = ingress_queue_pop_data;
-
-	bid_tbl_install_vld  = 'b1;
-
-	tbl_install.uid      = cmd.uid;
-	tbl_install.quantity = cmd.oprand.buy.quantity;
-	tbl_install.price    = cmd.oprand.buy.price;
-
-	ingress_queue_pop    = 'b1;
-      end
-      { 1'b1, ob_pkg::Op_Sell}: begin
-	ob_pkg::cmd_t cmd = ingress_queue_pop_data;
-
-	ask_tbl_install_vld = 'b1;
-
-	tbl_install.uid      = cmd.uid;
-	tbl_install.quantity = cmd.oprand.sell.quantity;
-	tbl_install.price    = cmd.oprand.sell.price;
-
-	ingress_queue_pop    = 'b1;
-      end
-      default: ;
-    endcase
-
-  end // block: in_PROC
-
   // ------------------------------------------------------------------------ //
   //
   ob_table #(.N(cfg_pkg::BID_TABLE_N), .is_ask('b0)) u_bid_table (
     //
       .head_pop          ()
-    //
+      //
     , .head_upt          ()
     , .head_upt_tbl      ()
     //
@@ -143,11 +103,12 @@ module ob (
     , .head_did_update_r ()
     , .head_r            ()
     //
-    , .insert            (bid_tbl_install_vld     )
-    , .insert_tbl        (tbl_install             )
+    , .insert            ()
+    , .insert_tbl        ()
     //
     , .delete            ()
     , .delete_uid        ()
+    //
     , .delete_hit        ()
     , .delete_hit_tbl    ()
     //
@@ -158,16 +119,28 @@ module ob (
     , .clk               (clk                     )
     , .rst               (rst                     )
   );
-/*
+
   // ------------------------------------------------------------------------ //
   //
   ob_table #(.N(cfg_pkg::ASK_TABLE_N), .is_ask('b1)) u_ask_table (
     //
-      .head_vld_r        ()
+      .head_pop          ()
+      //
+    , .head_upt          ()
+    , .head_upt_tbl      ()
+    //
+    , .head_vld_r        ()
+    , .head_did_update_r ()
     , .head_r            ()
     //
-    , .push              (ask_tbl_install_vld     )
-    , .push_data         (tbl_install             )
+    , .insert            ()
+    , .insert_tbl        ()
+    //
+    , .delete            ()
+    , .delete_uid        ()
+    //
+    , .delete_hit        ()
+    , .delete_hit_tbl    ()
     //
     , .reject_pop        ()
     , .reject_valid_r    ()
@@ -176,12 +149,46 @@ module ob (
     , .clk               (clk                     )
     , .rst               (rst                     )
   );
-*/
+
   // ------------------------------------------------------------------------ //
   //
   ob_cntrl u_ob_cntrl (
     //
-      .ingress_consume   (ingress_consume         )
+      .cmd_in_vld        ()
+    , .cmd_in            ()
+    //
+    , .cmd_in_pop        ()
+    //
+    , .rsp_out_full_r    ()
+    //
+    , .rsp_out_vld       ()
+    , .rsp_out           ()
+    //
+    , .bid_table_vld_r   ()
+    , .bid_table_r       ()
+    //
+    , .bid_reject_vld_r  ()
+    , .bid_reject_r      ()
+    //
+    , .bid_reject_pop    ()
+    //
+    , .bid_insert        ()
+    , .bid_insert_tbl    ()
+    //
+    , .bid_pop           ()
+    //
+    , .ask_table_vld_r   ()
+    , .ask_table_r       ()
+    //
+    , .ask_reject_vld_r  ()
+    , .ask_reject_r      ()
+    //
+    , .ask_reject_pop    ()
+    //
+    , .ask_insert        ()
+    , .ask_insert_tbl    ()
+    //
+    , .ask_pop           ()
     //
     , .clk               (clk                     )
     , .rst               (rst                     )
