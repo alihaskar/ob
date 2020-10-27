@@ -144,22 +144,25 @@ module ob_cntrl (
   
   always_comb begin : cmp_PROC
 
-    // 
+    // A trade can take place if the current maximum bid exceeds (or
+    // is equal to) the current minimum ask.
     cmp_can_trade 	      = (bid_table_r.price >= ask_table_r.price);
 
-    //
+    // Ask excess; the number of shares remaining in the ask if a trade
+    // takes place.
     cmp_ask_excess 	      = (ask_table_r.quantity - bid_table_r.quantity);
 
-    //
+    // Flag indicating that shares will remain in the ask after a trade.
     cmp_ask_has_more 	      = (cmp_ask_excess > 'b0);
 
-    //
+    // Bid Excess; the number of shares remaining in the bid if a trade
+    // takes place.
     cmp_bid_excess 	      = (bid_table_r.quantity - ask_table_r.quantity);
 
-    //
+    // Flag indiciating that shares will remain in the bid after a trade.
     cmp_bid_has_more 	      = (cmp_bid_excess > 'b0);
 
-    //
+    // Flag indicating that the quantity of bid equals the quantity of ask.
     cmp_bid_ask_equal 	      = (cmp_bid_excess == 'b0);
 
     // Compare result outcome:
