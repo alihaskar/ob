@@ -70,6 +70,10 @@ module ob (
   logic                                 cntrl_bid_pop;
   logic 				cntrl_bid_update_vld;
   ob_pkg::table_t                       cntrl_bid_update;
+  logic                                 cntrl_bid_cancel_hit_w;
+  ob_pkg::table_t                       cntrl_bid_cancel_hit_tbl_w;
+  logic                                 cntrl_bid_cancel;
+  ob_pkg::uid_t                         cntrl_bid_cancel_uid;
   //
   logic 				cntrl_ask_table_vld_r;
   ob_pkg::table_t                       cntrl_ask_table_r;
@@ -81,6 +85,10 @@ module ob (
   logic                                 cntrl_ask_pop;
   logic 				cntrl_ask_update_vld;
   ob_pkg::table_t                       cntrl_ask_update;
+  logic                                 cntrl_ask_cancel_hit_w;
+  ob_pkg::table_t                       cntrl_ask_cancel_hit_tbl_w;
+  logic                                 cntrl_ask_cancel;
+  ob_pkg::uid_t                         cntrl_ask_cancel_uid;
    
   // ------------------------------------------------------------------------ //
   //
@@ -138,11 +146,11 @@ module ob (
     , .insert            (cntrl_bid_insert             )
     , .insert_tbl        (cntrl_bid_insert_tbl         )
     //
-    , .delete            ('b0)
-    , .delete_uid        ('0)
+    , .cancel            (cntrl_bid_cancel             )
+    , .cancel_uid        (cntrl_bid_cancel_uid         )
     //
-    , .delete_hit        ()
-    , .delete_hit_tbl    ()
+    , .cancel_hit_w      (cntrl_bid_cancel_hit_w       )
+    , .cancel_hit_tbl_w  (cntrl_bid_cancel_hit_tbl_w   )
     //
     , .reject_pop        (cntrl_bid_reject_pop         )
     , .reject_vld_r      (cntrl_bid_reject_vld_r       )
@@ -168,11 +176,11 @@ module ob (
     , .insert            (cntrl_ask_insert             )
     , .insert_tbl        (cntrl_ask_insert_tbl         )
     //
-    , .delete            ('b0)
-    , .delete_uid        ('0)
+    , .cancel            (cntrl_ask_cancel             )
+    , .cancel_uid        (cntrl_ask_cancel_uid         )
     //
-    , .delete_hit        ()
-    , .delete_hit_tbl    ()
+    , .cancel_hit_w      (cntrl_ask_cancel_hit_w       )
+    , .cancel_hit_tbl_w  (cntrl_ask_cancel_hit_tbl_w   )
     //
     , .reject_pop        (cntrl_ask_reject_pop         )
     , .reject_vld_r      (cntrl_ask_reject_vld_r       )
@@ -216,6 +224,9 @@ module ob (
     , .bid_reject_vld_r  (cntrl_bid_reject_vld_r       )
     , .bid_reject_r      (cntrl_bid_reject_r           )
     //
+    , .bid_cancel_hit_w  (cntrl_bid_cancel_hit_w       )
+    , .bid_cancel_hit_tbl_w (cntrl_bid_cancel_hit_tbl_w)
+    //
     , .bid_reject_pop    (cntrl_bid_reject_pop         )
     //
     , .bid_insert        (cntrl_bid_insert             )
@@ -226,11 +237,17 @@ module ob (
     , .bid_update_vld    (cntrl_bid_update_vld         )
     , .bid_update        (cntrl_bid_update             )
     //
+    , .bid_cancel        (cntrl_bid_cancel             )
+    , .bid_cancel_uid    (cntrl_bid_cancel_uid         )
+    //
     , .ask_table_vld_r   (cntrl_ask_table_vld_r        )
     , .ask_table_r       (cntrl_ask_table_r            )
     //
     , .ask_reject_vld_r  (cntrl_ask_reject_vld_r       )
     , .ask_reject_r      (cntrl_ask_reject_r           )
+    //
+    , .ask_cancel_hit_w  (cntrl_ask_cancel_hit_w       )
+    , .ask_cancel_hit_tbl_w(cntrl_ask_cancel_hit_tbl_w )
     //
     , .ask_reject_pop    (cntrl_ask_reject_pop         )
     //
@@ -241,6 +258,9 @@ module ob (
     //
     , .ask_update_vld    (cntrl_ask_update_vld         )
     , .ask_update        (cntrl_ask_update             )
+    //
+    , .ask_cancel        (cntrl_ask_cancel             )
+    , .ask_cancel_uid    (cntrl_ask_cancel_uid         )
     //
     , .clk               (clk                          )
     , .rst               (rst                          )

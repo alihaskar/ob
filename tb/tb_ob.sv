@@ -42,7 +42,9 @@ module tb_ob (
   // Oprands (Ask)
   , input ob_pkg::quantity_t                      cmd_ask_quantity_r
   , input bcd_pkg::price_t                        cmd_ask_price_r
-  
+  //
+  // Oprands (Cancel)
+  , input ob_pkg::uid_t                           cmd_cancel_uid_r
   //
   , output logic                                  cmd_full_r
 
@@ -102,7 +104,11 @@ module tb_ob (
         oprand.price 	  = cmd_ask_price_r;
 
 	cmd_r.oprand 	  = '0;
+	
         cmd_r.oprand.sell = oprand;
+      end
+      ob_pkg::Op_Cancel: begin
+	cmd_r.oprand.cancel.uid = cmd_cancel_uid_r;
       end
       default: ;
     endcase // case (cmd_r.opcode_r)

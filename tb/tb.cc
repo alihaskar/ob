@@ -182,6 +182,9 @@ std::string Command::to_string() const {
       const Bcd bcd = Bcd::from_packed(oprands.sell.price);
       r.add_field("price", bcd.to_string());
     } break;
+    case Opcode::Cancel: {
+      r.add_field("cancel_uid", utility::hex(oprands.cancel.uid));
+    } break;
   }
   return r.to_string();
 }
@@ -252,6 +255,9 @@ void VSignals::set(const Command& cmd) {
     case Opcode::Sell: {
       vsupport::set(cmd_sell_quantity_r, cmd.oprands.sell.quantity);
       vsupport::set(cmd_sell_price_r, cmd.oprands.sell.price);
+    } break;
+    case Opcode::Cancel: {
+      vsupport::set(cmd_cancel_uid_r, cmd.oprands.cancel.uid);
     } break;
     default: {
       // Unknown opcode.
@@ -330,7 +336,9 @@ void TB::run() {
       // Apply input command.
       cmd = cmds_.front();
 #ifdef OPT_TRACE_ENABLE
-      std::cout << "[TB] Issue command: " << cmd.to_string() << "\n";
+      if (opts_.trace_enable) {
+        std::cout << "[TB] Issue command: " << cmd.to_string() << "\n";
+      }
 #endif
       cmds_.pop_front();
     } else {
@@ -343,7 +351,9 @@ void TB::run() {
     vs_.get(actual);
     if (actual.valid) {
 #ifdef OPT_TRACE_ENABLE
-      std::cout << "[TB] Response received: " << actual.to_string() << "\n";
+      if (opts_.trace_enable) {
+        std::cout << "[TB] Response received: " << actual.to_string() << "\n";
+      }
 #endif
       // Must be expected a response.
       ASSERT_FALSE(rsps_.empty());

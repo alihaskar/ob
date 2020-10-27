@@ -105,12 +105,17 @@ enum Opcode : vluint8_t {
   PopTopBid = 4,
 
   // Remove winning ask from table.
-  PopTopAsk = 5
+  PopTopAsk = 5,
+
+  // Cancel specified UID.
+  Cancel = 6
 };
 
 enum Status : vluint8_t {
   Okay = 0,
   Reject = 1,
+  CancelHit = 2,
+  CancelMiss = 3,
   BadPop = 5
 };
 
@@ -129,6 +134,9 @@ struct Command {
       vluint16_t quantity;
       vluint32_t price;
     } sell;
+    struct {
+      vluint32_t uid;
+    } cancel;
   } oprands;
 };
 
@@ -159,6 +167,7 @@ struct VSignals {
     v.cmd_buy_price_r = std::addressof(u->cmd_buy_price_r);
     v.cmd_sell_quantity_r = std::addressof(u->cmd_ask_quantity_r);
     v.cmd_sell_price_r = std::addressof(u->cmd_ask_price_r);
+    v.cmd_cancel_uid_r = std::addressof(u->cmd_cancel_uid_r);
     v.cmd_full_r = std::addressof(u->cmd_full_r);
     v.rsp_accept = std::addressof(u->rsp_accept);
     v.rsp_vld = std::addressof(u->rsp_vld);
@@ -210,6 +219,8 @@ struct VSignals {
   // Ask
   vluint16_t* cmd_sell_quantity_r;
   vluint32_t* cmd_sell_price_r;
+  // Cancel
+  vluint32_t* cmd_cancel_uid_r;
   //
   vluint8_t* cmd_full_r;
 
@@ -230,6 +241,9 @@ struct Options {
 
   // Waveform dumpfile (when enabled).
   std::string wave_name = "sim.vcd";
+
+  // Enable log tracing.
+  bool trace_enable = false;
 };
 
 class TB {

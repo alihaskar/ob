@@ -59,7 +59,10 @@ package ob_pkg;
                             Op_PopTopBid  = 4'b0100,
                             
                             // Remove winning ask from order book.
-                            Op_PopTopAsk  = 4'b0101
+                            Op_PopTopAsk  = 4'b0101,
+
+			    // Cancel prior Bid/Ask
+			    Op_Cancel     = 4'b0110
 
                             } opcode_t;
 
@@ -82,9 +85,16 @@ package ob_pkg;
   } oprand_sell_t;
 
   //
+  typedef struct packed {
+    // ID to cancel.
+    uid_t           uid;
+  } oprand_cancel_t;
+
+  //
   typedef union packed {
     oprand_buy_t buy;
     oprand_sell_t sell;
+    oprand_cancel_t cancel;
   } oprand_t;
 
   //
@@ -106,6 +116,12 @@ package ob_pkg;
 
     // Command UID has been rejected by the OB
     S_Reject = 3'b001,
+
+    // Cancel operation hit pending bid/ask
+    S_CancelHit = 3'b010,
+
+    // Cancel operation missed.
+    S_CancelMiss = 3'b011,
 
     // Attempt to pop from empty table.
     S_BadPop = 3'b101

@@ -118,7 +118,6 @@ TEST(Smoke, SimpleTableSort) {
 
 TEST(Smoke, SimpleTrade) {
   tb::Options opts;
-  opts.wave_enable = true;
   tb::TB tb{opts};
 
   tb::Command cmd;
@@ -160,6 +159,56 @@ TEST(Smoke, SimpleTrade) {
   tb.push_back(rsp);
 
   // Run simulation.
+  tb.run();
+}
+
+TEST(Smoke, Cancel) {
+  tb::Options opts;
+  opts.wave_enable = true;
+  tb::TB tb{opts};
+
+  tb::Command cmd;
+  tb::Response rsp;
+
+  // Cmd 0: issue Buy for 100 at $200.00
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::Buy;
+  cmd.uid = 0x20;
+  const tb::Bcd bcd = tb::Bcd::from_string("200.00");
+  cmd.oprands.buy.quantity = 100;
+  cmd.oprands.buy.price = bcd.pack();
+  tb.push_back(cmd);
+
+  rsp.valid = true;
+  rsp.uid = 0x20;
+  rsp.status = tb::Status::Okay;
+  tb.push_back(rsp);
+
+  // Cmd 1: issue cancel for Buy command.
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::Cancel;
+  cmd.uid = 0x30;
+  cmd.oprands.cancel.uid = 0x20;
+  tb.push_back(cmd);
+
+  rsp.valid = true;
+  rsp.uid = 0x30;
+  rsp.status = tb::Status::CancelHit;
+  tb.push_back(rsp);
+
+  // Cmd 2: issue cancel for Buy command.
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::Cancel;
+  cmd.uid = 0x31;
+  cmd.oprands.cancel.uid = 0x20;
+  tb.push_back(cmd);
+
+  rsp.valid = true;
+  rsp.uid = 0x31;
+  rsp.status = tb::Status::CancelMiss;
+  tb.push_back(rsp);
+
+  // Run simulation
   tb.run();
 }
 

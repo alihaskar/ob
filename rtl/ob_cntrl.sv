@@ -51,6 +51,9 @@ module ob_cntrl (
   , input                                         bid_reject_vld_r
   , input ob_pkg::table_t                         bid_reject_r
   //
+  , input                                         bid_cancel_hit_w
+  , input ob_pkg::table_t                         bid_cancel_hit_tbl_w
+  //
   , output logic                                  bid_reject_pop
   //
   , output logic                                  bid_insert
@@ -60,6 +63,9 @@ module ob_cntrl (
   //
   , output logic                                  bid_update_vld
   , output ob_pkg::table_t                        bid_update
+  //
+  , output logic                                  bid_cancel
+  , output ob_pkg::uid_t                          bid_cancel_uid
 
   // ======================================================================== //
   // Ask Table Interface
@@ -68,6 +74,9 @@ module ob_cntrl (
   //
   , input                                         ask_reject_vld_r
   , input ob_pkg::table_t                         ask_reject_r
+  //
+  , input                                         ask_cancel_hit_w
+  , input ob_pkg::table_t                         ask_cancel_hit_tbl_w
   //
   , output logic                                  ask_reject_pop
   //
@@ -78,6 +87,9 @@ module ob_cntrl (
   //
   , output logic                                  ask_update_vld
   , output ob_pkg::table_t                        ask_update
+  //
+  , output logic                                  ask_cancel
+  , output ob_pkg::uid_t                          ask_cancel_uid
 
   // ======================================================================== //
   // Clk/Reset
@@ -223,7 +235,9 @@ module ob_cntrl (
 			     // Issue table query on current
 			     FSM_CNTRL_TABLE_ISSUE_QRY = 3'b001,
 			     // Execute query response
-			     FSM_CNTRL_TABLE_EXECUTE = 3'b010
+			     FSM_CNTRL_TABLE_EXECUTE = 3'b010,
+			     // Receive cancel notification
+			     FSM_CNTRL_CANCEL_RESP = 3'b011
 			     } fsm_state_t;
 
   // State flop
@@ -256,6 +270,9 @@ module ob_cntrl (
     bid_update_vld = 'b0;
     bid_update 	   = '0;
 
+    bid_cancel 	   = 'b0;
+    bid_cancel_uid = '0;
+
     // Ask Table:
     ask_insert 	   = 'b0;
     ask_insert_tbl = '0;
@@ -264,6 +281,9 @@ module ob_cntrl (
 
     ask_update_vld = 'b0;
     ask_update 	   = '0;
+
+    ask_cancel 	   = 'b0;
+    ask_cancel_uid = '0;
 
     // Compare query
     cmp_result_en  = 'b0;
@@ -411,13 +431,58 @@ module ob_cntrl (
               ask_table_vld_r ? ob_pkg::S_BadPop : ob_pkg::S_Okay;
 	    rsp_out.result 	  = '0;
 	    rsp_out.result.poptop = poptop;
+	  end // case: {1'b1, ob_pkg::Op_PopTopAsk}
+	  {1'b1, ob_pkg::Op_Cancel}: begin
+
+	    // Issue cancel op. to Bid table.
+	    bid_cancel 	   = 'b1;
+	    bid_cancel_uid = cmd_latch_r.oprand.cancel.uid;
+
+	    // Issue cancel op. to Ask table.
+	    ask_cancel 	   = 'b1;
+	    ask_cancel_uid = cmd_latch_r.oprand.cancel.uid;
+
+	    // Advance to next state when egress queue is non-full, as
+	    // next state does not support back-pressure.
+	    fsm_state_en   = (~rsp_out_full_r);
+	    fsm_state_w    = FSM_CNTRL_CANCEL_RESP;
 	  end
 	  default: begin
 	    // Invalid op:
 	  end
 	endcase // case (ingress_queue_pop_data.opcode)
 
-      end
+      end // case: FSM_CNTRL_IDLE
+
+      FSM_CNTRL_CANCEL_RESP: begin
+
+	// Consume command.
+	cmd_consume = 'b1;
+
+	rsp_out_vld = 'b1;
+	rsp_out     = '0;
+	rsp_out.uid = cmd_latch_r.uid;
+	
+	casez ({bid_cancel_hit_r, ask_cancel_hit_r})
+	  2'b1?: begin
+	    // Hit on bid table.
+	    rsp_out.status = ob_pkg::S_CancelHit;
+	  end
+	  2'b01: begin
+	    // Hit on ask table.
+	    rsp_out.status = ob_pkg::S_CancelHit;
+	  end
+	  default: begin
+	    // Miss, UID not found
+	    rsp_out.status = ob_pkg::S_CancelMiss;
+	  end
+	endcase // casez ({bid_cancel_hit_r, ask_cancel_hit_r})
+
+	// Advance to next state.
+	fsm_state_en = 'b1;
+	fsm_state_w  = FSM_CNTRL_IDLE;
+
+      end // case: FSM_CNTRL_CANCEL_RESP
 
       FSM_CNTRL_TABLE_ISSUE_QRY: begin
 	// In this state, the state of the table has been updated with
@@ -563,6 +628,24 @@ module ob_cntrl (
     endcase // case (fsm_state_r)
 
   end // block: cntrl_PROC
+
+  // ------------------------------------------------------------------------ //
+  //
+  `LIBV_REG_RST_R(logic, bid_cancel_hit, 'b0);
+  `LIBV_REG_EN_R(ob_pkg::table_t, bid_cancel_hit_tbl);
+
+  `LIBV_REG_RST_R(logic, ask_cancel_hit, 'b0);
+  `LIBV_REG_EN_R(ob_pkg::table_t, ask_cancel_hit_tbl);
+
+  always_comb begin : cancel_PROC
+
+    // Latch on next is valid.
+    bid_cancel_hit_tbl_en = bid_cancel_hit_w;
+
+    // Latch on next is valid.
+    ask_cancel_hit_tbl_en = ask_cancel_hit_w;
+
+  end // block: cancel_PROC
 
 endmodule // ob_cntrl
 

@@ -48,12 +48,12 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   , input ob_pkg::table_t                         insert_tbl
 
   // ======================================================================== //
-  // Delete UID Interface
-  , input                                         delete
-  , input ob_pkg::uid_t                           delete_uid
+  // Cancel UID Interface
+  , input                                         cancel
+  , input ob_pkg::uid_t                           cancel_uid
   //
-  , output logic                                  delete_hit
-  , output ob_pkg::table_t                        delete_hit_tbl
+  , output logic                                  cancel_hit_w
+  , output ob_pkg::table_t                        cancel_hit_tbl_w
 
   // ======================================================================== //
   // Reject Interface
@@ -191,31 +191,31 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
   // ------------------------------------------------------------------------ //
   //
-  logic [N:0]                           delete_match_uid_d;
-  logic [N:0]                           delete_match_uid_mask_d;
+  logic [N:0]                           cancel_match_uid_d;
+  logic [N:0]                           cancel_match_uid_mask_d;
 
-  always_comb begin : delete_PROC
+  always_comb begin : cancel_PROC
 
     // Form 1-hot bit-vector containing entries which match the
     // current UID (UID should be unique therefore the match count
     // should equal 1 or 0; multiple matches may not take place).
     //
-    delete_match_uid_d   = '0;
+    cancel_match_uid_d   = '0;
     for (int i = 0; i < N + 1; i++) begin
-      delete_match_uid_d [i]  = delete & (delete_uid ==  tbl_r [i].uid);
+      cancel_match_uid_d [i]  = cancel & (cancel_uid ==  tbl_r [i].uid);
     end
 
-    // A hit on a delete operation has occurred.
-    delete_hit               = (delete_match_uid_d != 'b0);
+    // A hit on a cancel operation has occurred.
+    cancel_hit_w 	    = (cancel_match_uid_d != 'b0);
 
     // Mux nominanted table entry as output.
-    delete_hit_tbl           = mux(delete_match_uid_d, tbl_r);
+    cancel_hit_tbl_w 	    = mux(cancel_match_uid_d, tbl_r);
 
     // Form mask such that table entries preceeding current hit vector
-    // are shifted up, to account for the deleted entry.
-    delete_match_uid_mask_d  = mask(delete_match_uid_d, .inclusive('b0), .lsb('b1));
+    // are shifted up, to account for the canceld entry.
+    cancel_match_uid_mask_d = mask(cancel_match_uid_d, .inclusive('b0), .lsb('b1));
 
-  end // block: delete_PROC
+  end // block: cancel_PROC
   
 
   // ------------------------------------------------------------------------ //
@@ -245,9 +245,9 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     tbl_install_d   = (insert_match_sel_d);
 
     // Unary mask denoting the locations to be shifted upwards (towards the
-    // MSB) in response to a pop or delete operation.
+    // MSB) in response to a pop or cancel operation.
     //
-    tbl_shift_up_d  = (delete_match_uid_mask_d | tbl_pop_head_d);
+    tbl_shift_up_d  = (cancel_match_uid_mask_d | tbl_pop_head_d);
 
     // Unary mask denoting the locations to be shifted downwards (towards
     // the LSB) in reponse to a insert operation.
