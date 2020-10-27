@@ -177,6 +177,9 @@ module ob (
     //
     , .bid_pop           ()
     //
+    , .bid_update_vld    ()
+    , .bid_update        ()
+    //
     , .ask_table_vld_r   ()
     , .ask_table_r       ()
     //
@@ -189,6 +192,9 @@ module ob (
     , .ask_insert_tbl    ()
     //
     , .ask_pop           ()
+    //
+    , .ask_update_vld    ()
+    , .ask_update        ()
     //
     , .clk               (clk                     )
     , .rst               (rst                     )

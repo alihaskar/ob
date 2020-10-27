@@ -57,6 +57,9 @@ module ob_cntrl (
   , output ob_pkg::table_t                        bid_insert_tbl
   //
   , output logic                                  bid_pop
+  //
+  , output logic                                  bid_update_vld
+  , output ob_pkg::table_t                        bid_update
 
   // ======================================================================== //
   // Ask Table Interface
@@ -72,6 +75,9 @@ module ob_cntrl (
   , output ob_pkg::table_t                        ask_insert_tbl
   //
   , output logic                                  ask_pop
+  //
+  , output logic                                  ask_update_vld
+  , output ob_pkg::table_t                        ask_update
 
   // ======================================================================== //
   // Clk/Reset
@@ -242,11 +248,17 @@ module ob_cntrl (
 
     bid_pop 	   = 'b0;
 
+    bid_update_vld = 'b0;
+    bid_update 	   = '0;
+
     // Ask Table:
     ask_insert 	   = 'b0;
     ask_insert_tbl = '0;
 
     ask_pop 	   = 'b0;
+
+    ask_update_vld = 'b0;
+    ask_update 	   = '0;
 
     // Compare query
     cmp_result_en  = 'b0;
@@ -302,19 +314,28 @@ module ob_cntrl (
 	    bid_table.quantity = cmd_latch_r.oprand.buy.quantity;
 	    bid_table.price    = cmd_latch_r.oprand.buy.price;
 
+	    // Insert in Bid Table.
+	    bid_insert 	       = 'b1;
+	    bid_insert_tbl     = bid_table;
+
+	    // Next, query update table.
 	    fsm_state_en       = 'b1;
 	    fsm_state_w        = FSM_CNTRL_TABLE_ISSUE_QRY;
 	  end
 	  {1'b1, ob_pkg::Op_Sell}: begin
-	    ob_pkg::table_t bid_table;
+	    ob_pkg::table_t ask_table;
 
 	    // Await result of install operation.
-	    bid_table 	       = '0;
-	    bid_table.uid      = cmd_latch_r.uid;
-	    bid_table.quantity = cmd_latch_r.oprand.sell.quantity;
-	    bid_table.price    = cmd_latch_r.oprand.sell.price;
+	    ask_table 	       = '0;
+	    ask_table.uid      = cmd_latch_r.uid;
+	    ask_table.quantity = cmd_latch_r.oprand.sell.quantity;
+	    ask_table.price    = cmd_latch_r.oprand.sell.price;
 
-	    // Await result of install operation.
+	    // Insert in Ask Table.
+	    ask_insert 	       = 'b1;
+	    ask_insert_tbl     = ask_table;
+
+	    // Next, query update table.
 	    fsm_state_en       = 'b1;
 	    fsm_state_w        = FSM_CNTRL_TABLE_ISSUE_QRY;
 	  end
@@ -398,6 +419,46 @@ module ob_cntrl (
 	  4'b0_1??: begin
 	    // Execute trade
 	    ob_pkg::result_trade_t trade;
+
+	    // Update tables:
+	    casez ({cmp_result_r.bid_consumed, cmp_result_r.ask_consumed})
+	      2'b10: begin
+		// Bid head has been consumed; Ask head remains.
+		
+		ob_pkg::table_t updated_table;
+		  
+		// Bid table update
+		bid_pop 	       = 'b1;
+
+		// Form updated table entry.
+		updated_table 	       = ask_table_r;
+		updated_table.quantity = cmp_result_r.remainder;
+				 
+		ask_update_vld 	       = 'b1;
+		ask_update 	       = updated_table;
+	      end
+	      2'b01: begin
+		// Ask head has been consumed; Bid has remains.
+		
+		ob_pkg::table_t updated_table;
+
+		// Ask table update
+		ask_pop 	       = 'b1;
+
+		// Form updated table entry.
+		updated_table 	       = bid_table_r;
+		updated_table.quantity = cmp_result_r.remainder;
+
+		bid_update_vld 	       = 'b1;
+		bid_update 	       = updated_table;
+	      end
+	      2'b11: begin
+		// Both Bid and Ask heads have been consumed.
+		bid_pop = 'b1;
+		ask_pop = 'b1;
+	      end
+	      default: ;
+	    endcase
 
 	    // Form trade message (Bid/Ask; Shares traded)
 	    trade 		 = '0;
