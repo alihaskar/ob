@@ -108,6 +108,12 @@ enum Opcode : vluint8_t {
   PopTopAsk = 5
 };
 
+enum Status : vluint8_t {
+  Okay = 0,
+  Reject = 1,
+  BadPop = 5
+};
+
 struct Command {
   std::string to_string() const;
   
@@ -127,6 +133,8 @@ struct Command {
 };
 
 struct Response {
+  std::string to_string() const;
+  
   bool valid = false;
   vluint32_t uid;
   vluint8_t status;

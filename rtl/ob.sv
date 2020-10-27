@@ -49,6 +49,38 @@ module ob (
   , input                                         clk
   , input                                         rst
 );
+
+  // ------------------------------------------------------------------------ //
+  //
+  logic                                 cntrl_cmd_in_vld;
+  ob_pkg::cmd_t                         cntrl_cmd_in;
+  logic                                 cntrl_cmd_in_pop;
+  //
+  logic 				cntrl_rsp_out_full_r;
+  logic                                 cntrl_rsp_out_vld;
+  ob_pkg::rsp_t                         cntrl_rsp_out;
+  //
+  logic 				cntrl_bid_table_vld_r;
+  ob_pkg::table_t                       cntrl_bid_table_r;
+  logic 				cntrl_bid_reject_vld_r;
+  ob_pkg::table_t                       cntrl_bid_reject_r;
+  logic 				cntrl_bid_reject_pop;
+  logic 				cntrl_bid_insert;
+  ob_pkg::table_t                       cntrl_bid_insert_tbl;
+  logic                                 cntrl_bid_pop;
+  logic 				cntrl_bid_update_vld;
+  ob_pkg::table_t                       cntrl_bid_update;
+  //
+  logic 				cntrl_ask_table_vld_r;
+  ob_pkg::table_t                       cntrl_ask_table_r;
+  logic 				cntrl_ask_reject_vld_r;
+  logic 				cntrl_ask_reject_pop;
+  ob_pkg::table_t                       cntrl_ask_reject_r;
+  logic 				cntrl_ask_insert;
+  ob_pkg::table_t                       cntrl_ask_insert_tbl;
+  logic                                 cntrl_ask_pop;
+  logic 				cntrl_ask_update_vld;
+  ob_pkg::table_t                       cntrl_ask_update;
    
   // ------------------------------------------------------------------------ //
   //
@@ -94,110 +126,124 @@ module ob (
   //
   ob_table #(.N(cfg_pkg::BID_TABLE_N), .is_ask('b0)) u_bid_table (
     //
-      .head_pop          ()
+      .head_pop          (cntrl_bid_pop                )
       //
-    , .head_upt          ()
-    , .head_upt_tbl      ()
+    , .head_upt          (cntrl_bid_update_vld         )
+    , .head_upt_tbl      (cntrl_bid_update             )
     //
-    , .head_vld_r        ()
+    , .head_vld_r        (cntrl_bid_table_vld_r        )
     , .head_did_update_r ()
-    , .head_r            ()
+    , .head_r            (cntrl_bid_table_r            )
     //
-    , .insert            ()
-    , .insert_tbl        ()
+    , .insert            (cntrl_bid_insert             )
+    , .insert_tbl        (cntrl_bid_insert_tbl         )
     //
-    , .delete            ()
-    , .delete_uid        ()
+    , .delete            ('b0)
+    , .delete_uid        ('0)
     //
     , .delete_hit        ()
     , .delete_hit_tbl    ()
     //
-    , .reject_pop        ()
-    , .reject_valid_r    ()
-    , .reject_r          ()
+    , .reject_pop        (cntrl_bid_reject_pop         )
+    , .reject_vld_r      (cntrl_bid_reject_vld_r       )
+    , .reject_r          (cntrl_bid_reject_r           )
     //
-    , .clk               (clk                     )
-    , .rst               (rst                     )
+    , .clk               (clk                          )
+    , .rst               (rst                          )
   );
 
   // ------------------------------------------------------------------------ //
   //
   ob_table #(.N(cfg_pkg::ASK_TABLE_N), .is_ask('b1)) u_ask_table (
     //
-      .head_pop          ()
+      .head_pop          (cntrl_ask_pop                )
       //
-    , .head_upt          ()
-    , .head_upt_tbl      ()
+    , .head_upt          (cntrl_ask_update_vld         )
+    , .head_upt_tbl      (cntrl_ask_update             )
     //
-    , .head_vld_r        ()
+    , .head_vld_r        (cntrl_ask_table_vld_r        )
     , .head_did_update_r ()
-    , .head_r            ()
+    , .head_r            (cntrl_ask_table_r            )
     //
-    , .insert            ()
-    , .insert_tbl        ()
+    , .insert            (cntrl_ask_insert             )
+    , .insert_tbl        (cntrl_ask_insert_tbl         )
     //
-    , .delete            ()
-    , .delete_uid        ()
+    , .delete            ('b0)
+    , .delete_uid        ('0)
     //
     , .delete_hit        ()
     , .delete_hit_tbl    ()
     //
-    , .reject_pop        ()
-    , .reject_valid_r    ()
-    , .reject_r          ()
+    , .reject_pop        (cntrl_ask_reject_pop         )
+    , .reject_vld_r      (cntrl_ask_reject_vld_r       )
+    , .reject_r          (cntrl_ask_reject_r           )
     //
-    , .clk               (clk                     )
-    , .rst               (rst                     )
+    , .clk               (clk                          )
+    , .rst               (rst                          )
   );
+  
+  always_comb begin : ob_cntrl_PROC
+
+    // Ingress Queue -> Ob. Cntrl.
+    cntrl_cmd_in_vld 	   = (~ingress_queue_empty_r);
+    cntrl_cmd_in 	   = ingress_queue_pop_data;
+    ingress_queue_pop 	   = cntrl_cmd_in_pop;
+
+    // Ob. Cntrl. -> Egress Queue 
+    egress_queue_push 	   = cntrl_rsp_out_vld;
+    egress_queue_push_data = cntrl_rsp_out;
+
+
+  end // block: ob_cntrl_PROC
 
   // ------------------------------------------------------------------------ //
   //
   ob_cntrl u_ob_cntrl (
     //
-      .cmd_in_vld        ()
-    , .cmd_in            ()
+      .cmd_in_vld        (cntrl_cmd_in_vld             )
+    , .cmd_in            (cntrl_cmd_in                 )
     //
-    , .cmd_in_pop        ()
+    , .cmd_in_pop        (cntrl_cmd_in_pop             )
     //
-    , .rsp_out_full_r    ()
+    , .rsp_out_full_r    (cntrl_rsp_out_full_r         )
     //
-    , .rsp_out_vld       ()
-    , .rsp_out           ()
+    , .rsp_out_vld       (cntrl_rsp_out_vld            )
+    , .rsp_out           (cntrl_rsp_out                )
     //
-    , .bid_table_vld_r   ()
-    , .bid_table_r       ()
+    , .bid_table_vld_r   (cntrl_bid_table_vld_r        )
+    , .bid_table_r       (cntrl_bid_table_r            )
     //
-    , .bid_reject_vld_r  ()
-    , .bid_reject_r      ()
+    , .bid_reject_vld_r  (cntrl_bid_reject_vld_r       )
+    , .bid_reject_r      (cntrl_bid_reject_r           )
     //
-    , .bid_reject_pop    ()
+    , .bid_reject_pop    (cntrl_bid_reject_pop         )
     //
-    , .bid_insert        ()
-    , .bid_insert_tbl    ()
+    , .bid_insert        (cntrl_bid_insert             )
+    , .bid_insert_tbl    (cntrl_bid_insert_tbl         )
     //
-    , .bid_pop           ()
+    , .bid_pop           (cntrl_bid_pop                )
     //
-    , .bid_update_vld    ()
-    , .bid_update        ()
+    , .bid_update_vld    (cntrl_bid_update_vld         )
+    , .bid_update        (cntrl_bid_update             )
     //
-    , .ask_table_vld_r   ()
-    , .ask_table_r       ()
+    , .ask_table_vld_r   (cntrl_ask_table_vld_r        )
+    , .ask_table_r       (cntrl_ask_table_r            )
     //
-    , .ask_reject_vld_r  ()
-    , .ask_reject_r      ()
+    , .ask_reject_vld_r  (cntrl_ask_reject_vld_r       )
+    , .ask_reject_r      (cntrl_ask_reject_r           )
     //
-    , .ask_reject_pop    ()
+    , .ask_reject_pop    (cntrl_ask_reject_pop         )
     //
-    , .ask_insert        ()
-    , .ask_insert_tbl    ()
+    , .ask_insert        (cntrl_ask_insert             )
+    , .ask_insert_tbl    (cntrl_ask_insert_tbl         )
     //
-    , .ask_pop           ()
+    , .ask_pop           (cntrl_ask_pop                )
     //
-    , .ask_update_vld    ()
-    , .ask_update        ()
+    , .ask_update_vld    (cntrl_ask_update_vld         )
+    , .ask_update        (cntrl_ask_update             )
     //
-    , .clk               (clk                     )
-    , .rst               (rst                     )
+    , .clk               (clk                          )
+    , .rst               (rst                          )
   );
 
   // ------------------------------------------------------------------------ //

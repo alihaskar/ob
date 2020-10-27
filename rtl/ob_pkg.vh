@@ -107,9 +107,6 @@ package ob_pkg;
     // Command UID has been rejected by the OB
     S_Reject = 3'b001,
 
-    // Command rejected (table is full).
-    S_ErrRejectTableFull = 3'b100,
-
     // Attempt to pop from empty table.
     S_BadPop = 3'b101
 

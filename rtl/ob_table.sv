@@ -59,7 +59,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   // Reject Interface
   , input                                         reject_pop
 
-  , output logic                                  reject_valid_r
+  , output logic                                  reject_vld_r
   , output ob_pkg::table_t                        reject_r
 
   // ======================================================================== //
@@ -104,12 +104,12 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     if (lsb) begin
       for (int i = 0; i < N + 1; i++) begin
         if (x[i])
-          pri  = ('b1 << N);
+          pri  = ('b1 << i);
       end
     end else begin
       for (int i = N; i >= 0; i--) begin
         if (x[i])
-          pri  = ('b1 << N);
+          pri  = ('b1 << i);
       end
     end
   end endfunction

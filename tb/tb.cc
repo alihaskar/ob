@@ -186,6 +186,24 @@ std::string Command::to_string() const {
   return r.to_string();
 }
 
+const char* to_status_string(vluint8_t status) {
+  switch (status) {
+    case Status::Okay: return "Okay";
+    case Status::Reject: return "Reject";
+    case Status::BadPop: return "BadPop";
+    default: return "Invalid";
+  }
+}
+
+std::string Response::to_string() const {
+  using std::to_string;
+
+  utility::KVListRenderer r;
+  r.add_field("uid", utility::hex(uid));
+  r.add_field("status", to_status_string(status));
+  return r.to_string();
+}
+
 bool operator==(const Response& lhs, const Response& rhs) {
   if (lhs.uid != rhs.uid) return false;
   if (lhs.status != rhs.status) return false;
@@ -303,7 +321,7 @@ void TB::run() {
   vs_.set(cmd);
   
   // Response accept
-  vs_.set_rsp_accept(false);
+  vs_.set_rsp_accept(true);
 
   bool stopped = false;
   while (!stopped) {
@@ -324,6 +342,9 @@ void TB::run() {
     Response actual;
     vs_.get(actual);
     if (actual.valid) {
+#ifdef OPT_TRACE_ENABLE
+      std::cout << "[TB] Response received: " << actual.to_string() << "\n";
+#endif
       // Must be expected a response.
       ASSERT_FALSE(rsps_.empty());
 
@@ -334,7 +355,7 @@ void TB::run() {
     step();
 
     // Stopped when we've received all data.
-    stopped = (cmds_.empty() /*&& rsps_.empty()*/);
+    stopped = (cmds_.empty() && rsps_.empty());
   }
 
   // Set interfaces to idle.

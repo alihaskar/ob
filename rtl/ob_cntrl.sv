@@ -96,19 +96,21 @@ module ob_cntrl (
   always_comb begin : cmd_latch_PROC
 
     //
-    cmd_fetch 	    = (cmd_latch_vld_r & cmd_consume) | // (1)
-		      (~cmd_latch_vld_r & cmd_in_vld);  // (2)
-		      
-
-    // Pop from ingress queue on fetch.
-    cmd_in_pop 	    = cmd_fetch;
+    cmd_fetch 	    = cmd_in_vld & (cmd_consume | ~cmd_latch_vld_r);
 
     // Valid on fetch or Retain on not consume of prior.
-    cmd_latch_vld_w = cmd_fetch | (cmd_latch_vld_r & ~cmd_consume);
+    casez ({cmd_fetch, cmd_consume})
+      2'b1?:   cmd_latch_vld_w = 'b1;
+      2'b01:   cmd_latch_vld_w = 'b0;
+      default: cmd_latch_vld_w = cmd_latch_vld_r;
+    endcase
 
     //
     cmd_latch_en    = cmd_fetch;
     cmd_latch_w     = cmd_in;
+
+    // Pop from ingress queue on fetch.
+    cmd_in_pop 	    = cmd_fetch;
 
   end // block: cmd_latch_PROC
   
@@ -309,6 +311,9 @@ module ob_cntrl (
 	  {1'b1, ob_pkg::Op_Buy}: begin
 	    ob_pkg::table_t bid_table;
 
+	    // Consume command
+	    cmd_consume        = 'b1;
+
 	    bid_table 	       = '0;
 	    bid_table.uid      = cmd_latch_r.uid;
 	    bid_table.quantity = cmd_latch_r.oprand.buy.quantity;
@@ -318,12 +323,23 @@ module ob_cntrl (
 	    bid_insert 	       = 'b1;
 	    bid_insert_tbl     = bid_table;
 
+	    // Emit out:
+	    rsp_out_vld        = 'b1;
+
+	    // From response:
+	    rsp_out 	       = '0;
+	    rsp_out.uid        = cmd_latch_r.uid;
+	    rsp_out.status     = ob_pkg::S_Okay;
+
 	    // Next, query update table.
 	    fsm_state_en       = 'b1;
 	    fsm_state_w        = FSM_CNTRL_TABLE_ISSUE_QRY;
 	  end
 	  {1'b1, ob_pkg::Op_Sell}: begin
 	    ob_pkg::table_t ask_table;
+
+	    // Consume command
+	    cmd_consume    = 'b1;
 
 	    // Await result of install operation.
 	    ask_table 	       = '0;
@@ -335,6 +351,14 @@ module ob_cntrl (
 	    ask_insert 	       = 'b1;
 	    ask_insert_tbl     = ask_table;
 
+	    // Emit out:
+	    rsp_out_vld        = 'b1;
+
+	    // From response:
+	    rsp_out 	       = '0;
+	    rsp_out.uid        = cmd_latch_r.uid;
+	    rsp_out.status     = ob_pkg::S_Okay;
+
 	    // Next, query update table.
 	    fsm_state_en       = 'b1;
 	    fsm_state_w        = FSM_CNTRL_TABLE_ISSUE_QRY;
@@ -342,31 +366,42 @@ module ob_cntrl (
 	  {1'b1, ob_pkg::Op_PopTopBid}: begin
 	    ob_pkg::result_poptop_t poptop;
 
+	    // Consume command
+	    cmd_consume    = 'b1;
+
+	    // Form result:
 	    poptop 		  = '0;
 	    poptop.price 	  = bid_table_r.price;
 	    poptop.quantity 	  = bid_table_r.quantity;
 	    poptop.uid 		  = bid_table_r.uid;
 
+	    // Pop top valid item.
 	    bid_pop 		  = bid_table_vld_r;
 
+	    // Emit out:
 	    rsp_out_vld 	  = 'b1;
 	    rsp_out.uid 	  = cmd_latch_r.uid;
 	    rsp_out.status 	  =
-              bid_table_vld_r ? ob_pkg::S_BadPop : ob_pkg::S_Okay;
+              bid_table_vld_r ? ob_pkg::S_Okay : ob_pkg::S_BadPop;
 	    rsp_out.result 	  = '0;
 	    rsp_out.result.poptop = poptop;
 	  end
 	  {1'b1, ob_pkg::Op_PopTopAsk}: begin
 	    ob_pkg::result_poptop_t poptop;
 
-	    poptop 		  = '0;
+	    // Consume command
+	    cmd_consume    = 'b1;
 
+	    // Form result:
+	    poptop 		  = '0;
 	    poptop.price 	  = ask_table_r.price;
 	    poptop.quantity 	  = ask_table_r.quantity;
 	    poptop.uid 		  = ask_table_r.uid;
 
+	    // Pop top valid item.
 	    bid_pop 		  = ask_table_vld_r;
 
+	    // Emit out:
 	    rsp_out_vld 	  = 'b1;
 	    rsp_out.uid 	  = cmd_latch_r.uid;
 	    rsp_out.status 	  =

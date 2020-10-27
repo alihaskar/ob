@@ -47,6 +47,11 @@ TEST(Smoke, TableSort) {
   cmd.oprands.sell.price = bcd.pack();
   tb.push_back(cmd);
 
+  // Rsp 0:
+  rsp.uid = 0;
+  rsp.status = 0;
+  tb.push_back(rsp);
+
   // Cmd 1:
   cmd.valid = true;
   cmd.opcode = tb::Opcode::Buy;
@@ -55,6 +60,11 @@ TEST(Smoke, TableSort) {
   cmd.oprands.sell.quantity = 100;
   cmd.oprands.sell.price = bcd.pack();
   tb.push_back(cmd);
+
+  // Rsp 1:
+  rsp.uid = 1;
+  rsp.status = 0;
+  tb.push_back(rsp);
 
   // Cmd 2:
   cmd.valid = true;
@@ -65,13 +75,18 @@ TEST(Smoke, TableSort) {
   cmd.oprands.sell.price = bcd.pack();
   tb.push_back(cmd);
 
+  // Rsp 2:
+  rsp.uid = 2;
+  rsp.status = 0;
+  tb.push_back(rsp);
+
   // Cmd 3: Remove top bid
   cmd.valid = true;
   cmd.opcode = tb::Opcode::PopTopBid;
   cmd.uid = 3;
   tb.push_back(cmd);
 
-  // Rsp 0
+  // Rsp 3
   rsp.uid = 3;
   rsp.status = 0;
   tb.push_back(rsp);
@@ -82,7 +97,7 @@ TEST(Smoke, TableSort) {
   cmd.uid = 4;
   tb.push_back(cmd);
 
-  // Rsp 1
+  // Rsp 4
   rsp.uid = 4;
   rsp.status = 0;
   tb.push_back(rsp);
@@ -93,7 +108,7 @@ TEST(Smoke, TableSort) {
   cmd.uid = 5;
   tb.push_back(cmd);
 
-  // Rsp 2
+  // Rsp 5
   rsp.uid = 5;
   rsp.status = 0;
   tb.push_back(rsp);
