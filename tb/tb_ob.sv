@@ -90,17 +90,19 @@ module tb_ob (
         ob_pkg::oprand_buy_t oprand;
 
         oprand.quantity  = cmd_buy_quantity_r;
-        oprand.price     = cmd_buy_price_r;
+        oprand.price 	 = cmd_buy_price_r;
 
-        cmd_r.oprand     = oprand;
+	cmd_r.oprand 	 = '0;
+        cmd_r.oprand.buy = oprand;
       end
       ob_pkg::Op_Sell: begin
         ob_pkg::oprand_sell_t oprand;
 
-        oprand.quantity  = cmd_ask_quantity_r;
-        oprand.price     = cmd_ask_price_r;
+        oprand.quantity   = cmd_ask_quantity_r;
+        oprand.price 	  = cmd_ask_price_r;
 
-        cmd_r.oprand     = oprand;
+	cmd_r.oprand 	  = '0;
+        cmd_r.oprand.sell = oprand;
       end
       default: ;
     endcase // case (cmd_r.opcode_r)

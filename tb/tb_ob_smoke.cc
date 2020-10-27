@@ -28,9 +28,8 @@
 #include "gtest/gtest.h"
 #include "tb.h"
 
-TEST(Smoke, TableSort) {
+TEST(Smoke, SimpleTableSort) {
   tb::Options opts;
-  opts.wave_enable = true;
   
   tb::TB tb{opts};
 
@@ -113,7 +112,54 @@ TEST(Smoke, TableSort) {
   rsp.status = 0;
   tb.push_back(rsp);
 
-  // Run simulation
+  // Run simulation.
+  tb.run();
+}
+
+TEST(Smoke, SimpleTrade) {
+  tb::Options opts;
+  opts.wave_enable = true;
+  tb::TB tb{opts};
+
+  tb::Command cmd;
+  tb::Response rsp;
+  tb::Bcd bcd;
+
+  // Cmd 0: Buy 100 shares at $200.00
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::Buy;
+  cmd.uid = 0;
+  bcd = tb::Bcd::from_string("200.00");
+  cmd.oprands.buy.quantity = 100;
+  cmd.oprands.buy.price = bcd.pack();
+  tb.push_back(cmd);
+
+  rsp.valid = true;
+  rsp.uid = 0;
+  rsp.status = 0;
+  tb.push_back(rsp);
+
+  // Cmd 2: Sell 100 shares at $100.00
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::Sell;
+  cmd.uid = 1;
+  bcd = tb::Bcd::from_string("100.00");
+  cmd.oprands.sell.quantity = 100;
+  cmd.oprands.sell.price = bcd.pack();
+  tb.push_back(cmd);
+
+  rsp.valid = true;
+  rsp.uid = 1;
+  rsp.status = 0;
+  tb.push_back(rsp);
+
+  // Expect a trade to be emitted.
+  rsp.valid = true;
+  rsp.uid = 0xFFFFFFFF;
+  rsp.status = 0;
+  tb.push_back(rsp);
+
+  // Run simulation.
   tb.run();
 }
 

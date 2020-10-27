@@ -124,7 +124,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
         if (i == N)
           mask[i]  = (inclusive & x[i]);
         else
-          mask[i]  = (inclusive & x[i]) | mask[i + 1];
+          mask[i]  = (inclusive & x[i]) | mask_enable;
 
         mask_enable |= x[i];
       end
@@ -135,7 +135,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
         if (i == 0)
           mask[i]  = (inclusive & x[i]);
         else
-          mask[i]  = (inclusive & x[i]) | mask [i - 1];
+          mask[i]  = (inclusive & x[i]) | mask_enable;
 
         mask_enable |= x[i];
       end
@@ -220,6 +220,17 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
   // ------------------------------------------------------------------------ //
   //
+  logic [N:0]                           tbl_pop_head_d;
+
+  always_comb begin : head_pop_PROC
+
+    tbl_pop_head_d = head_pop ? mask('b1 << N, .inclusive('b0), .lsb('b1)) : '0;
+
+  end // block: head_pop_PROC
+  
+
+  // ------------------------------------------------------------------------ //
+  //
   logic [N:0]                           tbl_install_d;
   logic [N:0]                           tbl_shift_up_d;
   logic [N:0]                           tbl_shift_dn_d;
@@ -236,7 +247,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     // Unary mask denoting the locations to be shifted upwards (towards the
     // MSB) in response to a pop or delete operation.
     //
-    tbl_shift_up_d  = (delete_match_uid_mask_d);
+    tbl_shift_up_d  = (delete_match_uid_mask_d | tbl_pop_head_d);
 
     // Unary mask denoting the locations to be shifted downwards (towards
     // the LSB) in reponse to a insert operation.
@@ -261,7 +272,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     //
 
     // Enable head update on install or shift into operation.
-    tbl_en [N]     = (tbl_install_d [N] |  tbl_shift_up_d [N] | head_upt);
+    tbl_en [N]     = (tbl_install_d [N] |  tbl_shift_up_d [N - 1] | head_upt);
 
     // Head value update (unique, no priority)
     unique casez ({// Controller writes the head.
@@ -269,7 +280,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
                    // New entry is installed in the head.
                    tbl_install_d [N],
                    // Prior table entry becomes head.
-                   tbl_shift_up_d [N]
+                   tbl_shift_up_d [N - 1]
                    })
       3'b1??:  tbl_w [N]  = head_upt_tbl;
       3'b01?:  tbl_w [N]  = insert_tbl;
@@ -286,15 +297,15 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
       // Enable update when data moves into entry.
       tbl_en [i]  =
-        (tbl_install_d [i] | tbl_shift_up_d [i] | tbl_shift_dn_d [i]);
+        (tbl_install_d [i] | tbl_shift_up_d [i - 1] | tbl_shift_dn_d [i + 1]);
 
       // Next state (unique, no priority)
       unique casez ({// Install new entry at current location
                      tbl_install_d [i],
                      // Shift entry up
-                     tbl_shift_up_d [i],
+                     tbl_shift_up_d [i - 1],
                      // Shift entry down
-                     tbl_shift_dn_d [i]
+                     tbl_shift_dn_d [i + 1]
                      })
         3'b1??: begin
           // Install new state
@@ -321,7 +332,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
     // Tail entry (zeroth); reject entry: (unique, no priority)
     unique casez ({tbl_install_d [0],
-                   tbl_shift_up_d [0],
+		   tbl_shift_dn_d [0],
                    tbl_shift_dn_d [0],
                    reject_pop
                    })
@@ -378,7 +389,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
     // Head value was updated in the current cycle (to take effect in
     // the subsequent cycle).
-    head_did_update_w  = (tbl_install_d [N] | tbl_shift_up_d [N]);
+    head_did_update_w  = tbl_en [N];
 
     // Head flop enable.
     head_en            = head_did_update_w;
@@ -387,7 +398,8 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     head_w             = tbl_w [N];
 
     // Head value becomes valid.
-    head_vld_w         = (head_w.price != INVALID_PRICE);
+    head_vld_w         =
+      head_did_update_w ? (head_w.price != INVALID_PRICE) : head_vld_r;
 
   end // block: head_PROC
 
