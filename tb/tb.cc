@@ -365,7 +365,8 @@ void VSignals::get(Response& rsp) {
   rsp.result.poptop.uid = vsupport::get(rsp_pop_uid);
 }
 
-TB::TB(const Options& opts) : opts_(opts) {
+TB::TB(const Options& opts)
+    : opts_(opts), model_(BID_TABLE_N, ASK_TABLE_N) {
 #ifdef OPT_VCD_ENABLE
   if (opts.wave_enable) {
     Verilated::traceEverOn(true);
@@ -416,6 +417,16 @@ void TB::run() {
     if (!cmd_full_r && !cmds_.empty()) {
       // Apply input command.
       cmd = cmds_.front();
+#ifdef OPT_VERBOSE
+      std::cout << "[TB] Apply: " << cmd.to_string() << "\n";
+#endif
+      for (const Response& rsp : model_.apply(cmd)) {
+#ifdef OPT_VERBOSE
+        std::cout << "[TB] Predict: " << rsp.to_string(cmd.opcode) << "\n";
+#endif
+        rsps_.push_back(rsp);
+      }
+
       uid_to_op.insert(std::make_pair(cmd.uid, cmd.opcode));
 #ifdef OPT_TRACE_ENABLE
       if (opts_.trace_enable) {
@@ -448,7 +459,7 @@ void TB::run() {
 #ifdef OPT_TRACE_ENABLE
         // Disregards controller materialized responses.
         std::cout << "[TB] " << vs_.cycle()
-                  << " ; Unknown UID received: " << actual.uid << "\n";
+                  << " ; Unknown UID received: " << utility::hex(actual.uid) << "\n";
 #endif
       }
 #ifdef OPT_TRACE_ENABLE
@@ -549,6 +560,18 @@ class BidComparer {
   }
 };
 
+std::string Entry::to_string() const {
+  using std::to_string;
+
+  utility::KVListRenderer r;
+  r.add_field("uid", utility::hex(uid));
+  r.add_field("quantity", to_string(quantity));
+  const Bcd bcd = Bcd::from_packed(price);
+  r.add_field("price", bcd.to_string());
+  return r.to_string();
+}
+
+
 Model::Model(std::size_t bid_n, std::size_t ask_n)
     : bid_n_(bid_n), ask_n_(ask_n)
 {}
@@ -558,11 +581,12 @@ bool Model::can_execute(const Command& cmd) const {
   return true;
 }
 
-void Model::apply(const Command& cmd, std::vector<Response>& rsps) {
+std::vector<Response> Model::apply(const Command& cmd) {
 
+  std::vector<Response> rsps;
   if (!cmd.valid) {
     // No command, return
-    return;
+    return {};
   }
 
   Response rsp;
@@ -628,7 +652,7 @@ void Model::apply(const Command& cmd, std::vector<Response>& rsps) {
       while (attempt_trade(rsp)) {
         rsps.push_back(rsp);
       }
-      if (bid_table_.size() > bid_n_) {
+      if (ask_table_.size() > ask_n_) {
         // Issue reject
         const Entry& reject = ask_table_.back();
         rsp.valid = true;
@@ -691,6 +715,11 @@ void Model::apply(const Command& cmd, std::vector<Response>& rsps) {
       rsps.push_back(rsp);
     } break;
   }
+
+#if defined(OPT_VERBOSE) && defined(OPT_TRACE_ENABLE)
+  verbose();
+#endif
+  return rsps;
 }
 
 bool Model::attempt_trade(Response& rsp) {
@@ -749,14 +778,31 @@ bool Model::attempt_trade(Response& rsp) {
   
   return true;
 }
+#if defined(OPT_VERBOSE) && defined(OPT_TRACE_ENABLE)
 
-StimulusGenerator::StimulusGenerator(TB* tb, const Bag<vluint8_t>& opcodes,
+void Model::verbose() const {
+  std::cout << "[TB] Bid Table:\n";
+  for (int i = 0; i < bid_table_.size(); i++) {
+    std::cout << "[TB] " << i << " " << bid_table_[i].to_string() << "\n";
+  }
+
+  std::cout << "[TB] Ask Table:\n";
+  for (int i = 0; i < ask_table_.size(); i++) {
+    std::cout << "[TB] " << i << " " << ask_table_[i].to_string() << "\n";
+  }
+  std::cout.flush();
+}
+#endif
+
+StimulusGenerator::StimulusGenerator(const Bag<vluint8_t>& opcodes,
                                      double mean, double stddev)
-    : tb_(tb), opcodes_(opcodes), model_(BID_TABLE_N, ASK_TABLE_N),
+    : opcodes_(opcodes), model_(BID_TABLE_N, ASK_TABLE_N),
       mean_(mean), stddev_(stddev) {
 }
 
-void StimulusGenerator::generate(std::size_t n) {
+std::vector<Command> StimulusGenerator::generate(std::size_t n) {
+  std::vector<Command> cmds;
+
   Command cmd;
   std::vector<Response> rsps;
   while (n != 0) {
@@ -766,13 +812,10 @@ void StimulusGenerator::generate(std::size_t n) {
       // Command can execute in the current cycle, therefore issue to
       // RTL.
       rsps.clear();
-      model_.apply(cmd, rsps);
+      rsps = model_.apply(cmd);
       // Add command to the model.
-      tb_->push_back(cmd);
-      // Add predicted responses to the model
-      for (const Response& rsp : rsps) {
-        tb_->push_back(rsp);
-      }
+      cmds.push_back(cmd);
+
       --n;
       // Advance UID
       ++uid_i_;
@@ -780,8 +823,8 @@ void StimulusGenerator::generate(std::size_t n) {
       add_uid(cmd.uid);
     }
   }
+  return cmds;
 }
-
 
 void StimulusGenerator::generate(Command& cmd) {
   cmd.valid = true;

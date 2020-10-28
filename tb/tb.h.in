@@ -38,6 +38,9 @@
 // Enable tracing to log file.
 #cmakedefine OPT_TRACE_ENABLE
 
+// Verbose logging
+#cmakedefine OPT_VERBOSE
+
 // Forwards:
 class Vtb_ob;
 
@@ -107,7 +110,9 @@ class Bag {
   Bag() = default;
 
   T operator()() const {
-    return ts_[Random::uniform<T>(ts_.size(), 0)];
+    if (ts_.empty()) return {};
+
+    return ts_[Random::uniform<T>(ts_.size() - 1, 0)];
   }
 
   void push_back(const T& t, std::size_t weight) {
@@ -391,6 +396,94 @@ struct VSignals {
   vluint8_t* rst;
 };
 
+struct Entry {
+  std::string to_string() const;
+  
+  // UID of initiating command.
+  vluint32_t uid;
+  // Bid/Ask quantity to trade.
+  vluint16_t quantity;
+  // Bid/Ask price
+  vluint32_t price;
+};
+
+// Behavioral model of the Order Book
+class Model {
+ public:
+  Model(std::size_t bid_n, std::size_t ask_n);
+
+  // Bid table size.
+  std::size_t bid_n() const { return bid_n_; }
+
+  // Ask table size.
+  std::size_t ask_n() const { return ask_n_; }
+
+  // Command can execute in the current cycle.
+  bool can_execute(const Command& cmd) const;
+
+  // Apply command to the machine state to derive a set of
+  // responses.
+  std::vector<Response> apply(const Command& cmd);
+
+ private:
+
+  bool attempt_trade(Response& rsp);
+#if defined(OPT_VERBOSE) && defined(OPT_TRACE_ENABLE)
+
+  void verbose() const;
+#endif
+
+  // Predicted bid table.
+  std::vector<Entry> bid_table_;
+
+  // Predicted ask model.
+  std::vector<Entry> ask_table_;
+
+  // Bid table size.
+  std::size_t bid_n_;
+
+  // Ask table size.
+  std::size_t ask_n_;
+};
+
+// Class to generate stimulus, apply it to the model, and pass it to
+// the RTL.
+class StimulusGenerator {
+  
+ public:
+  StimulusGenerator(const Bag<vluint8_t>& opcodes,
+                    double mean, double stddev);
+
+  // Generate N new commands.
+  std::vector<Command> generate(std::size_t n);
+
+ private:
+
+  // Generate a command
+  void generate(Command& cmd);
+
+  // Add UID to the prior window.
+  void add_uid(vluint32_t uid);
+
+  // Sliding window of prior UID.
+  std::vector<vluint32_t> prior_uid_;
+
+  // Current UID index
+  vluint32_t uid_i_ = 0;
+
+  // Price mean
+  double mean_;
+
+  // Price standard deviation.
+  double stddev_;
+
+  // Behavioral Order Book model.
+  Model model_;
+
+  // Bag of opcodes.
+  Bag<vluint8_t> opcodes_;
+};
+
 struct Options {
   // Enable waveform dumping
   bool wave_enable = false;
@@ -452,93 +545,11 @@ class TB {
   // Current operationg cycle.
   vluint64_t cycle_;
 
-  // Testbench options.
-  Options opts_;
-};
-
-struct Entry {
-  // UID of initiating command.
-  vluint32_t uid;
-  // Bid/Ask quantity to trade.
-  vluint16_t quantity;
-  // Bid/Ask price
-  vluint32_t price;
-};
-
-// Behavioral model of the Order Book
-class Model {
- public:
-  Model(std::size_t bid_n, std::size_t ask_n);
-
-  // Bid table size.
-  std::size_t bid_n() const { return bid_n_; }
-
-  // Ask table size.
-  std::size_t ask_n() const { return ask_n_; }
-
-  // Command can execute in the current cycle.
-  bool can_execute(const Command& cmd) const;
-
-  // Apply command to the machine state to derive a set of
-  // responses.
-  void apply(const Command& cmd, std::vector<Response>& rsps);
-
- private:
-
-  bool attempt_trade(Response& rsp);
-
-  // Predicted bid table.
-  std::vector<Entry> bid_table_;
-
-  // Predicted ask model.
-  std::vector<Entry> ask_table_;
-
-  // Bid table size.
-  std::size_t bid_n_;
-
-  // Ask table size.
-  std::size_t ask_n_;
-};
-
-// Class to generate stimulus, apply it to the model, and pass it to
-// the RTL.
-class StimulusGenerator {
-  
- public:
-  StimulusGenerator(TB* tb, const Bag<vluint8_t>& opcodes,
-                    double mean, double stddev);
-
-  // Generate N new commands.
-  void generate(std::size_t n);
-
- private:
-
-  // Generate a command
-  void generate(Command& cmd);
-
-  // Add UID to the prior window.
-  void add_uid(vluint32_t uid);
-
-  // Sliding window of prior UID.
-  std::vector<vluint32_t> prior_uid_;
-
-  // Current UID index
-  vluint32_t uid_i_ = 0;
-
-  // Price mean
-  double mean_;
-
-  // Price standard deviation.
-  double stddev_;
-
-  // Testbench instance
-  TB* tb_ = nullptr;
-
-  // Behavioral Order Book model.
+  // Simulation model
   Model model_;
 
-  // Bag of opcodes.
-  Bag<vluint8_t> opcodes_;
+  // Testbench options.
+  Options opts_;
 };
 
 } // namespace tb

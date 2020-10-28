@@ -32,12 +32,6 @@ TEST(Regress, Basic) {
   // Initialize random seed for reproducibility.
   tb::Random::init(1);
 
-  // Construct testbench environment.
-  tb::Options opts;
-  opts.wave_enable = true;
-  opts.trace_enable = true;
-  tb::TB tb{opts};
-
   // Generate stimulus.
   tb::Bag<vluint8_t> bg;
   bg.push_back(tb::Opcode::Nop, 1);
@@ -47,8 +41,16 @@ TEST(Regress, Basic) {
   bg.push_back(tb::Opcode::PopTopBid, 1);
   bg.push_back(tb::Opcode::PopTopAsk, 1);
   bg.push_back(tb::Opcode::Cancel, 1);
-  tb::StimulusGenerator gen(&tb, bg, 100.0, 10.0);
-  gen.generate(12);
+  tb::StimulusGenerator gen(bg, 100.0, 10.0);
+
+  // Construct testbench environment.
+  tb::Options opts;
+  opts.wave_enable = true;
+  opts.trace_enable = true;
+  tb::TB tb{opts};
+  for (const tb::Command& cmd : gen.generate(115)) {
+    tb.push_back(cmd);
+  }
 
   // Run simulation.
   tb.run();

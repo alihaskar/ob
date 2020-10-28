@@ -153,12 +153,8 @@ module ob_cntrl (
   logic                                 cmp_ask_has_more;
   logic                                 cmp_bid_has_more;
   logic                                 cmp_bid_ask_equal;
-
-  ob_pkg::quantity_t debug_ask, debug_bid;
   
   always_comb begin : cmp_PROC
-    debug_ask 		   = ask_table_r.quantity;
-    debug_bid 		   = bid_table_r.quantity;
     
     // A trade can take place if the current maximum bid exceeds (or
     // is equal to) the current minimum ask.
@@ -277,6 +273,8 @@ module ob_cntrl (
     bid_cancel 	   = 'b0;
     bid_cancel_uid = '0;
 
+    bid_reject_pop = 'b0;
+
     // Ask Table:
     ask_insert 	   = 'b0;
     ask_insert_tbl = '0;
@@ -288,6 +286,8 @@ module ob_cntrl (
 
     ask_cancel 	   = 'b0;
     ask_cancel_uid = '0;
+
+    ask_reject_pop = 'b0;
 
     // Compare query
     cmp_result_en  = 'b0;
@@ -636,6 +636,16 @@ module ob_cntrl (
     endcase // case (fsm_state_r)
 
   end // block: cntrl_PROC
+
+  ob_pkg::uid_t    debug_rsp_uid;
+  ob_pkg::opcode_t debug_opcode;
+
+  always_comb begin
+
+    debug_opcode  = cmd_latch_r.opcode;
+    debug_rsp_uid = rsp_out.uid;
+
+  end
 
   // ------------------------------------------------------------------------ //
   //

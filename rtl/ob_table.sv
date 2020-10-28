@@ -328,22 +328,13 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
       endcase
 
       // Valid when next price is valid.
-      tbl_vld_w [i]  = (tbl_w [i].price != INVALID_PRICE);
+      tbl_vld_w [i] = (tbl_w [i].price != INVALID_PRICE);
 
-    end // for (int i = 0; i < N; i++)
+      end // for (int i = 0; i < N; i++)
 
     // Tail entry (zeroth); reject entry: (unique, no priority)
-    unique casez ({tbl_install_d [0],
-		   tbl_shift_dn_d [0],
-                   tbl_shift_dn_d [0],
-                   reject_pop
-                   })
-      4'b1???,
-      4'b01??,
-      4'b001?,
-      4'b0001: tbl_en [0]  = 'b1;
-      default: tbl_en [0]  = 'b0;
-    endcase
+    tbl_en [0] 	    =
+      (tbl_install_d [0] | tbl_shift_up_d [0] | tbl_shift_dn_d [0] | reject_pop);
 
     unique casez ({// Install entry into reject (incoming command is
                    // immediately rejected by the table).
