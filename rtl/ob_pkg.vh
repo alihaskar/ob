@@ -41,6 +41,9 @@ package ob_pkg;
   // Number of shares to trade.
   typedef logic [15:0] quantity_t;
 
+  // Arithmetic type for quantity operations.
+  typedef logic signed [16:0] quantity_arith_t;
+
   //
   typedef enum logic [3:0] {
                             // No operation; NOP.

@@ -81,7 +81,7 @@ struct Random {
   static std::enable_if_t<std::is_floating_point_v<T>, T>
   normal(T mean, T stddev) {
     // Normal distribution from which to select price.
-    std::normal_distribution<double> d;
+    std::normal_distribution<double> d(mean, stddev);
     return d(mt_);
   }
 
@@ -107,7 +107,7 @@ class Bag {
   Bag() = default;
 
   T operator()() const {
-    return Random::uniform<T>(ts_.size(), 0);
+    return ts_[Random::uniform<T>(ts_.size(), 0)];
   }
 
   void push_back(const T& t, std::size_t weight) {
@@ -258,13 +258,13 @@ struct Command {
 };
 
 struct Response {
-  std::string to_string() const;
+  std::string to_string(vluint8_t opcode) const;
   
   bool valid = false;
   vluint32_t uid;
   vluint8_t status;
 
-  union {
+  struct {
     struct {
       vluint32_t bid_uid;
       vluint32_t ask_uid;
@@ -307,6 +307,14 @@ struct VSignals {
     v.rsp_vld = std::addressof(u->rsp_vld);
     v.rsp_uid = std::addressof(u->rsp_uid);
     v.rsp_status = std::addressof(u->rsp_status);
+    v.rsp_qry_bid = std::addressof(u->rsp_qry_bid);
+    v.rsp_qry_ask = std::addressof(u->rsp_qry_ask);
+    v.rsp_pop_price = std::addressof(u->rsp_pop_price);
+    v.rsp_pop_quantity = std::addressof(u->rsp_pop_quantity);
+    v.rsp_pop_uid = std::addressof(u->rsp_pop_uid);
+    v.rsp_trade_bid_uid = std::addressof(u->rsp_trade_bid_uid);
+    v.rsp_trade_ask_uid = std::addressof(u->rsp_trade_ask_uid);
+    v.rsp_trade_quantity = std::addressof(u->rsp_trade_quantity);
     v.clk = std::addressof(u->clk);
     v.rst = std::addressof(u->rst);
     return v;
@@ -363,6 +371,20 @@ struct VSignals {
   vluint8_t* rsp_vld;
   vluint32_t* rsp_uid;
   vluint8_t* rsp_status;
+
+  // Query Bid/Ask:
+  vluint32_t* rsp_qry_bid;
+  vluint32_t* rsp_qry_ask;
+
+  // Pop top Bid/Ask:
+  vluint32_t* rsp_pop_price;
+  vluint16_t* rsp_pop_quantity;
+  vluint32_t* rsp_pop_uid;
+
+  // Trade:
+  vluint32_t* rsp_trade_bid_uid;
+  vluint32_t* rsp_trade_ask_uid;
+  vluint16_t* rsp_trade_quantity;
 
   // Clk/Rst
   vluint8_t* clk;
@@ -483,7 +505,8 @@ class Model {
 class StimulusGenerator {
   
  public:
-  StimulusGenerator(TB* tb, double mean, double stddev);
+  StimulusGenerator(TB* tb, const Bag<vluint8_t>& opcodes,
+                    double mean, double stddev);
 
   // Generate N new commands.
   void generate(std::size_t n);
@@ -515,7 +538,7 @@ class StimulusGenerator {
   Model model_;
 
   // Bag of opcodes.
-  Bag<vluint8_t> opcode_bag_;
+  Bag<vluint8_t> opcodes_;
 };
 
 } // namespace tb

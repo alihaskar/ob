@@ -146,47 +146,51 @@ module ob_cntrl (
   } cmp_result_t;
 
   `LIBV_REG_EN(cmp_result_t, cmp_result);
-  
+
   logic                                 cmp_can_trade;
-  ob_pkg::quantity_t                    cmp_ask_excess;
-  ob_pkg::quantity_t                    cmp_bid_excess;
+  ob_pkg::quantity_arith_t              cmp_ask_excess;
+  ob_pkg::quantity_arith_t              cmp_bid_excess;
   logic                                 cmp_ask_has_more;
   logic                                 cmp_bid_has_more;
   logic                                 cmp_bid_ask_equal;
+
+  ob_pkg::quantity_t debug_ask, debug_bid;
   
   always_comb begin : cmp_PROC
-
+    debug_ask 		   = ask_table_r.quantity;
+    debug_bid 		   = bid_table_r.quantity;
+    
     // A trade can take place if the current maximum bid exceeds (or
     // is equal to) the current minimum ask.
-    cmp_can_trade 	      = (bid_table_r.price >= ask_table_r.price);
+    cmp_can_trade 	   = (bid_table_r.price >= ask_table_r.price);
 
     // Ask excess; the number of shares remaining in the ask if a trade
     // takes place.
-    cmp_ask_excess 	      = (ask_table_r.quantity - bid_table_r.quantity);
+    cmp_ask_excess 	   = (ask_table_r.quantity - bid_table_r.quantity);
 
     // Flag indicating that shares will remain in the ask after a trade.
-    cmp_ask_has_more 	      = (cmp_ask_excess > 'b0);
+    cmp_ask_has_more 	   = (cmp_ask_excess > 0);
 
     // Bid Excess; the number of shares remaining in the bid if a trade
     // takes place.
-    cmp_bid_excess 	      = (bid_table_r.quantity - ask_table_r.quantity);
+    cmp_bid_excess 	   = (bid_table_r.quantity - ask_table_r.quantity);
 
     // Flag indiciating that shares will remain in the bid after a trade.
-    cmp_bid_has_more 	      = (cmp_bid_excess > 'b0);
+    cmp_bid_has_more 	   = (cmp_bid_excess > 0);
 
     // Flag indicating that the quantity of bid equals the quantity of ask.
-    cmp_bid_ask_equal 	      = (cmp_bid_excess == 'b0);
+    cmp_bid_ask_equal 	   = (cmp_bid_excess == 'b0);
 
     // Compare result outcome:
-    cmp_result_w 	      = '0;
+    cmp_result_w 	   = '0;
 
     // Bid:
-    cmp_result_w.bid_uid      = bid_table_r.uid;
-    cmp_result_w.bid_price    = bid_table_r.price;
+    cmp_result_w.bid_uid   = bid_table_r.uid;
+    cmp_result_w.bid_price = bid_table_r.price;
 
     // Ask:
-    cmp_result_w.ask_uid      = ask_table_r.uid;
-    cmp_result_w.ask_price    = ask_table_r.price;
+    cmp_result_w.ask_uid   = ask_table_r.uid;
+    cmp_result_w.ask_price = ask_table_r.price;
 
     casez ({
 	    bid_table_vld_r, ask_table_vld_r, cmp_can_trade,
@@ -202,7 +206,7 @@ module ob_cntrl (
 	cmp_result_w.bid_consumed = 'b1;
 	//
 	cmp_result_w.quantity 	  = bid_table_r.quantity;
-	cmp_result_w.remainder 	  = cmp_ask_excess;
+	cmp_result_w.remainder 	  = ob_pkg::quantity_t'(cmp_ask_excess);
       end
       'b111_01?: begin
 	// Trade occurs; Bid Quantity > Ask Quantity; Ask (Sell) executes.
@@ -211,7 +215,7 @@ module ob_cntrl (
 	cmp_result_w.ask_consumed = 'b1;
 	//
 	cmp_result_w.quantity 	  = ask_table_r.quantity;
-	cmp_result_w.remainder 	  = cmp_bid_excess;
+	cmp_result_w.remainder 	  = ob_pkg::quantity_t'(cmp_bid_excess);
       end
       'b111_001: begin
 	// Trade occurs; Bid-/Ask- Quantities match; Bid/Ask execute.
@@ -453,23 +457,6 @@ module ob_cntrl (
 
       FSM_CNTRL_CANCEL_RESP: begin
 	// In this state, the response to the prior cancel request has
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	// been collated and is known. From this, form the final response
 	// for the command to the egress queue and consume the command.
 	//

@@ -126,7 +126,16 @@ std::string Bcd::to_string() const {
 }
 
 bool Bcd::is_valid() const {
-  return (*this != Bcd::MAX) || (*this != Bcd::MIN);
+  if ((*this == Bcd::MAX) || (*this == Bcd::MIN)) {
+    return false;
+  }
+  for (std::size_t i = 0; i < 3; i++) {
+    if (dollars[i] > 9) return false;
+  }
+  for (std::size_t i = 0; i < 2; i++) {
+    if (cents[i] > 9) return false;
+  }
+  return true;
 }
 
 vluint32_t Bcd::pack() const {
@@ -189,8 +198,8 @@ std::string Command::to_string() const {
   using std::to_string;
 
   utility::KVListRenderer r;
-  r.add_field("opcode", to_opcode_string(opcode));
   r.add_field("uid", utility::hex(uid));
+  r.add_field("opcode", to_opcode_string(opcode));
   switch (opcode) {
     case Opcode::Buy: {
       r.add_field("quantity", to_string(oprands.buy.quantity));
@@ -221,12 +230,35 @@ const char* to_status_string(vluint8_t status) {
   }
 }
 
-std::string Response::to_string() const {
+std::string Response::to_string(vluint8_t opcode) const {
   using std::to_string;
 
   utility::KVListRenderer r;
   r.add_field("uid", utility::hex(uid));
   r.add_field("status", to_status_string(status));
+  if (uid == 0xFFFFFFFF) {
+    // Trade
+    r.add_field("op", "trade");
+    r.add_field("bid_uid", utility::hex(result.trade.bid_uid));
+    r.add_field("ask_uid", utility::hex(result.trade.ask_uid));
+    r.add_field("quantity", to_string(result.trade.quantity));
+  } else {
+    switch (opcode) {
+      case Opcode::QryBidAsk: {
+        r.add_field("op", to_opcode_string(opcode));
+        r.add_field("bid", to_string(result.qrybidask.bid));
+        r.add_field("ask", to_string(result.qrybidask.ask));
+      } break;
+      case Opcode::PopTopBid:
+      case Opcode::PopTopAsk: {
+        const Bcd price = Bcd::from_packed(result.poptop.price);
+        r.add_field("op", to_opcode_string(opcode));
+        r.add_field("price", price.to_string());
+        r.add_field("quantity", to_string(result.poptop.quantity));
+        r.add_field("uid", utility::hex(uid));
+      } break;
+    }
+  }
   return r.to_string();
 }
 
@@ -237,11 +269,26 @@ bool operator==(const Response& lhs, const Response& rhs) {
   return true;
 }
 
-bool compare(const Response& actual, const Response& expected) {
+bool compare(vluint8_t opcode, const Response& actual, const Response& expected) {
   EXPECT_EQ(actual.uid, expected.uid);
   EXPECT_EQ(actual.status, expected.status) <<
       " Expected: " << to_status_string(expected.status) <<
       " Actual: " << to_status_string(actual.status);
+  if (actual.uid == 0xFFFFFFFF) {
+    // Trade
+    EXPECT_EQ(actual.result.trade.bid_uid, expected.result.trade.bid_uid);
+    EXPECT_EQ(actual.result.trade.ask_uid, expected.result.trade.ask_uid);
+    EXPECT_EQ(actual.result.trade.quantity, expected.result.trade.quantity);
+  } else {
+    // Some operation
+    switch (opcode) {
+      case Opcode::QryBidAsk: {
+      } break;
+      case Opcode::PopTopBid:
+      case Opcode::PopTopAsk: {
+      } break;
+    }
+  }
 
   return (actual == expected);
 }
@@ -308,6 +355,14 @@ void VSignals::get(Response& rsp) {
   rsp.valid = vsupport::get_as_bool(rsp_vld);
   rsp.uid = vsupport::get(rsp_uid);
   rsp.status = vsupport::get(rsp_status);
+  rsp.result.trade.bid_uid = vsupport::get(rsp_trade_bid_uid);
+  rsp.result.trade.ask_uid = vsupport::get(rsp_trade_ask_uid);
+  rsp.result.trade.quantity = vsupport::get(rsp_trade_quantity);
+  rsp.result.qrybidask.bid = vsupport::get(rsp_qry_bid);
+  rsp.result.qrybidask.ask = vsupport::get(rsp_qry_ask);
+  rsp.result.poptop.price = vsupport::get(rsp_pop_price);
+  rsp.result.poptop.quantity = vsupport::get(rsp_pop_quantity);
+  rsp.result.poptop.uid = vsupport::get(rsp_pop_uid);
 }
 
 TB::TB(const Options& opts) : opts_(opts) {
@@ -354,15 +409,18 @@ void TB::run() {
   // Response accept
   vs_.set_rsp_accept(true);
 
+  std::map<vluint32_t, vluint8_t> uid_to_op;
   bool stopped = false;
   while (!stopped) {
     const bool cmd_full_r = vs_.get_cmd_full_r();
     if (!cmd_full_r && !cmds_.empty()) {
       // Apply input command.
       cmd = cmds_.front();
+      uid_to_op.insert(std::make_pair(cmd.uid, cmd.opcode));
 #ifdef OPT_TRACE_ENABLE
       if (opts_.trace_enable) {
-        std::cout << "[TB] Issue command: " << cmd.to_string() << "\n";
+        std::cout << "[TB] " << vs_.cycle()
+                  << " ;Issue command: " << cmd.to_string() << "\n";
       }
 #endif
       cmds_.pop_front();
@@ -375,17 +433,31 @@ void TB::run() {
     Response actual;
     vs_.get(actual);
     if (actual.valid) {
-#ifdef OPT_TRACE_ENABLE
-      if (opts_.trace_enable) {
-        std::cout << "[TB] Response received: " << actual.to_string() << "\n";
-      }
-#endif
       // Must be expected a response.
       ASSERT_FALSE(rsps_.empty());
 
       const Response expected{rsps_.front()};
       rsps_.pop_front();
-      compare(actual, expected);
+
+      vluint8_t opcode = 0;
+      if (auto it = uid_to_op.find(actual.uid); it != uid_to_op.end()) {
+        // Got opcode, now able to render.
+        opcode = it->second;
+        uid_to_op.erase(it);
+      } else if (actual.uid != 0xFFFFFFFF) {
+#ifdef OPT_TRACE_ENABLE
+        // Disregards controller materialized responses.
+        std::cout << "[TB] " << vs_.cycle()
+                  << " ; Unknown UID received: " << actual.uid << "\n";
+#endif
+      }
+#ifdef OPT_TRACE_ENABLE
+      if (opts_.trace_enable) {
+        std::cout << "[TB] " << vs_.cycle()
+                  << " ; Response received: " << expected.to_string(opcode) << "\n";
+      }
+#endif
+      compare(opcode, actual, expected);
     }
     step();
 
@@ -509,6 +581,7 @@ void Model::apply(const Command& cmd, std::vector<Response>& rsps) {
         // Either table is unpopulated therefore command cannot complete.
         rsp.status = Status::Bad;
       }
+      rsps.push_back(rsp);
     } break;
     case Opcode::Buy: {
       // Command executes, therefore emit response
@@ -666,26 +739,21 @@ bool Model::attempt_trade(Response& rsp) {
 
   if (consume_bid) {
     // Remove head.
-    bid_table_.pop_back();
+    bid_table_.erase(bid_table_.begin());
   }
 
   if (consume_ask) {
     // Remove head.
-    ask_table_.pop_back();
+    ask_table_.erase(ask_table_.begin());
   }
   
   return true;
 }
 
-StimulusGenerator::StimulusGenerator(TB* tb, double mean, double stddev)
-    : tb_(tb), model_(BID_TABLE_N, ASK_TABLE_N), mean_(mean), stddev_(stddev) {
-  opcode_bag_.push_back(Opcode::Nop, 1);
-  opcode_bag_.push_back(Opcode::QryBidAsk, 1);
-  opcode_bag_.push_back(Opcode::Buy, 1);
-  opcode_bag_.push_back(Opcode::Sell, 1);
-  opcode_bag_.push_back(Opcode::PopTopBid, 1);
-  opcode_bag_.push_back(Opcode::PopTopAsk, 1);
-  opcode_bag_.push_back(Opcode::Cancel, 1);
+StimulusGenerator::StimulusGenerator(TB* tb, const Bag<vluint8_t>& opcodes,
+                                     double mean, double stddev)
+    : tb_(tb), opcodes_(opcodes), model_(BID_TABLE_N, ASK_TABLE_N),
+      mean_(mean), stddev_(stddev) {
 }
 
 void StimulusGenerator::generate(std::size_t n) {
@@ -718,10 +786,11 @@ void StimulusGenerator::generate(std::size_t n) {
 void StimulusGenerator::generate(Command& cmd) {
   cmd.valid = true;
   cmd.uid = uid_i_;
-  cmd.opcode = opcode_bag_();
+  cmd.opcode = opcodes_();
 
   const double price = Random::normal(mean_, stddev_);
   const Bcd bcd = Bcd::from_string(to_bcd_string(price));
+  ASSERT_TRUE(bcd.is_valid());
   const vluint16_t quantity = Random::uniform<int>(100, 10);
   
   switch (cmd.opcode) {

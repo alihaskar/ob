@@ -56,6 +56,20 @@ module tb_ob (
   , output ob_pkg::uid_t                          rsp_uid
   , output ob_pkg::status_t                       rsp_status
 
+  // Query Bid/Ask:
+  , output bcd_pkg::price_t                       rsp_qry_bid
+  , output bcd_pkg::price_t                       rsp_qry_ask
+
+  // Pop top Bid/Ask:
+  , output bcd_pkg::price_t                       rsp_pop_price
+  , output ob_pkg::quantity_t                     rsp_pop_quantity
+  , output ob_pkg::uid_t                          rsp_pop_uid
+
+  // Trade:
+  , output ob_pkg::uid_t                          rsp_trade_bid_uid
+  , output ob_pkg::uid_t                          rsp_trade_ask_uid
+  , output ob_pkg::quantity_t                     rsp_trade_quantity
+
   // ======================================================================== //
   // TB support
   , output logic [63:0]                           tb_cycle
@@ -122,8 +136,22 @@ module tb_ob (
   always_comb begin : rsp_PROC
 
     //
-    rsp_uid     = rsp.uid;
-    rsp_status  = rsp.status;
+    rsp_uid 	       = rsp.uid;
+    rsp_status 	       = rsp.status;
+
+    // Query Bid/Ask:
+    rsp_qry_bid        = rsp.result.qrybidask.bid;
+    rsp_qry_ask        = rsp.result.qrybidask.ask;
+
+    // Pop top Bid/Ask:
+    rsp_pop_price      = rsp.result.poptop.price;
+    rsp_pop_quantity   = rsp.result.poptop.quantity;
+    rsp_pop_uid        = rsp.result.poptop.uid;
+
+    // Trade:
+    rsp_trade_bid_uid  = rsp.result.trade.bid_uid;
+    rsp_trade_ask_uid  = rsp.result.trade.ask_uid;
+    rsp_trade_quantity = rsp.result.trade.quantity;
 
   end // block: rsp_PROC
 

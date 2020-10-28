@@ -39,8 +39,16 @@ TEST(Regress, Basic) {
   tb::TB tb{opts};
 
   // Generate stimulus.
-  tb::StimulusGenerator gen(&tb, 100.0, 10.0);
-  gen.generate(10);
+  tb::Bag<vluint8_t> bg;
+  bg.push_back(tb::Opcode::Nop, 1);
+  bg.push_back(tb::Opcode::QryBidAsk, 1);
+  bg.push_back(tb::Opcode::Buy, 10);
+  bg.push_back(tb::Opcode::Sell, 10);
+  bg.push_back(tb::Opcode::PopTopBid, 1);
+  bg.push_back(tb::Opcode::PopTopAsk, 1);
+  bg.push_back(tb::Opcode::Cancel, 1);
+  tb::StimulusGenerator gen(&tb, bg, 100.0, 10.0);
+  gen.generate(12);
 
   // Run simulation.
   tb.run();
