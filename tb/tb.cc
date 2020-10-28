@@ -38,6 +38,18 @@
 
 namespace tb {
 
+void Random::init(unsigned seed) {
+#ifdef OPT_LOGGING_ENABLE
+  std::cout << "[RND] seed set to " << seed << "\n";
+#endif
+  mt_ = std::mt19937{seed};
+}
+
+bool Random::boolean(double true_prob) {
+  std::bernoulli_distribution d(true_prob);
+  return d(mt_);
+}
+
 Bcd Bcd::from_string(const std::string& s) {
   Bcd b;
   
@@ -161,6 +173,7 @@ const char* to_opcode_string(vluint8_t opcode) {
     case Opcode::Sell: return "Sell";
     case Opcode::PopTopBid: return "PopTopBid";
     case Opcode::PopTopAsk: return "PopTopAsk";
+    case Opcode::Cancel: return "Cancel";
     default: return "Invalid";
   }
 }
@@ -193,6 +206,9 @@ const char* to_status_string(vluint8_t status) {
   switch (status) {
     case Status::Okay: return "Okay";
     case Status::Reject: return "Reject";
+    case Status::CancelHit: return "CancelHit";
+    case Status::CancelMiss: return "CancelMiss";
+    case Status::Bad: return "Bad";
     case Status::BadPop: return "BadPop";
     default: return "Invalid";
   }
@@ -214,11 +230,13 @@ bool operator==(const Response& lhs, const Response& rhs) {
   return true;
 }
 
-bool compare(const Response& lhs, const Response& rhs) {
-  EXPECT_EQ(lhs.uid, rhs.uid);
-  EXPECT_EQ(lhs.status, rhs.status);
+bool compare(const Response& actual, const Response& expected) {
+  EXPECT_EQ(actual.uid, expected.uid);
+  EXPECT_EQ(actual.status, expected.status) <<
+      " Expected: " << to_status_string(expected.status) <<
+      " Actual: " << to_status_string(actual.status);
 
-  return (lhs == rhs);
+  return (actual == expected);
 }
 
 vluint64_t VSignals::cycle() const {
@@ -543,30 +561,26 @@ void Model::apply(const Command& cmd, std::vector<Response>& rsps) {
     } break;
     case Opcode::Cancel: {
       bool did_cancel = false;
+      const vluint32_t uid_to_cancel = cmd.oprands.cancel.uid;
       if (auto it = std::find_if(bid_table_.begin(), bid_table_.end(),
-                                 UidFinder{cmd.uid});
+                                 UidFinder{uid_to_cancel});
           !did_cancel && (it != bid_table_.end())) {
         // Cancel occurs.
-
         did_cancel = true;
+        bid_table_.erase(it);
       }
       if (auto it = std::find_if(ask_table_.begin(), ask_table_.end(),
-                                 UidFinder{cmd.uid});
+                                 UidFinder{uid_to_cancel});
           !did_cancel && (it != ask_table_.end())) {
         // Cancel occurs
-
         did_cancel = true;
+        ask_table_.erase(it);        
       }
 
       rsp.valid = true;
       rsp.uid = cmd.uid;
-      if (did_cancel) {
-        rsp.status = Status::CancelHit;
-      } else {
-        rsp.status = Status::CancelMiss;
-      }
+      rsp.status = did_cancel ? Status::CancelHit : Status::CancelMiss;
       rsps.push_back(rsp);
-      
     } break;
   }
 }
@@ -650,6 +664,10 @@ void StimulusGenerator::generate(std::size_t n) {
         tb_->push_back(rsp);
       }
       --n;
+      // Advance UID
+      ++uid_i_;
+      // Retain prior UID for cancel operation.
+      add_uid(cmd.uid);
     }
   }
 }
@@ -657,9 +675,13 @@ void StimulusGenerator::generate(std::size_t n) {
 
 void StimulusGenerator::generate(Command& cmd) {
   cmd.valid = true;
-  cmd.uid = uid_i_++;
+  cmd.uid = uid_i_;
   cmd.opcode = Opcode::Nop;
-  cmd.opcode = Opcode::Buy;
+  if (uid_i_ < 10) {
+    cmd.opcode = Opcode::Buy;
+  } else {
+    cmd.opcode = Opcode::Cancel;
+  }
   switch (cmd.opcode) {
     case Opcode::Nop: {
     } break;
@@ -677,7 +699,26 @@ void StimulusGenerator::generate(Command& cmd) {
     case Opcode::PopTopAsk: {
     } break;
     case Opcode::Cancel: {
+      const bool do_definately_miss = false;
+      //      const bool do_hit = Random::boolean(0.9);
+      if (!do_definately_miss) {
+        auto it = Random::select_one(prior_uid_.begin(), prior_uid_.end());
+        cmd.oprands.cancel.uid = *it;
+      } else {
+        // Some UID we haven't issued yet and which is guarenteed to
+        // miss.
+        cmd.oprands.cancel.uid = (uid_i_ + 100);
+      }
     } break;
+  }
+}
+
+void StimulusGenerator::add_uid(vluint32_t uid) {
+  prior_uid_.push_back(uid);
+
+  if (prior_uid_.size() == model_.bid_n()) {
+    // Remove oldest entry.
+    prior_uid_.erase(prior_uid_.begin());
   }
 }
 

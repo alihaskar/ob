@@ -29,6 +29,8 @@
 #include <deque>
 #include <string>
 #include <vector>
+#include <random>
+#include <set>
 
 // Enable waveform dumping.
 #cmakedefine OPT_VCD_ENABLE
@@ -46,6 +48,92 @@ constexpr std::size_t BID_TABLE_N = ${BID_TABLE_N};
 
 // RTL parameterizations: Ask table size
 constexpr std::size_t ASK_TABLE_N = ${ASK_TABLE_N};
+
+// Randomization support
+//
+struct Random {
+  // Initialize random state
+  static void init(unsigned seed);
+
+  // Get current random state.
+  static std::mt19937& mt() { return mt_; }
+
+
+  // Generate a random integral type in range [lo, hi]
+  template<typename T>
+  static std::enable_if_t<std::is_integral_v<T>, T>
+  uniform(T hi = std::numeric_limits<T>::max(),
+          T lo = std::numeric_limits<T>::min()) {
+    std::uniform_int_distribution<T> d(lo, hi);
+    return d(mt_);
+  }
+
+  // Generate a random integral type in range [lo, hi]
+  template<typename T>
+  static std::enable_if_t<std::is_floating_point_v<T>, T>
+  uniform(T hi = std::numeric_limits<T>::max(),
+          T lo = std::numeric_limits<T>::min()) {
+    std::uniform_real_distribution<T> d(lo, hi);
+    return d(mt_);
+  }
+
+  // Generate a boolean with true probability 'true_prob'.
+  static bool boolean(double true_prob = 0.5f);
+
+
+  template<typename FwdIt>
+  static FwdIt select_one(FwdIt begin, FwdIt end) {
+    if (begin == end) return end;
+    std::advance(begin, Random::uniform(std::distance(begin, end) - 1, 0l));
+    return begin;
+  }
+  
+  
+ private:
+  static inline std::mt19937 mt_;
+};
+
+// Generator to produce random values from some pre-defined range,
+// where the value returned cannot equal a value which has already
+// been emitted and which is currently inflight.
+//
+template<typename T>
+class UniquePool {
+ public:
+  UniquePool(T hi = std::numeric_limits<T>::max(),
+             T lo = std::numeric_limits<T>::min())
+      : hi_(hi), lo_(lo)
+  {}
+
+  T hi() const { return hi_; }
+  T lo() const { return lo_; }
+
+  void insert(const T& t) {
+    ts_.insert(t);
+  }
+
+  bool generate(T& t) {
+    for (std::size_t timeout = 0; timeout < 1000; timeout++) {
+      t = Random::uniform<T>(hi(), lo());
+      if (ts_.insert(t).second) return true;
+    }
+    return false;
+  }
+
+  void retire(T t) {
+    if (auto it = ts_.find(t); it != ts_.end()) {
+      ts_.erase(it);
+    }
+  }
+
+ private:
+  // Domain of T.
+  T hi_, lo_;
+  
+  // Set of t's which are currently inflight and which may not be
+  // reused.
+  std::set<T> ts_;
+};
 
 // A simple BCD representation of values in [0.01, 999.99).
 //
@@ -377,6 +465,12 @@ class StimulusGenerator {
 
   // Generate a command
   void generate(Command& cmd);
+
+  // Add UID to the prior window.
+  void add_uid(vluint32_t uid);
+
+  // Sliding window of prior UID.
+  std::vector<vluint32_t> prior_uid_;
 
   // Current UID index
   vluint32_t uid_i_ = 0;

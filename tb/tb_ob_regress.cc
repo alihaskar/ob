@@ -29,6 +29,9 @@
 #include "tb.h"
 
 TEST(Regress, Basic) {
+  // Initialize random seed for reproducibility.
+  tb::Random::init(1);
+
   // Construct testbench environment.
   tb::Options opts;
   opts.wave_enable = true;
