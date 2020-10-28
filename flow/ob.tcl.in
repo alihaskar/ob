@@ -25,40 +25,14 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-cmake_minimum_required(VERSION 3.5)
-project(ob)
+set project_root ${CMAKE_SOURCE_DIR}
+set build_root ${CMAKE_BINARY_DIR}
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/ob.cmake)
+source ${CMAKE_CURRENT_SOURCE_DIR}/files.tcl
 
-set(CMAKE_CXX_STANDARD 17)
+synth_design -top ob
 
-option(OPT_VCD_ENABLE "Enable VCD waveform dumping." ON)
+# Done
+exit
 
-option(OPT_TRACE_ENABLE "Enable log tracing." ON)
 
-option(OPT_VERBOSE "Verbose logging." OFF)
-
-# Configure RTL
-
-# The number of entries in the bid table.
-set(BID_TABLE_N 16)
-
-# The number of entries in the ask table.
-set(ASK_TABLE_N 16)
-
-add_subdirectory(libv)
-add_subdirectory(rtl)
-
-# Configure TB
-find_package(Verilator)
-find_package(Vivado)
-
-if (Verilator_EXE)
-  enable_testing()
-  add_subdirectory(third_party)
-  add_subdirectory(tb)
-endif ()
-if (Vivado_EXE)
-  add_subdirectory(flow)
-endif ()

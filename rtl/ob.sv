@@ -93,9 +93,12 @@ module ob (
   // ------------------------------------------------------------------------ //
   //
   `LIBV_QUEUE_WIRES(ingress_queue_, ob_pkg::cmd_t);
-
   `LIBV_REG_RST_R(logic, ingress_queue_empty, 'b1);
   `LIBV_REG_RST_R(logic, ingress_queue_full, 'b0);
+
+  `LIBV_QUEUE_WIRES(egress_queue_, ob_pkg::rsp_t);
+  `LIBV_REG_RST_R(logic, egress_queue_empty, 'b0);
+  `LIBV_REG_RST_R(logic, egress_queue_full, 'b1);
 
   always_comb begin : in_PROC
 
@@ -268,11 +271,6 @@ module ob (
 
   // ------------------------------------------------------------------------ //
   //
-  `LIBV_QUEUE_WIRES(egress_queue_, ob_pkg::rsp_t);
-
-  `LIBV_REG_RST_R(logic, egress_queue_empty, 'b0);
-  `LIBV_REG_RST_R(logic, egress_queue_full, 'b1);
-
   always_comb begin : out_PROC
 
     rsp_vld 	     = (~egress_queue_empty_r);

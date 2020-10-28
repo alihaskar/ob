@@ -97,6 +97,12 @@ module ob_cntrl (
   , input                                         rst
 );
 
+  `LIBV_REG_RST_R(logic, bid_cancel_hit, 'b0);
+  `LIBV_REG_EN_R(ob_pkg::table_t, bid_cancel_hit_tbl);
+
+  `LIBV_REG_RST_R(logic, ask_cancel_hit, 'b0);
+  `LIBV_REG_EN_R(ob_pkg::table_t, ask_cancel_hit_tbl);
+
   // ------------------------------------------------------------------------ //
   //
   `LIBV_REG_RST(logic, cmd_latch_vld, 'b0);
@@ -649,12 +655,6 @@ module ob_cntrl (
 
   // ------------------------------------------------------------------------ //
   //
-  `LIBV_REG_RST_R(logic, bid_cancel_hit, 'b0);
-  `LIBV_REG_EN_R(ob_pkg::table_t, bid_cancel_hit_tbl);
-
-  `LIBV_REG_RST_R(logic, ask_cancel_hit, 'b0);
-  `LIBV_REG_EN_R(ob_pkg::table_t, ask_cancel_hit_tbl);
-
   always_comb begin : cancel_PROC
 
     // Latch on next is valid.

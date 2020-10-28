@@ -157,7 +157,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   ob_pkg::table_t [N:0]                 tbl_r;
   ob_pkg::table_t [N:0]                 tbl_w;
   logic [N:0]                           tbl_en;
-
+  `LIBV_REG_RST(logic [N:0], tbl_vld, '0);
 
   // ======================================================================== //
   //                                                                          //
@@ -261,8 +261,6 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
   // ------------------------------------------------------------------------ //
   //
-  `LIBV_REG_RST(logic [N:0], tbl_vld, '0);
-  
   always_comb begin : tbl_update_PROC
 
     // Defaults:

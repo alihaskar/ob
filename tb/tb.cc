@@ -246,13 +246,15 @@ std::string Response::to_string(vluint8_t opcode) const {
     switch (opcode) {
       case Opcode::QryBidAsk: {
         r.add_field("op", to_opcode_string(opcode));
-        r.add_field("bid", to_string(result.qrybidask.bid));
-        r.add_field("ask", to_string(result.qrybidask.ask));
+        const Bcd bid = Bcd::from_packed(result.qrybidask.bid);
+        r.add_field("bid", bid.to_string());
+        const Bcd ask = Bcd::from_packed(result.qrybidask.ask);
+        r.add_field("ask", ask.to_string());
       } break;
       case Opcode::PopTopBid:
       case Opcode::PopTopAsk: {
-        const Bcd price = Bcd::from_packed(result.poptop.price);
         r.add_field("op", to_opcode_string(opcode));
+        const Bcd price = Bcd::from_packed(result.poptop.price);
         r.add_field("price", price.to_string());
         r.add_field("quantity", to_string(result.poptop.quantity));
         r.add_field("uid", utility::hex(uid));

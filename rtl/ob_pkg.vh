@@ -70,27 +70,28 @@ package ob_pkg;
                             } opcode_t;
 
   //
-  typedef struct packed {
+  typedef struct packed { // 36b
     // Number of equities to trade.
-    quantity_t quantity;
+    quantity_t quantity; // 16b
 
     // Price at which to buy.
-    bcd_pkg::price_t price;
+    bcd_pkg::price_t price; // 20b
   } oprand_buy_t;
 
   //
-  typedef struct packed {
+  typedef struct packed { // 36b
     // Number of equities to trade.
-    quantity_t quantity;
+    quantity_t quantity; // 16b
 
     // Price at which to sell.
-    bcd_pkg::price_t price;
+    bcd_pkg::price_t price; // 20b
   } oprand_sell_t;
 
   //
-  typedef struct packed {
+  typedef struct packed { // 36b
+    logic [3:0]     padding; // 4b
     // ID to cancel.
-    uid_t           uid;
+    uid_t           uid;     // 32b
   } oprand_cancel_t;
 
   //
@@ -134,29 +135,33 @@ package ob_pkg;
 
   } status_t;
 
-  typedef struct packed {
+  typedef struct packed { // 80b
     // Bid
-    uid_t       bid_uid;
+    uid_t       bid_uid; // 32b
     // Ask
-    uid_t       ask_uid;
+    uid_t       ask_uid; // 32b
     // Quantity (shares traded)
-    quantity_t  quantity;
+    quantity_t  quantity; // 16b
   } result_trade_t;
 
-  typedef struct packed {
+  typedef struct packed { // 40b
+    // Padding for union sizing.
+    logic [39:0] padding;
     // Current bid
-    bcd_pkg::price_t bid;
+    bcd_pkg::price_t bid; // 20b
     // Current ask
-    bcd_pkg::price_t ask;
+    bcd_pkg::price_t ask; // 20b
   } result_qrybidask_t;
 
-  typedef struct packed {
+  typedef struct packed { // 68b
+    // Padding for union sizing.
+    logic [11:0]         padding;
     // Bid/Ask Price
-    bcd_pkg::price_t     price;
+    bcd_pkg::price_t     price; // 20b
     // Bid/Ask Quantity
-    quantity_t           quantity;
+    quantity_t           quantity; // 16b
     // Bid/Ask ID
-    uid_t                uid;
+    uid_t                uid; // 32b
   } result_poptop_t;
   
   typedef union packed {

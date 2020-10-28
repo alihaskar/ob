@@ -25,40 +25,12 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-cmake_minimum_required(VERSION 3.5)
-project(ob)
+read_verilog $project_root/libv/libv_queue.sv
+read_verilog $project_root/libv/macros_pkg.vh
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/ob.cmake)
-
-set(CMAKE_CXX_STANDARD 17)
-
-option(OPT_VCD_ENABLE "Enable VCD waveform dumping." ON)
-
-option(OPT_TRACE_ENABLE "Enable log tracing." ON)
-
-option(OPT_VERBOSE "Verbose logging." OFF)
-
-# Configure RTL
-
-# The number of entries in the bid table.
-set(BID_TABLE_N 16)
-
-# The number of entries in the ask table.
-set(ASK_TABLE_N 16)
-
-add_subdirectory(libv)
-add_subdirectory(rtl)
-
-# Configure TB
-find_package(Verilator)
-find_package(Vivado)
-
-if (Verilator_EXE)
-  enable_testing()
-  add_subdirectory(third_party)
-  add_subdirectory(tb)
-endif ()
-if (Vivado_EXE)
-  add_subdirectory(flow)
-endif ()
+read_verilog $project_root/rtl/ob.sv
+read_verilog $project_root/rtl/ob_table.sv
+read_verilog $project_root/rtl/ob_cntrl.sv
+read_verilog $project_root/rtl/bcd_pkg.vh
+read_verilog $project_root/rtl/ob_pkg.vh
+read_verilog $build_root/rtl/cfg_pkg.vh
