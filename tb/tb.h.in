@@ -28,6 +28,7 @@
 #include "verilated.h"
 #include <deque>
 #include <string>
+#include <vector>
 
 // Enable waveform dumping.
 #cmakedefine OPT_VCD_ENABLE
@@ -116,6 +117,7 @@ enum Status : vluint8_t {
   Reject = 1,
   CancelHit = 2,
   CancelMiss = 3,
+  Bad = 4,
   BadPop = 5
 };
 
@@ -146,6 +148,23 @@ struct Response {
   bool valid = false;
   vluint32_t uid;
   vluint8_t status;
+
+  union {
+    struct {
+      vluint32_t bid_uid;
+      vluint32_t ask_uid;
+      vluint16_t quantity;
+    } trade;
+    struct {
+      vluint32_t bid;
+      vluint32_t ask;
+    } qrybidask;
+    struct {
+      vluint32_t price;
+      vluint16_t quantity;
+      vluint32_t uid;
+    } poptop;
+  } result;
 };
 
 // Compare reponses operator
@@ -298,6 +317,75 @@ class TB {
 
   // Testbench options.
   Options opts_;
+};
+
+struct Entry {
+  // UID of initiating command.
+  vluint32_t uid;
+  // Bid/Ask quantity to trade.
+  vluint16_t quantity;
+  // Bid/Ask price
+  vluint32_t price;
+};
+
+// Behavioral model of the Order Book
+class Model {
+ public:
+  Model(std::size_t bid_n, std::size_t ask_n);
+
+  // Bid table size.
+  std::size_t bid_n() const { return bid_n_; }
+
+  // Ask table size.
+  std::size_t ask_n() const { return ask_n_; }
+
+  // Command can execute in the current cycle.
+  bool can_execute(const Command& cmd) const;
+
+  // Apply command to the machine state to derive a set of
+  // responses.
+  void apply(const Command& cmd, std::vector<Response>& rsps);
+
+ private:
+
+  bool attempt_trade(Response& rsp);
+
+  // Predicted bid table.
+  std::vector<Entry> bid_table_;
+
+  // Predicted ask model.
+  std::vector<Entry> ask_table_;
+
+  // Bid table size.
+  std::size_t bid_n_;
+
+  // Ask table size.
+  std::size_t ask_n_;
+};
+
+// Class to generate stimulus, apply it to the model, and pass it to
+// the RTL.
+class StimulusGenerator {
+  
+ public:
+  StimulusGenerator(TB* tb);
+
+  // Generate N new commands.
+  void generate(std::size_t n);
+
+ private:
+
+  // Generate a command
+  void generate(Command& cmd);
+
+  // Current UID index
+  vluint32_t uid_i_ = 0;
+
+  // Testbench instance
+  TB* tb_ = nullptr;
+
+  // Behavioral Order Book model.
+  Model model_;
 };
 
 } // namespace tb

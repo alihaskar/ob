@@ -123,6 +123,9 @@ package ob_pkg;
     // Cancel operation missed.
     S_CancelMiss = 3'b011,
 
+    // Prior command could not complete
+    S_Bad = 3'b100,
+
     // Attempt to pop from empty table.
     S_BadPop = 3'b101
 

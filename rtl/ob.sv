@@ -104,7 +104,7 @@ module ob (
     ingress_queue_push_data = cmd_r;
 
     ingress_queue_flush     = 'b0;
-    ingress_queue_commit    = ingress_queue_push;
+    ingress_queue_commit    = cntrl_cmd_in_pop;
     ingress_queue_replay    = 'b0;
 
     cmd_full_r 		    = ingress_queue_full_r;

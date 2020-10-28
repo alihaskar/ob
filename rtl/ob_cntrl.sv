@@ -315,27 +315,27 @@ module ob_cntrl (
 	      ob_pkg::result_qrybidask_t result;
 
 	      // Consume command
-	      cmd_consume 	       = 'b1;
+	      cmd_consume    = 'b1;
 
 	      // Form result:
-	      result 		       = '0;
-	      result.ask 	       = ask_table_r.price;
-	      result.bid 	       = bid_table_r.price;
+	      result 	     = '0;
+	      result.ask     = ask_table_r.price;
+	      result.bid     = bid_table_r.price;
 
 	      // Emit out:
-	      rsp_out_vld 	       = 'b1;
+	      rsp_out_vld    = 'b1;
 
-	      rsp_out 		       = '0;
-	      rsp_out.uid 	       = cmd_latch_r.uid;
-	      rsp_out.status 	       = ob_pkg::S_Okay;
+	      rsp_out 	     = '0;
+	      rsp_out.uid    = cmd_latch_r.uid;
+	      casez ({ask_table_vld_r, bid_table_vld_r})
+		2'b11:   rsp_out.status = ob_pkg::S_Okay;
+		default: rsp_out.status = ob_pkg::S_Bad;
+	      endcase
 	      rsp_out.result.qrybidask = result;
 	    end
 	  end
 	  {1'b1, ob_pkg::Op_Buy}: begin
 	    ob_pkg::table_t bid_table;
-
-	    // Consume command
-	    cmd_consume        = 'b1;
 
 	    bid_table 	       = '0;
 	    bid_table.uid      = cmd_latch_r.uid;
@@ -360,9 +360,6 @@ module ob_cntrl (
 	  end
 	  {1'b1, ob_pkg::Op_Sell}: begin
 	    ob_pkg::table_t ask_table;
-
-	    // Consume command
-	    cmd_consume    = 'b1;
 
 	    // Await result of install operation.
 	    ask_table 	       = '0;
@@ -619,6 +616,9 @@ module ob_cntrl (
 	    // Stalled on output resources.
 	  end
 	  default: begin
+	    // Consume command
+	    cmd_consume        = 'b1;
+	    
 	    // Otherwise, no further work. Return to IDLE state.
 	    fsm_state_en = 'b1;
 	    fsm_state_w  = FSM_CNTRL_IDLE;
@@ -652,4 +652,3 @@ module ob_cntrl (
   end // block: cancel_PROC
 
 endmodule // ob_cntrl
-

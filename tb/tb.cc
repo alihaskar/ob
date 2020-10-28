@@ -410,4 +410,275 @@ void TB::step(std::size_t n) {
   }
 }
 
+bool operator==(const Entry& lhs, const Entry& rhs) {
+  if (lhs.uid != rhs.uid) return false;
+  if (lhs.quantity != rhs.quantity) return false;
+  if (lhs.price != rhs.price) return false;
+
+  return true;
+}
+
+class UidFinder {
+ public:
+  UidFinder(vluint32_t uid)
+      : uid_(uid)
+  {}
+
+  vluint32_t uid() const { return uid_; }
+
+  bool operator()(const Entry& e) const {
+    return e.uid == uid_;
+  }
+
+ private:
+  vluint32_t uid_;
+};
+
+class AskComparer {
+ public:
+  AskComparer() = default;
+
+  bool operator()(const Entry& lhs, const Entry& rhs) const {
+    return lhs.price < rhs.price;
+  }
+};
+
+class BidComparer {
+ public:
+  BidComparer() = default;
+
+  bool operator()(const Entry& lhs, const Entry& rhs) const {
+    return lhs.price > rhs.price;
+  }
+};
+
+Model::Model(std::size_t bid_n, std::size_t ask_n)
+    : bid_n_(bid_n), ask_n_(ask_n)
+{}
+
+bool Model::can_execute(const Command& cmd) const {
+  // Commands can always be sunk.
+  return true;
+}
+
+void Model::apply(const Command& cmd, std::vector<Response>& rsps) {
+
+  if (!cmd.valid) {
+    // No command, return
+    return;
+  }
+
+  Response rsp;
+  switch (cmd.opcode) {
+    case Opcode::Nop: {
+      rsp.valid = true;
+      rsp.uid = cmd.uid;
+      rsp.status = Status::Okay;
+      rsps.push_back(rsp);
+    } break;
+    case Opcode::QryBidAsk: {
+      rsp.valid = true;
+      rsp.uid = cmd.uid;
+      rsp.status = Status::Okay;
+      if (bid_table_.empty() || ask_table_.empty()) {
+        // Either table is unpopulated therefore command cannot complete.
+        rsp.status = Status::Bad;
+      }
+    } break;
+    case Opcode::Buy: {
+      // Command executes, therefore emit response
+      rsp.valid = true;
+      rsp.uid = cmd.uid;
+      rsp.status = Status::Okay;
+      rsps.push_back(rsp);
+      
+      Entry e;
+      e.uid = cmd.uid;
+      e.quantity = cmd.oprands.buy.quantity;
+      e.price = cmd.oprands.buy.price;
+      bid_table_.push_back(e);
+      std::stable_sort(bid_table_.begin(), bid_table_.end(), BidComparer{});
+      
+      while (attempt_trade(rsp)) {
+        rsps.push_back(rsp);
+      }
+      if (bid_table_.size() > bid_n_) {
+        // Issue reject
+        const Entry& reject = bid_table_.back();
+        rsp.valid = true;
+        rsp.uid = reject.uid;
+        rsp.status = Status::Reject;
+        rsps.push_back(rsp);
+
+        bid_table_.pop_back();
+      }
+    } break;
+    case Opcode::Sell: {
+    } break;
+    case Opcode::PopTopBid: {
+      rsp.valid = true;
+      rsp.uid = cmd.uid;
+      rsp.status = Status::BadPop;
+      if (!bid_table_.empty()) {
+        const Entry& e = bid_table_.front();
+        rsp.status = Status::Okay;
+        rsp.result.poptop.price = e.price;
+        rsp.result.poptop.quantity = e.quantity;
+        rsp.result.poptop.uid = e.uid;
+        bid_table_.erase(bid_table_.begin());
+      }
+    } break;
+    case Opcode::PopTopAsk: {
+      rsp.valid = true;
+      rsp.uid = cmd.uid;
+      rsp.status = Status::BadPop;
+      if (!ask_table_.empty()) {
+        const Entry& e = ask_table_.front();
+        rsp.status = Status::Okay;
+        rsp.result.poptop.price = e.price;
+        rsp.result.poptop.quantity = e.quantity;
+        rsp.result.poptop.uid = e.uid;
+        ask_table_.erase(ask_table_.begin());
+      }
+    } break;
+    case Opcode::Cancel: {
+      bool did_cancel = false;
+      if (auto it = std::find_if(bid_table_.begin(), bid_table_.end(),
+                                 UidFinder{cmd.uid});
+          !did_cancel && (it != bid_table_.end())) {
+        // Cancel occurs.
+
+        did_cancel = true;
+      }
+      if (auto it = std::find_if(ask_table_.begin(), ask_table_.end(),
+                                 UidFinder{cmd.uid});
+          !did_cancel && (it != ask_table_.end())) {
+        // Cancel occurs
+
+        did_cancel = true;
+      }
+
+      rsp.valid = true;
+      rsp.uid = cmd.uid;
+      if (did_cancel) {
+        rsp.status = Status::CancelHit;
+      } else {
+        rsp.status = Status::CancelMiss;
+      }
+      rsps.push_back(rsp);
+      
+    } break;
+  }
+}
+
+bool Model::attempt_trade(Response& rsp) {
+  if (ask_table_.empty() || bid_table_.empty()) {
+    return false;
+  }
+
+  Entry& bid = bid_table_.front();
+  Entry& ask = ask_table_.front();
+
+  if (bid.price < ask.price) {
+    // Bid does not take place.
+    return false;
+  }
+
+  // Bid takes place.
+
+  bool consume_bid = false;
+  bool consume_ask = false;
+
+  rsp.valid = true;
+  rsp.status = Status::Okay;
+  rsp.uid = 0xFFFFFFFF;
+
+  rsp.result.trade.bid_uid = bid.uid;
+  rsp.result.trade.ask_uid = ask.uid;
+
+  if (bid.quantity < ask.quantity) {
+    // Bid consumed.
+    consume_bid = true;
+    rsp.result.trade.quantity = bid.quantity;
+    // Update ask.
+    ask.quantity = (ask.quantity - bid.quantity);
+  } else if (bid.quantity > ask.quantity) {
+    // Ask consumed
+    consume_ask = true;
+    rsp.result.trade.quantity = ask.quantity;
+    // Update bid
+    bid.quantity = (bid.quantity - ask.quantity);
+  } else {
+    // Bid/Ask consumed
+    consume_bid = true;
+    consume_ask = true;
+    rsp.result.trade.quantity = bid.quantity;
+  }
+
+  if (consume_bid) {
+    // Remove head.
+    bid_table_.pop_back();
+  }
+
+  if (consume_ask) {
+    // Remove head.
+    ask_table_.pop_back();
+  }
+  
+  return true;
+}
+
+StimulusGenerator::StimulusGenerator(TB* tb)
+    : tb_(tb), model_(BID_TABLE_N, ASK_TABLE_N)
+{}
+
+void StimulusGenerator::generate(std::size_t n) {
+  Command cmd;
+  std::vector<Response> rsps;
+  while (n != 0) {
+    // Generate a new command.
+    generate(cmd);
+    if (model_.can_execute(cmd)) {
+      // Command can execute in the current cycle, therefore issue to
+      // RTL.
+      rsps.clear();
+      model_.apply(cmd, rsps);
+      // Add command to the model.
+      tb_->push_back(cmd);
+      // Add predicted responses to the model
+      for (const Response& rsp : rsps) {
+        tb_->push_back(rsp);
+      }
+      --n;
+    }
+  }
+}
+
+
+void StimulusGenerator::generate(Command& cmd) {
+  cmd.valid = true;
+  cmd.uid = uid_i_++;
+  cmd.opcode = Opcode::Nop;
+  cmd.opcode = Opcode::Buy;
+  switch (cmd.opcode) {
+    case Opcode::Nop: {
+    } break;
+    case Opcode::QryBidAsk: {
+    } break;
+    case Opcode::Buy: {
+      Bcd bcd = Bcd::from_string("100.00");
+      cmd.oprands.buy.quantity = 100;
+      cmd.oprands.buy.price = bcd.pack();
+    } break;
+    case Opcode::Sell: {
+    } break;
+    case Opcode::PopTopBid: {
+    } break;
+    case Opcode::PopTopAsk: {
+    } break;
+    case Opcode::Cancel: {
+    } break;
+  }
+}
+
 } // namespace tb

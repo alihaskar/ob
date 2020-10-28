@@ -213,7 +213,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
     // Form mask such that table entries preceeding current hit vector
     // are shifted up, to account for the canceld entry.
-    cancel_match_uid_mask_d = mask(cancel_match_uid_d, .inclusive('b0), .lsb('b1));
+    cancel_match_uid_mask_d = mask(cancel_match_uid_d, .inclusive('b1), .lsb('b1));
 
   end // block: cancel_PROC
   
@@ -224,7 +224,8 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
   always_comb begin : head_pop_PROC
 
-    tbl_pop_head_d = head_pop ? mask('b1 << N, .inclusive('b0), .lsb('b1)) : '0;
+    // On pop of head, all entries in the table are shifted up.
+    tbl_pop_head_d = head_pop ? '1 : '0;
 
   end // block: head_pop_PROC
   
@@ -252,7 +253,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     // Unary mask denoting the locations to be shifted downwards (towards
     // the LSB) in reponse to a insert operation.
     //
-    tbl_shift_dn_d  = mask(insert_match_sel_d, .inclusive('b1), .lsb('b1));
+    tbl_shift_dn_d  = mask(insert_match_sel_d, .inclusive('b0), .lsb('b1));
 
   end // block: t_op_PROC
   
@@ -280,16 +281,16 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
                    // New entry is installed in the head.
                    tbl_install_d [N],
                    // Prior table entry becomes head.
-                   tbl_shift_up_d [N - 1]
+                   tbl_shift_up_d [N]
                    })
       3'b1??:  tbl_w [N]  = head_upt_tbl;
       3'b01?:  tbl_w [N]  = insert_tbl;
       3'b001:  tbl_w [N]  = tbl_r [N - 1];
-      default: tbl_w [N]  = tbl_r [N - 1];
+      default: tbl_w [N]  = tbl_r [N];
     endcase
 
     // Head is value whenver next value contains a valid price.
-    tbl_vld_w [N]  = (tbl_w [0].price != INVALID_PRICE);
+    tbl_vld_w [N]  = (tbl_w [N].price != INVALID_PRICE);
 
     // Table entries [N - 1: 1]; those contained within the table.
     //
@@ -297,15 +298,15 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
       // Enable update when data moves into entry.
       tbl_en [i]  =
-        (tbl_install_d [i] | tbl_shift_up_d [i - 1] | tbl_shift_dn_d [i + 1]);
+        (tbl_install_d [i] | tbl_shift_up_d [i] | tbl_shift_dn_d [i]);
 
       // Next state (unique, no priority)
       unique casez ({// Install new entry at current location
                      tbl_install_d [i],
                      // Shift entry up
-                     tbl_shift_up_d [i - 1],
+                     tbl_shift_up_d [i],
                      // Shift entry down
-                     tbl_shift_dn_d [i + 1]
+                     tbl_shift_dn_d [i]
                      })
         3'b1??: begin
           // Install new state
@@ -404,6 +405,24 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   end // block: head_PROC
 
 
+  // ------------------------------------------------------------------------ //
+  //
+  `LIBV_REG_RST_W(logic, reject_vld, 'b0);
+  `LIBV_REG_EN_W(ob_pkg::table_t, reject);
+  
+  always_comb begin : reject_PROC
+
+    // Reject valid whenever a valid price is inserted into the reject
+    // slot of the table, otherwise retain.
+    reject_vld_w =
+      tbl_en [0] ? (tbl_w [0].price != INVALID_PRICE) : reject_vld_r;
+
+    // Output reject latch.
+    reject_en 	 = reject_vld_w;
+    reject_w 	 = tbl_w [0];
+
+  end // block: reject_PROC
+  
   // ======================================================================== //
   //                                                                          //
   // Flops                                                                    //
