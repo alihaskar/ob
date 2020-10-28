@@ -35,6 +35,7 @@
 #  include <iostream>
 #endif
 #include <algorithm>
+#include <cstdio>
 
 namespace tb {
 
@@ -48,6 +49,12 @@ void Random::init(unsigned seed) {
 bool Random::boolean(double true_prob) {
   std::bernoulli_distribution d(true_prob);
   return d(mt_);
+}
+
+std::string to_bcd_string(double d) {
+  static char c[128];
+  snprintf(c, 128, "%.2f", d);
+  return std::string(c);
 }
 
 Bcd Bcd::from_string(const std::string& s) {
@@ -532,6 +539,32 @@ void Model::apply(const Command& cmd, std::vector<Response>& rsps) {
       }
     } break;
     case Opcode::Sell: {
+      // Command executes, therefore emit response
+      rsp.valid = true;
+      rsp.uid = cmd.uid;
+      rsp.status = Status::Okay;
+      rsps.push_back(rsp);
+      
+      Entry e;
+      e.uid = cmd.uid;
+      e.quantity = cmd.oprands.sell.quantity;
+      e.price = cmd.oprands.sell.price;
+      ask_table_.push_back(e);
+      std::stable_sort(ask_table_.begin(), ask_table_.end(), AskComparer{});
+      
+      while (attempt_trade(rsp)) {
+        rsps.push_back(rsp);
+      }
+      if (bid_table_.size() > bid_n_) {
+        // Issue reject
+        const Entry& reject = ask_table_.back();
+        rsp.valid = true;
+        rsp.uid = reject.uid;
+        rsp.status = Status::Reject;
+        rsps.push_back(rsp);
+
+        ask_table_.pop_back();
+      }
     } break;
     case Opcode::PopTopBid: {
       rsp.valid = true;
@@ -545,6 +578,7 @@ void Model::apply(const Command& cmd, std::vector<Response>& rsps) {
         rsp.result.poptop.uid = e.uid;
         bid_table_.erase(bid_table_.begin());
       }
+      rsps.push_back(rsp);
     } break;
     case Opcode::PopTopAsk: {
       rsp.valid = true;
@@ -558,6 +592,7 @@ void Model::apply(const Command& cmd, std::vector<Response>& rsps) {
         rsp.result.poptop.uid = e.uid;
         ask_table_.erase(ask_table_.begin());
       }
+      rsps.push_back(rsp);
     } break;
     case Opcode::Cancel: {
       bool did_cancel = false;
@@ -642,9 +677,16 @@ bool Model::attempt_trade(Response& rsp) {
   return true;
 }
 
-StimulusGenerator::StimulusGenerator(TB* tb)
-    : tb_(tb), model_(BID_TABLE_N, ASK_TABLE_N)
-{}
+StimulusGenerator::StimulusGenerator(TB* tb, double mean, double stddev)
+    : tb_(tb), model_(BID_TABLE_N, ASK_TABLE_N), mean_(mean), stddev_(stddev) {
+  opcode_bag_.push_back(Opcode::Nop, 1);
+  opcode_bag_.push_back(Opcode::QryBidAsk, 1);
+  opcode_bag_.push_back(Opcode::Buy, 1);
+  opcode_bag_.push_back(Opcode::Sell, 1);
+  opcode_bag_.push_back(Opcode::PopTopBid, 1);
+  opcode_bag_.push_back(Opcode::PopTopAsk, 1);
+  opcode_bag_.push_back(Opcode::Cancel, 1);
+}
 
 void StimulusGenerator::generate(std::size_t n) {
   Command cmd;
@@ -676,31 +718,35 @@ void StimulusGenerator::generate(std::size_t n) {
 void StimulusGenerator::generate(Command& cmd) {
   cmd.valid = true;
   cmd.uid = uid_i_;
-  cmd.opcode = Opcode::Nop;
-  if (uid_i_ < 10) {
-    cmd.opcode = Opcode::Buy;
-  } else {
-    cmd.opcode = Opcode::Cancel;
-  }
+  cmd.opcode = opcode_bag_();
+
+  const double price = Random::normal(mean_, stddev_);
+  const Bcd bcd = Bcd::from_string(to_bcd_string(price));
+  const vluint16_t quantity = Random::uniform<int>(100, 10);
+  
   switch (cmd.opcode) {
     case Opcode::Nop: {
+      // No oprands.
     } break;
     case Opcode::QryBidAsk: {
+      // No oprands.
     } break;
     case Opcode::Buy: {
-      Bcd bcd = Bcd::from_string("100.00");
-      cmd.oprands.buy.quantity = 100;
+      cmd.oprands.buy.quantity = quantity;
       cmd.oprands.buy.price = bcd.pack();
     } break;
     case Opcode::Sell: {
+      cmd.oprands.sell.quantity = quantity;
+      cmd.oprands.sell.price = bcd.pack();
     } break;
     case Opcode::PopTopBid: {
+      // No oprands.
     } break;
     case Opcode::PopTopAsk: {
+      // No oprands.
     } break;
     case Opcode::Cancel: {
-      const bool do_definately_miss = false;
-      //      const bool do_hit = Random::boolean(0.9);
+      const bool do_definately_miss = Random::boolean(0.1);
       if (!do_definately_miss) {
         auto it = Random::select_one(prior_uid_.begin(), prior_uid_.end());
         cmd.oprands.cancel.uid = *it;

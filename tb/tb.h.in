@@ -77,6 +77,14 @@ struct Random {
     return d(mt_);
   }
 
+  template<typename T>
+  static std::enable_if_t<std::is_floating_point_v<T>, T>
+  normal(T mean, T stddev) {
+    // Normal distribution from which to select price.
+    std::normal_distribution<double> d;
+    return d(mt_);
+  }
+
   // Generate a boolean with true probability 'true_prob'.
   static bool boolean(double true_prob = 0.5f);
 
@@ -91,6 +99,25 @@ struct Random {
   
  private:
   static inline std::mt19937 mt_;
+};
+
+template<typename T>
+class Bag {
+ public:
+  Bag() = default;
+
+  T operator()() const {
+    return Random::uniform<T>(ts_.size(), 0);
+  }
+
+  void push_back(const T& t, std::size_t weight) {
+    while (weight-- > 0) {
+      ts_.push_back(t);
+    }
+  }
+
+ private:
+  std::vector<T> ts_;
 };
 
 // Generator to produce random values from some pre-defined range,
@@ -456,7 +483,7 @@ class Model {
 class StimulusGenerator {
   
  public:
-  StimulusGenerator(TB* tb);
+  StimulusGenerator(TB* tb, double mean, double stddev);
 
   // Generate N new commands.
   void generate(std::size_t n);
@@ -475,11 +502,20 @@ class StimulusGenerator {
   // Current UID index
   vluint32_t uid_i_ = 0;
 
+  // Price mean
+  double mean_;
+
+  // Price standard deviation.
+  double stddev_;
+
   // Testbench instance
   TB* tb_ = nullptr;
 
   // Behavioral Order Book model.
   Model model_;
+
+  // Bag of opcodes.
+  Bag<vluint8_t> opcode_bag_;
 };
 
 } // namespace tb

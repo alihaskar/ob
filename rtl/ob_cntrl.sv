@@ -419,13 +419,13 @@ module ob_cntrl (
 	    poptop.uid 		  = ask_table_r.uid;
 
 	    // Pop top valid item.
-	    bid_pop 		  = ask_table_vld_r;
+	    ask_pop 		  = ask_table_vld_r;
 
 	    // Emit out:
 	    rsp_out_vld 	  = 'b1;
 	    rsp_out.uid 	  = cmd_latch_r.uid;
 	    rsp_out.status 	  =
-              ask_table_vld_r ? ob_pkg::S_BadPop : ob_pkg::S_Okay;
+              ask_table_vld_r ? ob_pkg::S_Okay : ob_pkg::S_BadPop;
 	    rsp_out.result 	  = '0;
 	    rsp_out.result.poptop = poptop;
 	  end // case: {1'b1, ob_pkg::Op_PopTopAsk}
@@ -453,6 +453,23 @@ module ob_cntrl (
 
       FSM_CNTRL_CANCEL_RESP: begin
 	// In this state, the response to the prior cancel request has
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	// been collated and is known. From this, form the final response
 	// for the command to the egress queue and consume the command.
 	//

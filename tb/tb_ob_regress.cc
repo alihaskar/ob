@@ -39,8 +39,8 @@ TEST(Regress, Basic) {
   tb::TB tb{opts};
 
   // Generate stimulus.
-  tb::StimulusGenerator gen(&tb);
-  gen.generate(17);
+  tb::StimulusGenerator gen(&tb, 100.0, 10.0);
+  gen.generate(10);
 
   // Run simulation.
   tb.run();
