@@ -35,11 +35,11 @@ TEST(Regress, Basic) {
   // Generate stimulus.
   tb::Bag<vluint8_t> bg;
   bg.push_back(tb::Opcode::Nop, 1);
-  bg.push_back(tb::Opcode::QryBidAsk, 1);
+  bg.push_back(tb::Opcode::QryBidAsk, 4);
   bg.push_back(tb::Opcode::Buy, 10);
   bg.push_back(tb::Opcode::Sell, 10);
-  bg.push_back(tb::Opcode::PopTopBid, 1);
-  bg.push_back(tb::Opcode::PopTopAsk, 1);
+  bg.push_back(tb::Opcode::PopTopBid, 3);
+  bg.push_back(tb::Opcode::PopTopAsk, 3);
   bg.push_back(tb::Opcode::Cancel, 1);
   tb::StimulusGenerator gen(bg, 100.0, 10.0);
 
@@ -48,7 +48,7 @@ TEST(Regress, Basic) {
   opts.wave_enable = true;
   opts.trace_enable = true;
   tb::TB tb{opts};
-  for (const tb::Command& cmd : gen.generate(115)) {
+  for (const tb::Command& cmd : gen.generate(200000)) {
     tb.push_back(cmd);
   }
 

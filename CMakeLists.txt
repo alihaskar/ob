@@ -37,7 +37,7 @@ option(OPT_VCD_ENABLE "Enable VCD waveform dumping." ON)
 
 option(OPT_TRACE_ENABLE "Enable log tracing." ON)
 
-option(OPT_VERBOSE "Verbose logging." ON)
+option(OPT_VERBOSE "Verbose logging." OFF)
 
 # Configure RTL
 
