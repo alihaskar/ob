@@ -45,8 +45,6 @@ TEST(Regress, Basic) {
 
   // Construct testbench environment.
   tb::Options opts;
-  opts.wave_enable = true;
-  opts.trace_enable = true;
   tb::TB tb{opts};
   for (const tb::Command& cmd : gen.generate(200000)) {
     tb.push_back(cmd);

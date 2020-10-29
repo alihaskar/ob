@@ -35,7 +35,7 @@ PROJECT_ROOT="${CMAKE_SOURCE_DIR}"
 
 TABLE_LOW_N = 4
 
-TABLE_HIGH_N = 33
+TABLE_HIGH_N = 65
 
 TABLE_STEP = 4
 
@@ -120,9 +120,9 @@ def create_scatter(fig, name, results):
     fig.add_trace(go.Scatter(
         x=x, y=y_max, name='max', line=dict(color='firebrick', width=3, dash='dot')))
     fig.add_trace(go.Scatter(
-        x=x, y=y_min, name='min', line=dict(color='royalblue', width=3, dash='dot')))
-    fig.add_trace(go.Scatter(
         x=x, y=y_avg, name='avg', line=dict(color='royalblue', width=4)))
+    fig.add_trace(go.Scatter(
+        x=x, y=y_min, name='min', line=dict(color='royalblue', width=3, dash='dot')))
                 
 def main():
     fig = go.Figure()

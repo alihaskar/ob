@@ -82,7 +82,7 @@ engine. The achievable clock frequency of the design is inversely
 proportional to the table depth. As commands have variable latency, a
 min/max range is presented demarcating the range of performance
 (measured in Transactions per second) that can be attained for a given
-table depth. Synthesis was carried targeting a relatively modest
+table depth. Synthesis was carried out targeting a relatively modest
 xc7k70tfbv676-1, using Xilinx Vivado 2020.1.
 
 ![synth_analysis](./doc/synth_analysis.svg)
@@ -95,8 +95,8 @@ The RTL solution consists as follows:
   placed in their respective tables. The entries of each table are
   ordered such that the maximum bid is at the head of the bid table,
   and the smallest ask is at the head of the ask table. A trade occurs
-  when the current highest bidding order is equal to or graater than
-  to lowest asking order.
+  when the current highest bidding order is equal to or greater than
+  the smallest asking order.
 * A key aspect of the design is in the implementation of the tables
   and, more specifically, the means by which entries can be added or
   removed from the table while maintaining a sorted order. A naive
@@ -113,8 +113,8 @@ The RTL solution consists as follows:
   a particular time. As the table is sorted at the start of such
   operation, the re-sort operation can be carried out, essentially, in
   constant time by simply inserting a new element at the correct
-  location, or removing an element a shuffling the table. This can be
-  carried out using a associatively addressed shift-register-like
+  location, or removing an element and shuffling the table. This can
+  be carried out using a associatively addressed shift-register-like
   structure. The advantage of this approach is that sorting can be
   carried out in constant time, and the overall latency of the
   operation is unrelated to the table depth. The overall limiting
