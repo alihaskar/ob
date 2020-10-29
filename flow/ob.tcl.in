@@ -32,6 +32,8 @@ source ${CMAKE_CURRENT_SOURCE_DIR}/files.tcl
 
 synth_design -top ob
 
+report_timing
+
 # Done
 exit
 

@@ -25,42 +25,18 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-cmake_minimum_required(VERSION 3.5)
-project(ob)
-
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/ob.cmake)
-
-set(CMAKE_CXX_STANDARD 17)
-
-option(OPT_VCD_ENABLE "Enable VCD waveform dumping." ON)
-
-option(OPT_TRACE_ENABLE "Enable log tracing." ON)
-
-option(OPT_VERBOSE "Verbose logging." OFF)
-
-# Configure RTL
-
-# The number of entries in the bid table.
-option(BID_TABLE_N "The number of entries in the Bid Table." 16)
-
-# The number of entries in the ask table.
-option(ASK_TABLE_N "The number of entries in the Ask Table." 16)
-
-add_subdirectory(libv)
-add_subdirectory(rtl)
-
-# Configure TB
-find_package(Verilator)
-find_package(Vivado)
-find_package(Python)
-
-if (Verilator_EXE)
-  enable_testing()
-  add_subdirectory(third_party)
-  add_subdirectory(tb)
-endif ()
 if (Vivado_EXE)
-  add_subdirectory(flow)
+  # When Vivado is present, allow full synthesis regression to update
+  # synth_analysis.png in doc/.
+
+  configure_file(synth_analysis.py.in synth_analysis.py)
+  add_custom_target(synth_analysis
+    COMMAND ${Python_EXECUTABLE} synth_analysis.py
+    COMMENT "Running synthesis regression..."
+    )
+  add_custom_command(
+    TARGET synth_analysis POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy synth_analysis.png ${CMAKE_SOURCE_DIR}/doc
+    COMMENT "Updating doc/synth_analysis.png"
+  )
 endif ()
-add_subdirectory(regress)

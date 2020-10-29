@@ -1,0 +1,139 @@
+##========================================================================== //
+## Copyright (c) 2016-2019, Stephen Henry
+## All rights reserved.
+##
+## Redistribution and use in source and binary forms, with or without
+## modification, are permitted provided that the following conditions are met:
+##
+## * Redistributions of source code must retain the above copyright notice, this
+##   list of conditions and the following disclaimer.
+##
+## * Redistributions in binary form must reproduce the above copyright notice,
+##   this list of conditions and the following disclaimer in the documentation
+##   and/or other materials provided with the distribution.
+##
+## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+## AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+## IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+## ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+## LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+## CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+## SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+## INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+## CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+## ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+## POSSIBILITY OF SUCH DAMAGE.
+##========================================================================== //
+
+import os
+import shutil
+import subprocess
+import re
+import plotly.graph_objects as go
+
+PROJECT_ROOT="${CMAKE_SOURCE_DIR}"
+
+TABLE_LOW_N = 4
+
+TABLE_HIGH_N = 33
+
+TABLE_STEP = 4
+
+CRITICAL_PATH_RE = re.compile('Data Path Delay:\s+(?P<TIME_NS>\S+)ns')
+
+def run_program(cmdargs):
+    pipe = subprocess.Popen(cmdargs, stdout=subprocess.PIPE)
+    (out, err) = pipe.communicate()
+    return out.decode(encoding="UTF-8").split("\n")
+
+class RegressResult:
+    def __init__(self, table_n, delay):
+        self.table_n = table_n
+        self.delay = delay
+    def __str__(self):
+        return "table_n={} delay={}".format(self.table_n, self.delay)
+
+    def ts_max(self):
+        return (1000 / self.delay)
+
+    def ts_min(self):
+        return ts_max() / self.latency_cycles()
+
+    def latency_cycles(self):
+        return 3
+
+class RegressInstance:
+    def __init__(self, table_n):
+        self.table_n = table_n
+    def execute(self):
+        regress_root = os.getcwd()
+        name = "regress_{}_{}".format(self.table_n, self.table_n)
+        if os.path.exists(name):
+            shutil.rmtree(name)
+        os.mkdir(name)
+        os.chdir(name)
+        self.configure_instance()
+        delay = self.synth_instance()
+        os.chdir(regress_root)
+        return RegressResult(self.table_n, delay)
+
+    def configure_instance(self):
+        cmd = []
+        cmd.append("cmake")
+        cmd.append(PROJECT_ROOT)
+        cmd.append("-DBID_TABLE_N={}".format(self.table_n))
+        cmd.append("-DASK_TABLE_N={}".format(self.table_n))
+        run_program(cmd)
+
+    def synth_instance(self):
+        os.chdir("flow")
+        cmd = []
+        cmd.append("make")
+        cmd.append("synth")
+        for line in run_program(cmd):
+            m = CRITICAL_PATH_RE.search(line)
+            if m:
+                return float(m.group("TIME_NS"))
+
+def run_scenario():
+    results = []
+    for table_n in range(TABLE_LOW_N, TABLE_HIGH_N, TABLE_STEP):
+        print("Runing synthesis regression for BID_TABLE_N={} "
+              "ASK_TABLE_N={}".format(table_n, table_n))
+        r = RegressInstance(table_n)
+        result = r.execute()
+        print("Regression complete {}".format(result))
+        results.append(result)
+    return results
+
+def create_scatter(fig, name, results):
+    x = []
+    y_min = []
+    y_max = []
+    y_avg = []
+    for result in results:
+        x.append(result.table_n)
+        y_min.append(result.ts_min())
+        y_max.append(result.ts_max())
+        y_avg.append((result.ts_max() + result.tx_min() / 2))
+
+    fig.add_trace(go.Scatter(
+        x=x, y=y_max, name='max', line=dict(color='firebrick', width=3, dash='dot')))
+    fig.add_trace(go.Scatter(
+        x=x, y=y_min, name='min', line=dict(color='royalblue', width=3, dash='dot')))
+    fig.add_trace(go.Scatter(
+        x=x, y=y_avg, name='avg', line=dict(color='royalblue', width=4)))
+                
+def main():
+    fig = go.Figure()
+    results = run_scenario()
+    print("Rendering table...")
+    create_scatter(fig, 'baseline', results)
+    fig.update_layout(title="Millions of Transactions/s vs. Table Entries",
+                      xaxis_title="Table Entries",
+                      yaxis_title="MT/s"
+    fig.write_image("synth_analysis.png")
+    print("Regression complete.")
+        
+if __name__ == '__main__':
+    main()
