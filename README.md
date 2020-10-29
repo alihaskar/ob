@@ -13,8 +13,8 @@ The following external dependencies must be satisifed to run the project.
 
 ``` shell
 # Clone project
-git clone git@github.com:stephenry/m.git
-pushd m
+git clone git@github.com:stephenry/ob.git
+pushd ob
 # Check out external dependencies
 git submodule init
 git submodule update
@@ -50,6 +50,14 @@ cmake -DOPT_VCD_ENABLE=ON ..
 ``` shell
 # Enable logging (slows simulation)
 cmake -DOPT_LOGGING_ENABLE=ON ..
+```
+
+# Build an RTL configuratoin
+
+For an RTL configuration with 16 entries both the Bid and Ask tables.
+
+```shell
+cmake -DBID_TABLE_N=16 -DASK_ENTRIES_N=16 ..
 ```
 
 # Run a test
