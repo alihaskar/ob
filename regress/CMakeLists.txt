@@ -36,7 +36,7 @@ if (Vivado_EXE)
     )
   add_custom_command(
     TARGET synth_analysis POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy synth_analysis.png ${CMAKE_SOURCE_DIR}/doc
-    COMMENT "Updating doc/synth_analysis.png"
+    COMMAND ${CMAKE_COMMAND} -E copy synth_analysis.svg ${CMAKE_SOURCE_DIR}/doc
+    COMMENT "Updating doc/synth_analysis.svg"
   )
 endif ()

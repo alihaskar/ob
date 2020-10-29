@@ -57,7 +57,7 @@ class RegressResult:
         return (1000 / self.delay)
 
     def ts_min(self):
-        return ts_max() / self.latency_cycles()
+        return self.ts_max() / self.latency_cycles()
 
     def latency_cycles(self):
         return 3
@@ -98,7 +98,7 @@ class RegressInstance:
 def run_scenario():
     results = []
     for table_n in range(TABLE_LOW_N, TABLE_HIGH_N, TABLE_STEP):
-        print("Runing synthesis regression for BID_TABLE_N={} "
+        print("Running synthesis regression for BID_TABLE_N={} "
               "ASK_TABLE_N={}".format(table_n, table_n))
         r = RegressInstance(table_n)
         result = r.execute()
@@ -115,7 +115,7 @@ def create_scatter(fig, name, results):
         x.append(result.table_n)
         y_min.append(result.ts_min())
         y_max.append(result.ts_max())
-        y_avg.append((result.ts_max() + result.tx_min() / 2))
+        y_avg.append((result.ts_max() + result.ts_min()) / 2)
 
     fig.add_trace(go.Scatter(
         x=x, y=y_max, name='max', line=dict(color='firebrick', width=3, dash='dot')))
@@ -131,8 +131,8 @@ def main():
     create_scatter(fig, 'baseline', results)
     fig.update_layout(title="Millions of Transactions/s vs. Table Entries",
                       xaxis_title="Table Entries",
-                      yaxis_title="MT/s"
-    fig.write_image("synth_analysis.png")
+                      yaxis_title="MT/s")
+    fig.write_image("synth_analysis.svg")
     print("Regression complete.")
         
 if __name__ == '__main__':

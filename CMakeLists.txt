@@ -42,11 +42,12 @@ option(OPT_VERBOSE "Verbose logging." OFF)
 # Configure RTL
 
 # The number of entries in the bid table.
-option(BID_TABLE_N "The number of entries in the Bid Table." 16)
+set(BID_TABLE_N 16 CACHE STRING "The number of entries in the Bid Table.")
 
 # The number of entries in the ask table.
-option(ASK_TABLE_N "The number of entries in the Ask Table." 16)
+set(ASK_TABLE_N 16 CACHE STRING "The number of entries in the Ask Table.")
 
+# RTL
 add_subdirectory(libv)
 add_subdirectory(rtl)
 
