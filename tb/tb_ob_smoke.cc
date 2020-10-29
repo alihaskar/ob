@@ -30,11 +30,10 @@
 
 TEST(Smoke, SimpleTableSort) {
   tb::Options opts;
-  
+
   tb::TB tb{opts};
 
   tb::Command cmd;
-  tb::Response rsp;
   tb::Bcd bcd;
 
   // Cmd 0:
@@ -46,11 +45,6 @@ TEST(Smoke, SimpleTableSort) {
   cmd.oprands.sell.price = bcd.pack();
   tb.push_back(cmd);
 
-  // Rsp 0:
-  rsp.uid = 0;
-  rsp.status = 0;
-  tb.push_back(rsp);
-
   // Cmd 1:
   cmd.valid = true;
   cmd.opcode = tb::Opcode::Buy;
@@ -59,11 +53,6 @@ TEST(Smoke, SimpleTableSort) {
   cmd.oprands.sell.quantity = 100;
   cmd.oprands.sell.price = bcd.pack();
   tb.push_back(cmd);
-
-  // Rsp 1:
-  rsp.uid = 1;
-  rsp.status = 0;
-  tb.push_back(rsp);
 
   // Cmd 2:
   cmd.valid = true;
@@ -74,10 +63,6 @@ TEST(Smoke, SimpleTableSort) {
   cmd.oprands.sell.price = bcd.pack();
   tb.push_back(cmd);
 
-  // Rsp 2:
-  rsp.uid = 2;
-  rsp.status = 0;
-  tb.push_back(rsp);
 
   // Cmd 3: Remove top bid
   cmd.valid = true;
@@ -85,32 +70,17 @@ TEST(Smoke, SimpleTableSort) {
   cmd.uid = 3;
   tb.push_back(cmd);
 
-  // Rsp 3
-  rsp.uid = 3;
-  rsp.status = 0;
-  tb.push_back(rsp);
-
   // Cmd 4: Remove top bid
   cmd.valid = true;
   cmd.opcode = tb::Opcode::PopTopBid;
   cmd.uid = 4;
   tb.push_back(cmd);
 
-  // Rsp 4
-  rsp.uid = 4;
-  rsp.status = 0;
-  tb.push_back(rsp);
-
   // Cmd 5: Remove top bid
   cmd.valid = true;
   cmd.opcode = tb::Opcode::PopTopBid;
   cmd.uid = 5;
   tb.push_back(cmd);
-
-  // Rsp 5
-  rsp.uid = 5;
-  rsp.status = 0;
-  tb.push_back(rsp);
 
   // Run simulation.
   tb.run();
@@ -121,7 +91,6 @@ TEST(Smoke, SimpleTrade) {
   tb::TB tb{opts};
 
   tb::Command cmd;
-  tb::Response rsp;
   tb::Bcd bcd;
 
   // Cmd 0: Buy 100 shares at $200.00
@@ -133,11 +102,6 @@ TEST(Smoke, SimpleTrade) {
   cmd.oprands.buy.price = bcd.pack();
   tb.push_back(cmd);
 
-  rsp.valid = true;
-  rsp.uid = 0;
-  rsp.status = 0;
-  tb.push_back(rsp);
-
   // Cmd 2: Sell 100 shares at $100.00
   cmd.valid = true;
   cmd.opcode = tb::Opcode::Sell;
@@ -147,28 +111,15 @@ TEST(Smoke, SimpleTrade) {
   cmd.oprands.sell.price = bcd.pack();
   tb.push_back(cmd);
 
-  rsp.valid = true;
-  rsp.uid = 1;
-  rsp.status = 0;
-  tb.push_back(rsp);
-
-  // Expect a trade to be emitted.
-  rsp.valid = true;
-  rsp.uid = 0xFFFFFFFF;
-  rsp.status = 0;
-  tb.push_back(rsp);
-
   // Run simulation.
   tb.run();
 }
 
 TEST(Smoke, Cancel) {
   tb::Options opts;
-  opts.wave_enable = true;
   tb::TB tb{opts};
 
   tb::Command cmd;
-  tb::Response rsp;
 
   // Cmd 0: issue Buy for 100 at $200.00
   cmd.valid = true;
@@ -179,11 +130,6 @@ TEST(Smoke, Cancel) {
   cmd.oprands.buy.price = bcd.pack();
   tb.push_back(cmd);
 
-  rsp.valid = true;
-  rsp.uid = 0x20;
-  rsp.status = tb::Status::Okay;
-  tb.push_back(rsp);
-
   // Cmd 1: issue cancel for Buy command.
   cmd.valid = true;
   cmd.opcode = tb::Opcode::Cancel;
@@ -191,22 +137,12 @@ TEST(Smoke, Cancel) {
   cmd.oprands.cancel.uid = 0x20;
   tb.push_back(cmd);
 
-  rsp.valid = true;
-  rsp.uid = 0x30;
-  rsp.status = tb::Status::CancelHit;
-  tb.push_back(rsp);
-
   // Cmd 2: issue cancel for Buy command.
   cmd.valid = true;
   cmd.opcode = tb::Opcode::Cancel;
   cmd.uid = 0x31;
   cmd.oprands.cancel.uid = 0x20;
   tb.push_back(cmd);
-
-  rsp.valid = true;
-  rsp.uid = 0x31;
-  rsp.status = tb::Status::CancelMiss;
-  tb.push_back(rsp);
 
   // Run simulation
   tb.run();
