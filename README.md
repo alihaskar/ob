@@ -74,7 +74,8 @@ engine. The achievable clock frequency of the design is inversely
 proportional to the table depth. As commands have variable latency, a
 min/max range is presented demarcating the range of performance
 (measured in Transactions per second) that can be attained for a given
-table depth.
+table depth. Synthesis was carried targeting a relatively modest
+xc7k70tfbv676-1, using Xilinx Vivado 2020.1.
 
 ![synth_analysis](./doc/synth_analysis.svg)
 
@@ -118,7 +119,7 @@ The RTL solution consists as follows:
   complications such as logical complexity and
   timing-concerns. Instead, prices are represented using a 20b BCD
   format that can be trivially converted from ASCII. One need not
-  performance BCD arithmetic when performing the table sort operation,
+  perform BCD arithmetic when performing the table sort operation,
   as the BCD can be compared using standard twos-complement
   representation (conversion is unnecessary when simply comparing
   magnitudes).
