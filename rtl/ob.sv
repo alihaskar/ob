@@ -204,7 +204,6 @@ module ob (
     egress_queue_push 	   = cntrl_rsp_out_vld;
     egress_queue_push_data = cntrl_rsp_out;
 
-
   end // block: ob_cntrl_PROC
 
   // ------------------------------------------------------------------------ //

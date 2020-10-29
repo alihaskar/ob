@@ -643,16 +643,6 @@ module ob_cntrl (
 
   end // block: cntrl_PROC
 
-  ob_pkg::uid_t    debug_rsp_uid;
-  ob_pkg::opcode_t debug_opcode;
-
-  always_comb begin
-
-    debug_opcode  = cmd_latch_r.opcode;
-    debug_rsp_uid = rsp_out.uid;
-
-  end
-
   // ------------------------------------------------------------------------ //
   //
   always_comb begin : cancel_PROC
