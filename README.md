@@ -83,7 +83,7 @@ proportional to the table depth. As commands have variable latency, a
 min/max range is presented demarcating the range of performance
 (measured in Transactions per second) that can be attained for a given
 table depth. Synthesis was carried out targeting a relatively modest
-xc7k70tfbv676-1, using Xilinx Vivado 2020.1.
+xc7k70, using Xilinx Vivado 2020.1.
 
 ![synth_analysis](./doc/synth_analysis.svg)
 
