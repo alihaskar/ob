@@ -351,7 +351,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
         tbl_w [0]        = tbl_r [0];
         tbl_w [0].price  = INVALID_PRICE;
       end
-      4'b0010: begin
+      4'b001?: begin
         tbl_w [0]        = tbl_r [1];
       end
       4'b0001: begin
