@@ -14,4 +14,4 @@ The following external dependencies must be satisifed to run the project.
 
 # Performance
 
-![synth_analysis](./doc/synth_analysis.png)
+![synth_analysis](./doc/synth_analysis.svg)
