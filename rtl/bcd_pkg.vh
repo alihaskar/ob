@@ -48,6 +48,4 @@ package bcd_pkg;
   localparam price_t PRICE_MIN = 'h000_00;
   
 endpackage // bcd_pkg
-
 `endif
-
