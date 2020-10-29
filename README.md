@@ -100,7 +100,7 @@ The RTL solution consists as follows:
   proportional to the overall table depth, which could result in a
   frequency and logic overhead which could become a limiting factor in
   such a design.
-* A key observation in the implmentation of the proposed design is
+* A key observation in the implementation of the proposed design is
   that only upto one entry may be added to or removed from a table at
   a particular time. As the table is sorted at the start of such
   operation, the re-sort operation can be carried out, essentially, in
