@@ -76,14 +76,14 @@ cmake .
 # Performance
 
 Timing figures of the RTL was carried out by running an initial
-synthesis of the design on the RTL. The achievable clock frequency
-directly influences the rate at which commands may be executed by the
+synthesis of the RTL. The achievable clock frequency directly
+influences the rate at which commands may be executed by the
 engine. The achievable clock frequency of the design is inversely
 proportional to the table depth. As commands have variable latency, a
-min/max range is presented demarcating the range of performance
-(measured in Transactions per second) that can be attained for a given
-table depth. Synthesis was carried out targeting a relatively modest
-xc7k70, using Xilinx Vivado 2020.1.
+min/max range is presented demarcating the range of performance that
+can be attained for a given table depth (measured in Transactions per
+second). Synthesis was carried out targeting a relatively modest
+xc7k70 FPGA, using Xilinx Vivado 2020.1.
 
 ![synth_analysis](./doc/synth_analysis.svg)
 
@@ -104,8 +104,8 @@ The RTL solution consists as follows:
   perform a sort operation using a traditional sort-network. This is
   sub-optimal. One must consider the time taken to perform a sort over
   some number of entries, which necessarily takes multiple cycles to
-  carried out. In addition, the complexity of the sorting network is
-  proportional to the overall table depth, which could result in a
+  be carried out. In addition, the complexity of the sorting network
+  is proportional to the overall table depth, which could result in a
   frequency and logic overhead which could become a limiting factor in
   such a design.
 * A key observation in the implementation of the proposed design is
@@ -113,8 +113,8 @@ The RTL solution consists as follows:
   a particular time. As the table is sorted at the start of such
   operation, the re-sort operation can be carried out, essentially, in
   constant time by simply inserting a new element at the correct
-  location, or removing an element and shuffling the table. This can
-  be carried out using a associatively addressed shift-register-like
+  location, or removing an element and shifting the table. This can be
+  carried out using a associatively addressed shift-register-like
   structure. The advantage of this approach is that sorting can be
   carried out in constant time, and the overall latency of the
   operation is unrelated to the table depth. The overall limiting
@@ -127,8 +127,8 @@ The RTL solution consists as follows:
   complications such as logical complexity and
   timing-concerns. Instead, prices are represented using a 20b BCD
   format that can be trivially converted from ASCII. One need not
-  perform BCD arithmetic when performing the table sort operation,
-  as the BCD can be compared using standard twos-complement
+  perform BCD arithmetic when performing the table sort operation, as
+  the BCD can be compared using standard twos-complement
   representation (conversion is unnecessary when simply comparing
   magnitudes).
 * The major limiting aspect of the design is in the queue depth. Even
