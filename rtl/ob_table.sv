@@ -86,7 +86,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
   // ------------------------------------------------------------------------ //
   //
-  function ob_pkg::table_t mux(
+  function automatic ob_pkg::table_t mux(
     logic [N:0] sel, ob_pkg::table_t [N:0] tbl); begin
     mux   = '0;
     for (int i = 0; i < N + 1; i++)
@@ -94,12 +94,12 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
         mux |= tbl [i];
   end endfunction
   
-  function logic price_compare(bcd_pkg::price_t x,
-			       bcd_pkg::price_t t); begin
+  function automatic logic price_compare(bcd_pkg::price_t x,
+					 bcd_pkg::price_t t); begin
     return is_ask ? (x < t) : (x > t);
   end endfunction
 
-  function logic [N:0] pri(logic [N:0] x, bit lsb = 'b0); begin
+  function automatic logic [N:0] pri(logic [N:0] x, bit lsb = 'b0); begin
     pri = '0;
     if (lsb) begin
       for (int i = 0; i < N + 1; i++) begin
@@ -114,7 +114,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     end
   end endfunction
 
-  function logic [N:0] mask(
+  function automatic logic [N:0] mask(
     logic [N:0] x, bit inclusive = 'b1, bit lsb = 'b0); begin
     mask = 'b0;
     if (lsb) begin
