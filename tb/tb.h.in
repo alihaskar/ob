@@ -25,6 +25,9 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
+#ifndef OB_TB_TB_H_IN
+#define OB_TB_TB_H_IN
+
 #include "verilated.h"
 #include <deque>
 #include <string>
@@ -553,3 +556,5 @@ class TB {
 };
 
 } // namespace tb
+
+#endif
