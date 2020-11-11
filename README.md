@@ -23,12 +23,12 @@ common financial operations, as the ability to perform such operations
 in the absence of software intervention (CPU) can result in a
 substantial reduction in latency.
 
-This project presents a high-performance Matching Engine implmentation
-for fictious FPGA target, and demonstrates how a single stock can be
-traded for a set of Bid-/Ask- transactions. On a relatively modest,
-and low budget FPGA, this (relatively unoptimized) implementation is
-capable of performing upto 40M trades per second, when maintaining a
-set of upto 32 active Bids and 32 active Asks.
+This project presents a high-performance Matching Engine
+implementation for a fictious FPGA target, and demonstrates how a single
+stock can be traded for a set of Bid-/Ask- transactions. On a
+relatively modest, and low budget FPGA, this (relatively unoptimized)
+implementation is capable of performing upto 40M trades per second,
+when maintaining a set of upto 32 active Bids and 32 active Asks.
 
 # Dependencies
 
