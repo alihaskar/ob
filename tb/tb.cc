@@ -29,7 +29,9 @@
 #include "vsupport.h"
 #include "utility.h"
 #include "vobj/Vtb_ob.h"
-#include "verilated_vcd_c.h"
+#ifdef OPT_VCD_ENABLE
+#  include "verilated_vcd_c.h"
+#endif
 #include "gtest/gtest.h"
 #ifdef OPT_TRACE_ENABLE
 #  include <iostream>
