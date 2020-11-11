@@ -1,6 +1,34 @@
 # Introduction
 
-A novel implementation of a high-performance, matching engine for FPGA.
+A novel implementation of a high-performance, matching engine for FPGA
+is presented.
+
+Financial institutions buy and sell publically traded shares on an
+electronic market. A buyer places a Bid for a certain number of
+stocks at a given price, and a seller places an Ask to sell a certain
+number of stocks, also at a given price. When a buyer bids a value
+greater than or equal to the price asked by a seller, a transaction
+takes place. At any point in time, markets maintain the set of
+outstanding buy and asks for a given stock in a entity known as an
+Order Book (OB). An algorithm known as a Matching Engine (ME) is
+reponsible for computing and emitting the set of trades that may take
+place given an OB.
+
+The financial industrial has recently focused on techniques and
+approaches by which the operation performed by the Matching Engine can
+be accelerated, as financial incentives exist to perform trades with
+as smallest latency as possible. Consequently, in recent years, focus
+has been paid to hardware (typically FPGA) implementations of many
+common financial operations, as the ability to perform such operations
+in the absence of software intervention (CPU) can result in a
+substantial reduction in latency.
+
+This project presents a high-performance Matching Engine implmentation
+for fictious FPGA target, and demonstrates how a single stock can be
+traded for a set of Bid-/Ask- transactions. On a relatively modest,
+and low budget FPGA, this (relatively unoptimized) implementation is
+capable of performing upto 40M trades per second, when maintaining a
+set of upto 32 active Bids and 32 active Asks.
 
 # Dependencies
 
