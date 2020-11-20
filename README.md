@@ -1,5 +1,7 @@
 # Introduction
 
+![CI](https://github.com/stephenry/ob/workflows/CI/badge.svg)
+
 A novel implementation of a high-performance, matching engine for FPGA
 is presented.
 
