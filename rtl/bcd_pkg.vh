@@ -44,8 +44,8 @@ package bcd_pkg;
   // The largest possible price $999.99 (not present in a command).
   localparam price_t PRICE_MAX = 'h999_99;
 
-  // The lowest possible price $000.00 (not present in a command). 
+  // The lowest possible price $000.00 (not present in a command).
   localparam price_t PRICE_MIN = 'h000_00;
-  
+
 endpackage // bcd_pkg
 `endif

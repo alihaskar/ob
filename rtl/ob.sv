@@ -56,40 +56,40 @@ module ob (
   ob_pkg::cmd_t                         cntrl_cmd_in;
   logic                                 cntrl_cmd_in_pop;
   //
-  logic 				cntrl_rsp_out_full_r;
+  logic                                 cntrl_rsp_out_full_r;
   logic                                 cntrl_rsp_out_vld;
   ob_pkg::rsp_t                         cntrl_rsp_out;
   //
-  logic 				cntrl_bid_table_vld_r;
+  logic                                 cntrl_bid_table_vld_r;
   ob_pkg::table_t                       cntrl_bid_table_r;
-  logic 				cntrl_bid_reject_vld_r;
+  logic                                 cntrl_bid_reject_vld_r;
   ob_pkg::table_t                       cntrl_bid_reject_r;
-  logic 				cntrl_bid_reject_pop;
-  logic 				cntrl_bid_insert;
+  logic                                 cntrl_bid_reject_pop;
+  logic                                 cntrl_bid_insert;
   ob_pkg::table_t                       cntrl_bid_insert_tbl;
   logic                                 cntrl_bid_pop;
-  logic 				cntrl_bid_update_vld;
+  logic                                 cntrl_bid_update_vld;
   ob_pkg::table_t                       cntrl_bid_update;
   logic                                 cntrl_bid_cancel_hit_w;
   ob_pkg::table_t                       cntrl_bid_cancel_hit_tbl_w;
   logic                                 cntrl_bid_cancel;
   ob_pkg::uid_t                         cntrl_bid_cancel_uid;
   //
-  logic 				cntrl_ask_table_vld_r;
+  logic                                 cntrl_ask_table_vld_r;
   ob_pkg::table_t                       cntrl_ask_table_r;
-  logic 				cntrl_ask_reject_vld_r;
-  logic 				cntrl_ask_reject_pop;
+  logic                                 cntrl_ask_reject_vld_r;
+  logic                                 cntrl_ask_reject_pop;
   ob_pkg::table_t                       cntrl_ask_reject_r;
-  logic 				cntrl_ask_insert;
+  logic                                 cntrl_ask_insert;
   ob_pkg::table_t                       cntrl_ask_insert_tbl;
   logic                                 cntrl_ask_pop;
-  logic 				cntrl_ask_update_vld;
+  logic                                 cntrl_ask_update_vld;
   ob_pkg::table_t                       cntrl_ask_update;
   logic                                 cntrl_ask_cancel_hit_w;
   ob_pkg::table_t                       cntrl_ask_cancel_hit_tbl_w;
   logic                                 cntrl_ask_cancel;
   ob_pkg::uid_t                         cntrl_ask_cancel_uid;
-   
+
   // ------------------------------------------------------------------------ //
   //
   `LIBV_QUEUE_WIRES(ingress_queue_, ob_pkg::cmd_t);
@@ -103,14 +103,14 @@ module ob (
   always_comb begin : in_PROC
 
     // -> OB interface
-    ingress_queue_push 	    = cmd_vld_r;
+    ingress_queue_push      = cmd_vld_r;
     ingress_queue_push_data = cmd_r;
 
     ingress_queue_flush     = 'b0;
     ingress_queue_commit    = cntrl_cmd_in_pop;
     ingress_queue_replay    = 'b0;
 
-    cmd_full_r 		    = ingress_queue_full_r;
+    cmd_full_r              = ingress_queue_full_r;
 
   end // block: in_PROC
 
@@ -192,16 +192,16 @@ module ob (
     , .clk               (clk                          )
     , .rst               (rst                          )
   );
-  
+
   always_comb begin : ob_cntrl_PROC
 
     // Ingress Queue -> Ob. Cntrl.
-    cntrl_cmd_in_vld 	   = (~ingress_queue_empty_r);
-    cntrl_cmd_in 	   = ingress_queue_pop_data;
-    ingress_queue_pop 	   = cntrl_cmd_in_pop;
+    cntrl_cmd_in_vld       = (~ingress_queue_empty_r);
+    cntrl_cmd_in       = ingress_queue_pop_data;
+    ingress_queue_pop      = cntrl_cmd_in_pop;
 
-    // Ob. Cntrl. -> Egress Queue 
-    egress_queue_push 	   = cntrl_rsp_out_vld;
+    // Ob. Cntrl. -> Egress Queue
+    egress_queue_push      = cntrl_rsp_out_vld;
     egress_queue_push_data = cntrl_rsp_out;
 
   end // block: ob_cntrl_PROC
@@ -272,8 +272,8 @@ module ob (
   //
   always_comb begin : out_PROC
 
-    rsp_vld 	     = (~egress_queue_empty_r);
-    rsp 	     = egress_queue_pop_data;
+    rsp_vld          = (~egress_queue_empty_r);
+    rsp              = egress_queue_pop_data;
 
     egress_queue_pop = rsp_vld & rsp_accept;
 
