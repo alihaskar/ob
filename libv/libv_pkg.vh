@@ -34,11 +34,11 @@
 package libv_pkg;
 
   // Deque commands
-  typedef enum logic [1:0] { PushFront = 2'b00,
-                             PopFront = 2'b01,
-                             PushBack = 2'b10,
-                             PopBack = 2'b11
-                             } cmd_t;
+  typedef enum logic [1:0] { OpPushFront = 2'b00,
+                             OpPopFront = 2'b01,
+                             OpPushBack = 2'b10,
+                             OpPopBack = 2'b11
+                             } deque_op_t;
 
   function automatic int max(int a, int b); begin
     return (a < b) ? b : a;

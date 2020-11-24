@@ -370,7 +370,7 @@ void VSignals::get(Response& rsp) {
 }
 
 TB::TB(const Options& opts)
-    : opts_(opts), model_(PUT_TABLE_DEPTH_N, ASK_TABLE_DEPTH_N) {
+    : opts_(opts), model_(BID_TABLE_DEPTH_N, ASK_TABLE_DEPTH_N) {
 #ifdef OPT_VCD_ENABLE
   if (opts.wave_enable) {
     Verilated::traceEverOn(true);
@@ -800,7 +800,7 @@ void Model::verbose() const {
 
 StimulusGenerator::StimulusGenerator(const Bag<vluint8_t>& opcodes,
                                      double mean, double stddev)
-    : opcodes_(opcodes), model_(PUT_TABLE_DEPTH_N, ASK_TABLE_DEPTH_N),
+    : opcodes_(opcodes), model_(BID_TABLE_DEPTH_N, ASK_TABLE_DEPTH_N),
       mean_(mean), stddev_(stddev) {
 }
 

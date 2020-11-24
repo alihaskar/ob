@@ -89,6 +89,22 @@ module ob (
   ob_pkg::table_t                       cntrl_ask_cancel_hit_tbl_w;
   logic                                 cntrl_ask_cancel;
   ob_pkg::uid_t                         cntrl_ask_cancel_uid;
+  //
+  ob_pkg::table_t                       cntrl_mk_buy_head_r;
+  logic                                 cntrl_mk_buy_cmd_vld;
+  libv_pkg::deque_op_t                  cntrl_mk_buy_cmd_op;
+  ob_pkg::table_t                       cntrl_mk_buy_cmd_push_data;
+  ob_pkg::table_t                       cntrl_mk_buy_cmd_pop_data;
+  logic                                 cntrl_mk_buy_full_w;
+  logic                                 cntrl_mk_buy_empty_w;
+  //
+  ob_pkg::table_t                       cntrl_mk_sell_head_r;
+  logic                                 cntrl_mk_sell_cmd_vld;
+  libv_pkg::deque_op_t                  cntrl_mk_sell_cmd_op;
+  ob_pkg::table_t                       cntrl_mk_sell_cmd_push_data;
+  ob_pkg::table_t                       cntrl_mk_sell_cmd_pop_data;
+  logic                                 cntrl_mk_sell_full_w;
+  logic                                 cntrl_mk_sell_empty_w;
 
   // ------------------------------------------------------------------------ //
   //
@@ -135,7 +151,7 @@ module ob (
 
   // ------------------------------------------------------------------------ //
   //
-  ob_table #(.N(cfg_pkg::PUT_TABLE_DEPTH_N), .is_ask('b0)) u_bid_table (
+  ob_table #(.N(cfg_pkg::BID_TABLE_DEPTH_N), .is_ask('b0)) u_bid_table (
     //
       .head_pop          (cntrl_bid_pop                )
       //
@@ -210,62 +226,122 @@ module ob (
   //
   ob_cntrl u_ob_cntrl (
     //
-      .cmd_in_vld        (cntrl_cmd_in_vld             )
-    , .cmd_in            (cntrl_cmd_in                 )
+      .cmd_in_vld             (cntrl_cmd_in_vld             )
+    , .cmd_in                 (cntrl_cmd_in                 )
     //
-    , .cmd_in_pop        (cntrl_cmd_in_pop             )
+    , .cmd_in_pop             (cntrl_cmd_in_pop             )
     //
-    , .rsp_out_full_r    (cntrl_rsp_out_full_r         )
+    , .rsp_out_full_r         (cntrl_rsp_out_full_r         )
     //
-    , .rsp_out_vld       (cntrl_rsp_out_vld            )
-    , .rsp_out           (cntrl_rsp_out                )
+    , .rsp_out_vld            (cntrl_rsp_out_vld            )
+    , .rsp_out                (cntrl_rsp_out                )
     //
-    , .bid_table_vld_r   (cntrl_bid_table_vld_r        )
-    , .bid_table_r       (cntrl_bid_table_r            )
+    , .bid_table_vld_r        (cntrl_bid_table_vld_r        )
+    , .bid_table_r            (cntrl_bid_table_r            )
     //
-    , .bid_reject_vld_r  (cntrl_bid_reject_vld_r       )
-    , .bid_reject_r      (cntrl_bid_reject_r           )
+    , .bid_reject_vld_r       (cntrl_bid_reject_vld_r       )
+    , .bid_reject_r           (cntrl_bid_reject_r           )
     //
-    , .bid_cancel_hit_w  (cntrl_bid_cancel_hit_w       )
-    , .bid_cancel_hit_tbl_w (cntrl_bid_cancel_hit_tbl_w)
+    , .bid_cancel_hit_w       (cntrl_bid_cancel_hit_w       )
+    , .bid_cancel_hit_tbl_w   (cntrl_bid_cancel_hit_tbl_w   )
     //
-    , .bid_reject_pop    (cntrl_bid_reject_pop         )
+    , .bid_reject_pop         (cntrl_bid_reject_pop         )
     //
-    , .bid_insert        (cntrl_bid_insert             )
-    , .bid_insert_tbl    (cntrl_bid_insert_tbl         )
+    , .bid_insert             (cntrl_bid_insert             )
+    , .bid_insert_tbl         (cntrl_bid_insert_tbl         )
     //
-    , .bid_pop           (cntrl_bid_pop                )
+    , .bid_pop                (cntrl_bid_pop                )
     //
-    , .bid_update_vld    (cntrl_bid_update_vld         )
-    , .bid_update        (cntrl_bid_update             )
+    , .bid_update_vld         (cntrl_bid_update_vld         )
+    , .bid_update             (cntrl_bid_update             )
     //
-    , .bid_cancel        (cntrl_bid_cancel             )
-    , .bid_cancel_uid    (cntrl_bid_cancel_uid         )
+    , .bid_cancel             (cntrl_bid_cancel             )
+    , .bid_cancel_uid         (cntrl_bid_cancel_uid         )
     //
-    , .ask_table_vld_r   (cntrl_ask_table_vld_r        )
-    , .ask_table_r       (cntrl_ask_table_r            )
+    , .ask_table_vld_r        (cntrl_ask_table_vld_r        )
+    , .ask_table_r            (cntrl_ask_table_r            )
     //
-    , .ask_reject_vld_r  (cntrl_ask_reject_vld_r       )
-    , .ask_reject_r      (cntrl_ask_reject_r           )
+    , .ask_reject_vld_r       (cntrl_ask_reject_vld_r       )
+    , .ask_reject_r           (cntrl_ask_reject_r           )
     //
-    , .ask_cancel_hit_w  (cntrl_ask_cancel_hit_w       )
-    , .ask_cancel_hit_tbl_w(cntrl_ask_cancel_hit_tbl_w )
+    , .ask_cancel_hit_w       (cntrl_ask_cancel_hit_w       )
+    , .ask_cancel_hit_tbl_w   (cntrl_ask_cancel_hit_tbl_w   )
     //
-    , .ask_reject_pop    (cntrl_ask_reject_pop         )
+    , .ask_reject_pop         (cntrl_ask_reject_pop         )
     //
-    , .ask_insert        (cntrl_ask_insert             )
-    , .ask_insert_tbl    (cntrl_ask_insert_tbl         )
+    , .ask_insert             (cntrl_ask_insert             )
+    , .ask_insert_tbl         (cntrl_ask_insert_tbl         )
     //
-    , .ask_pop           (cntrl_ask_pop                )
+    , .ask_pop                (cntrl_ask_pop                )
     //
-    , .ask_update_vld    (cntrl_ask_update_vld         )
-    , .ask_update        (cntrl_ask_update             )
+    , .ask_update_vld         (cntrl_ask_update_vld         )
+    , .ask_update             (cntrl_ask_update             )
     //
-    , .ask_cancel        (cntrl_ask_cancel             )
-    , .ask_cancel_uid    (cntrl_ask_cancel_uid         )
+    , .ask_cancel             (cntrl_ask_cancel             )
+    , .ask_cancel_uid         (cntrl_ask_cancel_uid         )
     //
-    , .clk               (clk                          )
-    , .rst               (rst                          )
+    , .mk_buy_head_r          (cntrl_mk_buy_head_r          )
+    , .mk_buy_cmd_pop_data    ()
+    //
+    , .mk_buy_cmd_vld         (cntrl_mk_buy_cmd_vld         )
+    , .mk_buy_cmd_op          (cntrl_mk_buy_cmd_op          )
+    , .mk_buy_cmd_push_data   (cntrl_mk_buy_cmd_push_data   )
+    //
+    , .mk_buy_empty_w         (cntrl_mk_sell_empty_w        )
+    , .mk_buy_full_w          (cntrl_mk_sell_full_w         )
+    //
+    , .mk_sell_head_r         (cntrl_mk_sell_head_r         )
+    , .mk_sell_cmd_pop_data   ()
+    //
+    , .mk_sell_cmd_vld        (cntrl_mk_sell_cmd_vld        )
+    , .mk_sell_cmd_op         (cntrl_mk_sell_cmd_op         )
+    , .mk_sell_cmd_push_data  (cntrl_mk_sell_cmd_push_data  )
+    //
+    , .mk_sell_empty_w        (cntrl_mk_sell_empty_w        )
+    , .mk_sell_full_w         (cntrl_mk_sell_full_w         )
+    //
+    , .clk                    (clk                          )
+    , .rst                    (rst                          )
+  );
+
+  // ------------------------------------------------------------------------ //
+  //
+  libv_deque #(
+    .W($bits(ob_pkg::table_t)), .N(cfg_pkg::MARKET_BUY_DEPTH_N)) u_market_buy (
+    //
+      .cmd_vld                (cntrl_mk_buy_cmd_vld         )
+    , .cmd_op                 (cntrl_mk_buy_cmd_op          )
+    , .cmd_push_data          (cntrl_mk_buy_cmd_push_data   )
+    , .cmd_pop_data           (cntrl_mk_buy_cmd_pop_data    )
+    //
+    , .head_r                 (cntrl_mk_buy_head_r          )
+    , .tail_r                 () // Unused
+    //
+    , .empty_w                (cntrl_mk_buy_empty_w         )
+    , .full_w                 (cntrl_mk_buy_full_w          )
+    //
+    , .clk                    (clk                          )
+    , .rst                    (rst                          )
+  );
+
+  // ------------------------------------------------------------------------ //
+  //
+  libv_deque #(
+    .W($bits(ob_pkg::table_t)), .N(cfg_pkg::MARKET_SELL_DEPTH_N)) u_market_sell (
+    //
+      .cmd_vld                (cntrl_mk_sell_cmd_vld        )
+    , .cmd_op                 (cntrl_mk_sell_cmd_op         )
+    , .cmd_push_data          (cntrl_mk_sell_cmd_push_data  )
+    , .cmd_pop_data           (cntrl_mk_sell_cmd_pop_data   )
+    //
+    , .head_r                 (cntrl_mk_sell_head_r         )
+    , .tail_r                 () // Unused
+    //
+    , .empty_w                (cntrl_mk_sell_empty_w        )
+    , .full_w                 (cntrl_mk_sell_full_w         )
+    //
+    , .clk                    (clk                          )
+    , .rst                    (rst                          )
   );
 
   // ------------------------------------------------------------------------ //

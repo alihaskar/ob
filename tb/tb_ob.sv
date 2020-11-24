@@ -79,7 +79,7 @@ module tb_ob (
   , input                                         clk
   , input                                         rst
 );
-  
+
   // ------------------------------------------------------------------------ //
   //
   initial tb_cycle  = '0;
@@ -90,7 +90,7 @@ module tb_ob (
   // ------------------------------------------------------------------------ //
   //
   ob_pkg::cmd_t                         cmd_r;
-  
+
   always_comb begin : cmd_PROC
 
     cmd_r         = '0;
@@ -102,27 +102,27 @@ module tb_ob (
       end
       ob_pkg::Op_QryBidAsk: begin
       end
-      ob_pkg::Op_Buy: begin
+      ob_pkg::Op_BuyLimit: begin
         ob_pkg::oprand_buy_t oprand;
 
         oprand.quantity  = cmd_buy_quantity_r;
-        oprand.price 	 = cmd_buy_price_r;
+        oprand.price     = cmd_buy_price_r;
 
-	cmd_r.oprand 	 = '0;
+	      cmd_r.oprand     = '0;
         cmd_r.oprand.buy = oprand;
       end
-      ob_pkg::Op_Sell: begin
+      ob_pkg::Op_SellLimit: begin
         ob_pkg::oprand_sell_t oprand;
 
         oprand.quantity   = cmd_ask_quantity_r;
-        oprand.price 	  = cmd_ask_price_r;
+        oprand.price      = cmd_ask_price_r;
 
-	cmd_r.oprand 	  = '0;
-	
+	      cmd_r.oprand      = '0;
+
         cmd_r.oprand.sell = oprand;
       end
       ob_pkg::Op_Cancel: begin
-	cmd_r.oprand.cancel.uid = cmd_cancel_uid_r;
+	      cmd_r.oprand.cancel.uid = cmd_cancel_uid_r;
       end
       default: ;
     endcase // case (cmd_r.opcode_r)
@@ -132,7 +132,7 @@ module tb_ob (
   // ------------------------------------------------------------------------ //
   //
   ob_pkg::rsp_t                         rsp;
-  
+
   always_comb begin : rsp_PROC
 
     //

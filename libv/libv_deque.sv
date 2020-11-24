@@ -56,10 +56,19 @@ module libv_deque #(
    //======================================================================== //
 
    , input                                   cmd_vld
-   , input libv_pkg::cmd_t                   cmd_op
+   , input libv_pkg::deque_op_t              cmd_op
    , input [W - 1:0]                         cmd_push_data
 
    , output logic [W - 1:0]                  cmd_pop_data
+
+   //======================================================================== //
+   //                                                                         //
+   // Head Interface                                                          //
+   //                                                                         //
+   //======================================================================== //
+
+   , output logic [W - 1:0]                  head_r
+   , output logic [W - 1:0]                  tail_r
 
    //======================================================================== //
    //                                                                         //
@@ -93,6 +102,7 @@ module libv_deque #(
 
   //
   logic [N - 1:0][W - 1:0] mem_r;
+  logic [N - 1:0][W - 1:0] mem_w;
   logic                    mem_en;
 
   //
@@ -105,6 +115,13 @@ module libv_deque #(
   //
   logic                    tail_ptr_inc;
   logic                    tail_ptr_dec;
+
+  // Head-/Tail- pointers
+  `LIBV_REG_EN_RST_W(logic [W - 1:0], head);
+  `LIBV_REG_EN_RST_W(logic [W - 1:0], tail);
+
+  // Empty-/Full- flags
+  `LIBV_REG_RST_R(logic, full, 'b0);
 
   // ======================================================================== //
   //                                                                          //
@@ -130,23 +147,21 @@ module libv_deque #(
     mem_upt      = 'b1;
 
     case (cmd_op)
-      libv_pkg::PushFront: begin
+      libv_pkg::OpPushFront: begin
         mem_upt      = 'b1;
-        head_ptr_inc = 'b1;
+        head_ptr_inc = (~full_r);
       end
-      libv_pkg::PopFront: begin
+      libv_pkg::OpPopFront: begin
         head_ptr_dec = 'b1;
       end
-      libv_pkg::PushBack: begin
+      libv_pkg::OpPushBack: begin
         mem_upt      = 'b1;
-        tail_ptr_dec = 'b1;
+        tail_ptr_dec = (~full_r);
       end
-      libv_pkg::PopBack: begin
+      libv_pkg::OpPopBack: begin
         tail_ptr_inc = 'b1;
       end
     endcase // case (cmd)
-
-    mem_en = mem_upt & cmd_vld;
 
   end // block: ptr_PROC
 
@@ -176,10 +191,10 @@ module libv_deque #(
     endcase // case ({tail_ptr_inc, tail_ptr_dec})
 
     // Write pointer is next head/tail pointer on current op.
-    wr_ptr = (cmd_op == libv_pkg::PushFront) ? head_ptr_w.a : tail_ptr_w.a;
+    wr_ptr = (cmd_op == libv_pkg::OpPushFront) ? head_ptr_w.a : tail_ptr_w.a;
 
     // Read pointer is head/tail pointer on current op.
-    rd_ptr = (cmd_op == libv_pkg::PopFront) ? head_ptr_r.a : tail_ptr_r.a;
+    rd_ptr = (cmd_op == libv_pkg::OpPopFront) ? head_ptr_r.a : tail_ptr_r.a;
 
   end // block: ptr_PROC
 
@@ -197,7 +212,31 @@ module libv_deque #(
 
   // ------------------------------------------------------------------------ //
   //
-  always_comb cmd_pop_data = mem_r [rd_ptr];
+  always_comb begin : head_PROC
+
+    cmd_pop_data = mem_r [rd_ptr];
+
+    // Current head; as pointed to by the head pointer.
+    head_en      = head_ptr_en;
+    head_w       = mem_w [head_ptr_w.a];
+
+    // Current head; as pointed to by the head pointer.
+    tail_en      = tail_ptr_en;
+    tail_w       = mem_w [tail_ptr_w.a];
+
+  end // block: head_PROC
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_comb begin : mem_PROC
+
+    mem_en         = mem_upt & cmd_vld;
+
+    // Next memory state
+    mem_w          = mem_r;
+    mem_w [wr_ptr] = cmd_push_data;
+
+  end // block: mem_PROC
 
   // ======================================================================== //
   //                                                                          //
@@ -209,6 +248,6 @@ module libv_deque #(
   //
   always_ff @(posedge clk)
     if (mem_en)
-      mem_r [wr_ptr] <= cmd_push_data;
+      mem_r <= mem_w;
 
 endmodule // libv_deque

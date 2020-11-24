@@ -50,7 +50,7 @@ class Vtb_ob;
 namespace tb {
 
 // RTL parameterizations: Bid table size
-constexpr std::size_t PUT_TABLE_DEPTH_N = ${PUT_TABLE_DEPTH_N};
+constexpr std::size_t BID_TABLE_DEPTH_N = ${BID_TABLE_DEPTH_N};
 
 // RTL parameterizations: Ask table size
 constexpr std::size_t ASK_TABLE_DEPTH_N = ${ASK_TABLE_DEPTH_N};

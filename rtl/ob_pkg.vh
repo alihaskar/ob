@@ -46,7 +46,7 @@ package ob_pkg;
   // Number of bits to represent the total quantity contains by the BID/ASK
   // tables.
   localparam int ACCUM_TABLE_QUANTITY_BITS =
-     $clog2(libv_pkg::max(cfg_pkg::PUT_TABLE_DEPTH_N, cfg_pkg::ASK_TABLE_DEPTH_N)
+     $clog2(libv_pkg::max(cfg_pkg::BID_TABLE_DEPTH_N, cfg_pkg::ASK_TABLE_DEPTH_N)
               * (1 << $bits(quantity_t)));
 
   // Type to represent the accumulated quantity of all entries in the BID/ASK
@@ -56,30 +56,37 @@ package ob_pkg;
   // Arithmetic type for quantity operations.
   typedef logic signed [16:0] quantity_arith_t;
 
-  //
-  typedef enum logic [3:0] {
-                            // No operation; NOP.
+  // Commands supported by the matching engine.
+  typedef enum logic [3:0] {// No operation; NOP.
                             Op_Nop        = 4'b0000,
-
                             // Qry current bid-/ask- spread
                             Op_QryBidAsk  = 4'b0001,
-
                             // Buy transaction
-                            Op_Buy        = 4'b0010,
-
+                            Op_BuyLimit   = 4'b0010,
                             // Sell transaction
-                            Op_Sell       = 4'b0011,
-
+                            Op_SellLimit  = 4'b0011,
                             // Remove winning bid from order book.
                             Op_PopTopBid  = 4'b0100,
-
                             // Remove winning ask from order book.
                             Op_PopTopAsk  = 4'b0101,
-
-			    // Cancel prior Bid/Ask
-			    Op_Cancel     = 4'b0110
-
+			                      // Cancel prior Bid/Ask
+			                      Op_Cancel     = 4'b0110,
+                            // TODO: Market Buy (low-priority)
+                            Op_BuyMarket  = 4'b1000,
+                            // TODO: Market Sell (low-priority)
+                            Op_SellMarket = 4'b1001
                             } opcode_t;
+
+  // Time-In-Force (TIF) types
+  typedef enum logic [2:0] { // Good Until Cancelled (GUC)
+                             Tif_GoodUntilCancelled = 3'b000,
+                             // Imeediate or cancel (immediate, allows partial)
+                             Tif_ImmediateOrCancel  = 3'b001,
+                             // Fill Or Kill (immediate, disallow partial)
+                             Tif_FillOrKill         = 3'b010,
+                             // All or None (deferrable, disallow partial)
+                             Tif_AllOrNone          = 3'b011
+                            } tif_t;
 
   //
   typedef struct packed { // 36b
@@ -117,35 +124,28 @@ package ob_pkg;
   typedef struct packed {
     // Unique command identifier.
     uid_t           uid;
-
     // Command opcode.
     opcode_t        opcode;
-
+    // Time in force (TIF)
+    tif_t           tif;
     // Command oprand.
     oprand_t        oprand;
   } cmd_t;
 
   //
-  typedef enum logic [2:0] {
-    // Command executed
-    S_Okay   = 3'b000,
-
-    // Command UID has been rejected by the OB
-    S_Reject = 3'b001,
-
-    // Cancel operation hit pending bid/ask
-    S_CancelHit = 3'b010,
-
-    // Cancel operation missed.
-    S_CancelMiss = 3'b011,
-
-    // Prior command could not complete
-    S_Bad = 3'b100,
-
-    // Attempt to pop from empty table.
-    S_BadPop = 3'b101
-
-  } status_t;
+  typedef enum   logic [2:0] {// Command executed
+                              S_Okay   = 3'b000,
+                              // Command UID has been rejected by the OB
+                              S_Reject = 3'b001,
+                              // Cancel operation hit pending bid/ask
+                              S_CancelHit = 3'b010,
+                              // Cancel operation missed.
+                              S_CancelMiss = 3'b011,
+                              // Prior command could not complete
+                              S_Bad = 3'b100,
+                              // Attempt to pop from empty table.
+                              S_BadPop = 3'b101
+                              } status_t;
 
   typedef struct packed { // 80b
     // Bid
@@ -206,7 +206,6 @@ package ob_pkg;
     // Price at which to trade.
     bcd_pkg::price_t     price;
   } table_t;
-
 
   //
   localparam table_t TABLE_ASK_INIT  = '{ uid: '0,

@@ -30,7 +30,7 @@
 
 package cfg_pkg;
 
-  localparam int PUT_TABLE_DEPTH_N = ${PUT_TABLE_DEPTH_N};
+  localparam int BID_TABLE_DEPTH_N = ${BID_TABLE_DEPTH_N};
 
   localparam int ASK_TABLE_DEPTH_N = ${ASK_TABLE_DEPTH_N};
 
