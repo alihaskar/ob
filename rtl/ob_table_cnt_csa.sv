@@ -84,13 +84,29 @@ module ob_table_cnt_csa #(
         last = j;
         j    = 0;
         for (i = 0; i < last; i += 3) begin
-          w_t a = ((i + 0) < N) ? s [i + 0] : '0;
-          w_t b = ((i + 1) < N) ? s [i + 1] : '0;
-          w_t c = ((i + 2) < N) ? s [i + 2] : '0;
+          int remain_n = (last - i - 1);
 
-          { s[j + 1], s[j + 0] } = csa_3_to_2_v(a, b, c);
+          case (remain_n)
+            1: begin
+              s[j + 0] = s[i + 0];
 
-          j += 2;
+              j        += 1;
+            end
+            2: begin
+              { s[j + 1], s[j + 0] } = { s[i + 1], s [i + 0] };
+
+              j                      += 2;
+            end
+            default: begin
+              w_t a = ((i + 0) < N) ? s [i + 0] : '0;
+              w_t b = ((i + 1) < N) ? s [i + 1] : '0;
+              w_t c = ((i + 2) < N) ? s [i + 2] : '0;
+
+              { s[j + 1], s[j + 0] } = csa_3_to_2_v(a, b, c);
+
+              j            += 2;
+            end
+          endcase // case (remain_n)
         end
       end
 
