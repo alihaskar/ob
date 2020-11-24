@@ -61,7 +61,7 @@ std::string to_bcd_string(double d) {
 
 Bcd Bcd::from_string(const std::string& s) {
   Bcd b;
-  
+
   std::string::size_type i = s.find('.');
 
   std::string dollar{s.substr(0, i)};
@@ -70,7 +70,7 @@ Bcd Bcd::from_string(const std::string& s) {
     b.dollars[i] = c - '0';
     dollar.pop_back();
   }
-  
+
   std::string cents{s.substr(i + 1)};
   std::reverse(cents.begin(), cents.end());
   for (std::size_t i = 0; i < cents.size(); i++) {
@@ -156,7 +156,7 @@ vluint32_t Bcd::pack() const {
   r <<= 4;
   r |= (cents[0] & 0xF);
   r <<= 0;
-  
+
   return r;
 }
 
@@ -370,7 +370,7 @@ void VSignals::get(Response& rsp) {
 }
 
 TB::TB(const Options& opts)
-    : opts_(opts), model_(BID_TABLE_N, ASK_TABLE_N) {
+    : opts_(opts), model_(BID_TABLE_DEPTH_N, ASK_TABLE_DEPTH_N) {
 #ifdef OPT_VCD_ENABLE
   if (opts.wave_enable) {
     Verilated::traceEverOn(true);
@@ -410,7 +410,7 @@ void TB::run() {
   // Drive interfaces to idle.
   Command cmd;
   vs_.set(cmd);
-  
+
   // Response accept
   vs_.set_rsp_accept(true);
 
@@ -617,14 +617,14 @@ std::vector<Response> Model::apply(const Command& cmd) {
       rsp.uid = cmd.uid;
       rsp.status = Status::Okay;
       rsps.push_back(rsp);
-      
+
       Entry e;
       e.uid = cmd.uid;
       e.quantity = cmd.oprands.buy.quantity;
       e.price = cmd.oprands.buy.price;
       bid_table_.push_back(e);
       std::stable_sort(bid_table_.begin(), bid_table_.end(), BidComparer{});
-      
+
       while (attempt_trade(rsp)) {
         rsps.push_back(rsp);
       }
@@ -645,14 +645,14 @@ std::vector<Response> Model::apply(const Command& cmd) {
       rsp.uid = cmd.uid;
       rsp.status = Status::Okay;
       rsps.push_back(rsp);
-      
+
       Entry e;
       e.uid = cmd.uid;
       e.quantity = cmd.oprands.sell.quantity;
       e.price = cmd.oprands.sell.price;
       ask_table_.push_back(e);
       std::stable_sort(ask_table_.begin(), ask_table_.end(), AskComparer{});
-      
+
       while (attempt_trade(rsp)) {
         rsps.push_back(rsp);
       }
@@ -710,7 +710,7 @@ std::vector<Response> Model::apply(const Command& cmd) {
           !did_cancel && (it != ask_table_.end())) {
         // Cancel occurs
         did_cancel = true;
-        ask_table_.erase(it);        
+        ask_table_.erase(it);
       }
 
       rsp.valid = true;
@@ -779,7 +779,7 @@ bool Model::attempt_trade(Response& rsp) {
     // Remove head.
     ask_table_.erase(ask_table_.begin());
   }
-  
+
   return true;
 }
 #if defined(OPT_VERBOSE) && defined(OPT_TRACE_ENABLE)
@@ -800,7 +800,7 @@ void Model::verbose() const {
 
 StimulusGenerator::StimulusGenerator(const Bag<vluint8_t>& opcodes,
                                      double mean, double stddev)
-    : opcodes_(opcodes), model_(BID_TABLE_N, ASK_TABLE_N),
+    : opcodes_(opcodes), model_(BID_TABLE_DEPTH_N, ASK_TABLE_DEPTH_N),
       mean_(mean), stddev_(stddev) {
 }
 
@@ -839,7 +839,7 @@ void StimulusGenerator::generate(Command& cmd) {
   const Bcd bcd = Bcd::from_string(to_bcd_string(price));
   ASSERT_TRUE(bcd.is_valid());
   const vluint16_t quantity = Random::uniform<int>(100, 10);
-  
+
   switch (cmd.opcode) {
     case Opcode::Nop: {
       // No oprands.

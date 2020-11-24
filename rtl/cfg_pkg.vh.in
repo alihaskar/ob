@@ -30,9 +30,13 @@
 
 package cfg_pkg;
 
-  localparam int BID_TABLE_N = ${BID_TABLE_N};
+  localparam int BID_TABLE_DEPTH_N = ${BID_TABLE_DEPTH_N};
 
-  localparam int ASK_TABLE_N = ${ASK_TABLE_N};
+  localparam int ASK_TABLE_DEPTH_N = ${ASK_TABLE_DEPTH_N};
+
+  localparam int MARKET_BUY_DEPTH_N = 16;
+
+  localparam int MARKET_SELL_DEPTH_N = 16;
 
 endpackage // cfg_pkg
 

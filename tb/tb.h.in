@@ -50,10 +50,10 @@ class Vtb_ob;
 namespace tb {
 
 // RTL parameterizations: Bid table size
-constexpr std::size_t BID_TABLE_N = ${BID_TABLE_N};
+constexpr std::size_t BID_TABLE_DEPTH_N = ${BID_TABLE_DEPTH_N};
 
 // RTL parameterizations: Ask table size
-constexpr std::size_t ASK_TABLE_N = ${ASK_TABLE_N};
+constexpr std::size_t ASK_TABLE_DEPTH_N = ${ASK_TABLE_DEPTH_N};
 
 // Randomization support
 //
@@ -101,8 +101,8 @@ struct Random {
     std::advance(begin, Random::uniform(std::distance(begin, end) - 1, 0l));
     return begin;
   }
-  
-  
+
+
  private:
   static inline std::mt19937 mt_;
 };
@@ -164,7 +164,7 @@ class UniquePool {
  private:
   // Domain of T.
   T hi_, lo_;
-  
+
   // Set of t's which are currently inflight and which may not be
   // reused.
   std::set<T> ts_;
@@ -181,7 +181,7 @@ class Bcd {
   static const Bcd MAX;
 
   static const Bcd MIN;
-  
+
  public:
 
   // Generate from std::string (like ddd.cc).
@@ -202,7 +202,7 @@ class Bcd {
   vluint32_t pack() const;
 
  private:
-  
+
   vluint8_t dollars[3];
   vluint8_t cents[2];
 };
@@ -246,7 +246,7 @@ enum Status : vluint8_t {
 
 struct Command {
   std::string to_string() const;
-  
+
   bool valid = false;
   vluint8_t opcode;
   vluint32_t uid;
@@ -267,7 +267,7 @@ struct Command {
 
 struct Response {
   std::string to_string(vluint8_t opcode) const;
-  
+
   bool valid = false;
   vluint32_t uid;
   vluint8_t status;
@@ -401,7 +401,7 @@ struct VSignals {
 
 struct Entry {
   std::string to_string() const;
-  
+
   // UID of initiating command.
   vluint32_t uid;
   // Bid/Ask quantity to trade.
@@ -452,7 +452,7 @@ class Model {
 // Class to generate stimulus, apply it to the model, and pass it to
 // the RTL.
 class StimulusGenerator {
-  
+
  public:
   StimulusGenerator(const Bag<vluint8_t>& opcodes,
                     double mean, double stddev);
@@ -524,15 +524,15 @@ class TB {
 
   // Step one cycle.
   void step(std::size_t n = 1);
-  
+
   // Bound signals
   VSignals vs_;
-  
+
 #ifdef OPT_VCD_ENABLE
   // VCD instance.
   VerilatedVcdC* wave_ = nullptr;
 #endif
-  
+
   // Verilated RTL instance.
   Vtb_ob* u_ = nullptr;
 
