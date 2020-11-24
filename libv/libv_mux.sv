@@ -1,5 +1,5 @@
-//========================================================================== //
-// Copyright (c) 2020, Stephen Henry
+//=========================================================================== //
+// Copyright (c) 2019, Stephen Henry
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -23,21 +23,26 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
-//========================================================================== //
+//=========================================================================== //
 
-`ifndef OB_TB_CFG_PKG_VH
-`define OB_TB_CFG_PKG_VH
+`include "libv_pkg.vh"
 
-package cfg_pkg;
+module libv_mux #(parameter int N = 4, parameter int W = 32) (
+  //
+    input logic [N-1:0][W-1:0]     in
+  , input logic [N-1:0]            sel
+  //
+  , output logic [W-1:0]           out
+);
 
-  localparam int PUT_TABLE_DEPTH_N = ${PUT_TABLE_DEPTH_N};
+  // ------------------------------------------------------------------------ //
+  //
+  always_comb begin : mux_PROC
 
-  localparam int ASK_TABLE_DEPTH_N = ${ASK_TABLE_DEPTH_N};
+    out         = '0;
+    for (int i = 0; i < N; i++)
+      out |= (sel [i] ? in [i] : '0);
 
-  localparam int MARKET_BUY_DEPTH_N = 16;
+  end // block: mux_PROC
 
-  localparam int MARKET_SELL_DEPTH_N = 16;
-
-endpackage // cfg_pkg
-
-`endif
+endmodule // libv_mux

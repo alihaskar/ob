@@ -74,7 +74,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   //                                                                          //
   // ======================================================================== //
 
-  // 
+  //
   localparam bcd_pkg::price_t INVALID_PRICE =
      is_ask ? bcd_pkg::PRICE_MAX : bcd_pkg::PRICE_MIN;
 
@@ -93,7 +93,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
       if (sel[i])
         mux |= tbl [i];
   end endfunction
-  
+
   function automatic logic price_compare(bcd_pkg::price_t x,
 					 bcd_pkg::price_t t); begin
     return is_ask ? (x < t) : (x > t);
@@ -170,7 +170,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   //
   logic [N:0]                           insert_match_d;
   logic [N:0]                           insert_match_sel_d;
-  
+
   always_comb begin : insert_PROC
 
     // Compare unary mask locating the entries within the table
@@ -187,7 +187,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     insert_match_sel_d  = pri(insert_match_d, .lsb('b1));
 
   end // block: insert_PROC
-  
+
 
   // ------------------------------------------------------------------------ //
   //
@@ -217,7 +217,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
       cancel ?  mask(cancel_match_uid_d, .inclusive('b1), .lsb('b1)) : '0;
 
   end // block: cancel_PROC
-  
+
 
   // ------------------------------------------------------------------------ //
   //
@@ -229,14 +229,14 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     tbl_pop_head_d = head_pop ? '1 : '0;
 
   end // block: head_pop_PROC
-  
+
 
   // ------------------------------------------------------------------------ //
   //
   logic [N:0]                           tbl_install_d;
   logic [N:0]                           tbl_shift_up_d;
   logic [N:0]                           tbl_shift_dn_d;
-  
+
   always_comb begin : t_op_PROC
 
     // Relative to head
@@ -257,7 +257,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     tbl_shift_dn_d  = mask(insert_match_sel_d, .inclusive('b0), .lsb('b1));
 
   end // block: t_op_PROC
-  
+
 
   // ------------------------------------------------------------------------ //
   //
@@ -368,14 +368,14 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     tbl_vld_w [0]  = (tbl_w [0].price != INVALID_PRICE);
 
   end // block: tbl_update_PROC
-  
+
 
   // ------------------------------------------------------------------------ //
   //
   `LIBV_REG_RST_W(logic, head_vld, 'b0);
   `LIBV_REG_EN_W(ob_pkg::table_t, head);
   `LIBV_REG_RST_W(logic, head_did_update, 'b0);
-  
+
   always_comb begin : head_PROC
 
     // Head value was updated in the current cycle (to take effect in
@@ -399,7 +399,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   //
   `LIBV_REG_RST_W(logic, reject_vld, 'b0);
   `LIBV_REG_EN_W(ob_pkg::table_t, reject);
-  
+
   always_comb begin : reject_PROC
 
     // Reject valid whenever a valid price is inserted into the reject
@@ -412,7 +412,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     reject_w 	 = tbl_w [0];
 
   end // block: reject_PROC
-  
+
   // ======================================================================== //
   //                                                                          //
   // Flops                                                                    //
@@ -424,12 +424,36 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   always_ff @(posedge clk) begin : t_FLOP
     if (rst) begin
       for (int i = 0; i < N + 1; i++)
-	tbl_r [i] <= is_ask ? ob_pkg::TABLE_ASK_INIT : ob_pkg::TABLE_BID_INIT;
+	      tbl_r [i] <= is_ask ? ob_pkg::TABLE_ASK_INIT : ob_pkg::TABLE_BID_INIT;
     end else begin
       for (int i = 0; i < N + 1; i++)
-	if (tbl_en [i])
-	  tbl_r [i] <= tbl_w [i];
+	      if (tbl_en [i])
+	        tbl_r [i] <= tbl_w [i];
     end
   end // block: t_FLOP
+
+  // ======================================================================== //
+  //                                                                          //
+  // Instances                                                                //
+  //                                                                          //
+  // ======================================================================== //
+
+  // ------------------------------------------------------------------------ //
+  //
+  ob_table_cnt #(.N(N), .is_ask(is_ask)) u_table_cnt (
+    //
+      .cmd_vld                ()
+    , .cmd_price              ()
+    //
+    , .rsp_quantity_w         ()
+    //
+    , .tbl_r                  (tbl_r                   )
+    , .tbl_vld_r              (tbl_vld_r               )
+    //
+    , .busy_w                 ()
+    //
+    , .clk                    (clk                     )
+    , .rst                    (rst                     )
+  );
 
 endmodule // ob_table

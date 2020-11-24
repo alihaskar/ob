@@ -98,11 +98,23 @@ module ob_cntrl (
   , input                                         rst
 );
 
+  // ======================================================================== //
+  //                                                                          //
+  // Wires                                                                    //
+  //                                                                          //
+  // ======================================================================== //
+
   `LIBV_REG_RST_R(logic, bid_cancel_hit, 'b0);
   `LIBV_REG_EN_R(ob_pkg::table_t, bid_cancel_hit_tbl);
 
   `LIBV_REG_RST_R(logic, ask_cancel_hit, 'b0);
   `LIBV_REG_EN_R(ob_pkg::table_t, ask_cancel_hit_tbl);
+
+  `LIBV_REG_EN_RST(logic, market_buy_full, 'b0);
+  `LIBV_REG_EN_RST(logic, market_buy_empty, 'b1);
+
+  `LIBV_REG_EN_RST(logic, market_sell_full, 'b0);
+  `LIBV_REG_EN_RST(logic, market_sell_empty, 'b1);
 
   // ------------------------------------------------------------------------ //
   //
@@ -655,5 +667,45 @@ module ob_cntrl (
     ask_cancel_hit_tbl_en = ask_cancel_hit_w;
 
   end // block: cancel_PROC
+
+  // ======================================================================== //
+  //                                                                          //
+  // Instances                                                                //
+  //                                                                          //
+  // ======================================================================== //
+
+  // ------------------------------------------------------------------------ //
+  //
+  libv_deque #(
+    .W($bits(ob_pkg::cmd_t)), .N(cfg_pkg::MARKET_BUY_DEPTH_N)) u_market_buy (
+    //
+      .cmd_vld           ()
+    , .cmd_op            ()
+    , .cmd_push_data     ()
+    , .cmd_pop_data      ()
+    //
+    , .empty_w           (market_buy_empty_w           )
+    , .full_w            (market_buy_full_w            )
+    //
+    , .clk               (clk                          )
+    , .rst               (rst                          )
+  );
+
+  // ------------------------------------------------------------------------ //
+  //
+  libv_deque #(
+    .W($bits(ob_pkg::cmd_t)), .N(cfg_pkg::MARKET_SELL_DEPTH_N)) u_market_sell (
+    //
+      .cmd_vld           ()
+    , .cmd_op            ()
+    , .cmd_push_data     ()
+    , .cmd_pop_data      ()
+    //
+    , .empty_w           (market_sell_empty_w          )
+    , .full_w            (market_sell_full_w           )
+    //
+    , .clk               (clk                          )
+    , .rst               (rst                          )
+  );
 
 endmodule // ob_cntrl

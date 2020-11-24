@@ -135,7 +135,7 @@ module ob (
 
   // ------------------------------------------------------------------------ //
   //
-  ob_table #(.N(cfg_pkg::BID_TABLE_DEPTH_N), .is_ask('b0)) u_bid_table (
+  ob_table #(.N(cfg_pkg::PUT_TABLE_DEPTH_N), .is_ask('b0)) u_bid_table (
     //
       .head_pop          (cntrl_bid_pop                )
       //
@@ -263,40 +263,6 @@ module ob (
     //
     , .ask_cancel        (cntrl_ask_cancel             )
     , .ask_cancel_uid    (cntrl_ask_cancel_uid         )
-    //
-    , .clk               (clk                          )
-    , .rst               (rst                          )
-  );
-
-  // ------------------------------------------------------------------------ //
-  //
-  libv_deque #(
-    .W($bits(ob_pkg::cmd_t)), .N(cfg_pkg::MARKET_BUY_DEPTH_N)) u_market_buy (
-    //
-      .cmd_vld           ()
-    , .cmd_op            ()
-    , .cmd_push_data     ()
-    , .cmd_pop_data      ()
-    //
-    , .empty_w           ()
-    , .full_w            ()
-    //
-    , .clk               (clk                          )
-    , .rst               (rst                          )
-  );
-
-  // ------------------------------------------------------------------------ //
-  //
-  libv_deque #(
-    .W($bits(ob_pkg::cmd_t)), .N(cfg_pkg::MARKET_SELL_DEPTH_N)) u_market_sell (
-    //
-      .cmd_vld           ()
-    , .cmd_op            ()
-    , .cmd_push_data     ()
-    , .cmd_pop_data      ()
-    //
-    , .empty_w           ()
-    , .full_w            ()
     //
     , .clk               (clk                          )
     , .rst               (rst                          )

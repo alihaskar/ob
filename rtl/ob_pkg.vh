@@ -28,7 +28,9 @@
 `ifndef OB_RTL_OB_PKG_VH
 `define OB_RTL_OB_PKG_VH
 
+`include "libv_pkg.vh"
 `include "bcd_pkg.vh"
+`include "cfg_pkg.vh"
 
 package ob_pkg;
 
@@ -41,6 +43,16 @@ package ob_pkg;
   // Number of shares to trade.
   typedef logic [15:0] quantity_t;
 
+  // Number of bits to represent the total quantity contains by the BID/ASK
+  // tables.
+  localparam int ACCUM_TABLE_QUANTITY_BITS =
+     $clog2(libv_pkg::max(cfg_pkg::PUT_TABLE_DEPTH_N, cfg_pkg::ASK_TABLE_DEPTH_N)
+              * (1 << $bits(quantity_t)));
+
+  // Type to represent the accumulated quantity of all entries in the BID/ASK
+  // tables.
+  typedef logic [ACCUM_TABLE_QUANTITY_BITS - 1:0] accum_quantity_t;
+
   // Arithmetic type for quantity operations.
   typedef logic signed [16:0] quantity_arith_t;
 
@@ -48,19 +60,19 @@ package ob_pkg;
   typedef enum logic [3:0] {
                             // No operation; NOP.
                             Op_Nop        = 4'b0000,
-                                         
+
                             // Qry current bid-/ask- spread
                             Op_QryBidAsk  = 4'b0001,
-                                         
+
                             // Buy transaction
                             Op_Buy        = 4'b0010,
-                                         
+
                             // Sell transaction
                             Op_Sell       = 4'b0011,
-                                         
+
                             // Remove winning bid from order book.
                             Op_PopTopBid  = 4'b0100,
-                            
+
                             // Remove winning ask from order book.
                             Op_PopTopAsk  = 4'b0101,
 
@@ -114,8 +126,8 @@ package ob_pkg;
   } cmd_t;
 
   //
-  typedef enum logic [2:0] {  
-    // Command executed 
+  typedef enum logic [2:0] {
+    // Command executed
     S_Okay   = 3'b000,
 
     // Command UID has been rejected by the OB
@@ -163,7 +175,7 @@ package ob_pkg;
     // Bid/Ask ID
     uid_t                uid; // 32b
   } result_poptop_t;
-  
+
   typedef union packed {
     // Query Bid/Ask spread
     result_qrybidask_t qrybidask;
@@ -205,7 +217,9 @@ package ob_pkg;
   localparam table_t TABLE_BID_INIT  = '{ uid: '0,
                                           quantity: '0,
                                           price: bcd_pkg::PRICE_MIN };
-  
+
+  typedef enum logic [1:0] { CSA_3_2 = 'b00 // 3:2 compressor
+                             } csa_op_t;
 
 endpackage // ob_pkg
 

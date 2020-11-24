@@ -1,5 +1,5 @@
 ##========================================================================== //
-## Copyright (c) 2016-2019, Stephen Henry
+## Copyright (c) 2016-2020, Stephen Henry
 ## All rights reserved.
 ##
 ## Redistribution and use in source and binary forms, with or without
@@ -26,5 +26,6 @@
 ##========================================================================== //
 
 configure_file(cfg_pkg.vh.in cfg_pkg.vh)
+
 add_verilator_include_path(${CMAKE_CURRENT_BINARY_DIR})
 add_verilator_include_path(${CMAKE_CURRENT_SOURCE_DIR})
