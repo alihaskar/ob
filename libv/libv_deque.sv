@@ -29,7 +29,7 @@
 // ==================================================================== //
 
 `include "macros_pkg.vh"
-`include "libv_deque_pkg.vh"
+`include "libv_pkg.vh"
 
 module libv_deque #(
    // Word width in bits
@@ -56,7 +56,7 @@ module libv_deque #(
    //======================================================================== //
 
    , input                                   cmd_vld
-   , input libv_deque_pkg::cmd_t             cmd_op
+   , input libv_pkg::cmd_t                   cmd_op
    , input [W - 1:0]                         cmd_push_data
 
    , output logic [W - 1:0]                  cmd_pop_data
@@ -130,18 +130,18 @@ module libv_deque #(
     mem_upt      = 'b1;
 
     case (cmd_op)
-      libv_deque_pkg::PushFront: begin
+      libv_pkg::PushFront: begin
         mem_upt      = 'b1;
         head_ptr_inc = 'b1;
       end
-      libv_deque_pkg::PopFront: begin
+      libv_pkg::PopFront: begin
         head_ptr_dec = 'b1;
       end
-      libv_deque_pkg::PushBack: begin
+      libv_pkg::PushBack: begin
         mem_upt      = 'b1;
         tail_ptr_dec = 'b1;
       end
-      libv_deque_pkg::PopBack: begin
+      libv_pkg::PopBack: begin
         tail_ptr_inc = 'b1;
       end
     endcase // case (cmd)
@@ -176,10 +176,10 @@ module libv_deque #(
     endcase // case ({tail_ptr_inc, tail_ptr_dec})
 
     // Write pointer is next head/tail pointer on current op.
-    wr_ptr = (cmd_op == libv_deque_pkg::PushFront) ? head_ptr_w.a : tail_ptr_w.a;
+    wr_ptr = (cmd_op == libv_pkg::PushFront) ? head_ptr_w.a : tail_ptr_w.a;
 
     // Read pointer is head/tail pointer on current op.
-    rd_ptr = (cmd_op == libv_deque_pkg::PopFront) ? head_ptr_r.a : tail_ptr_r.a;
+    rd_ptr = (cmd_op == libv_pkg::PopFront) ? head_ptr_r.a : tail_ptr_r.a;
 
   end // block: ptr_PROC
 

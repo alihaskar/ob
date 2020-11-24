@@ -82,6 +82,7 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
 
   localparam int MUX_IN_N = libv_pkg::ceil(N, CSA_DEGREE_N - 2);
+
   typedef struct packed {
     logic                vld;
     ob_pkg::table_t      tbl;
@@ -92,6 +93,7 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
   ob_pkg::accum_quantity_t
     [MUX_IN_N - 1:0][CSA_DEGREE_N - 1:2]          mux_in;
   logic [CSA_DEGREE_N - 1:2]                      mux_all_vld;
+  logic [CSA_DEGREE_N - 1:2][MUX_IN_N - 1:0]      mux_sel;
   ob_pkg::accum_quantity_t [CSA_DEGREE_N - 1:2]   mux_out;
 
 
@@ -128,6 +130,9 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
     // Carry:
     acc_c_w      = csa_c_w;
     acc_c_en     = 'b0;
+
+    // Mux sel:
+    mux_sel      = 'b0;
 
     case (fsm_state_r)
 
@@ -251,7 +256,7 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
              .N(MUX_IN_N)) u_mux [CSA_DEGREE_N - 1:2] (
     //
       .in                     (mux_in              )
-    , .sel                    ()
+    , .sel                    (mux_sel             )
     //
     , .out                    (mux_out             )
   );

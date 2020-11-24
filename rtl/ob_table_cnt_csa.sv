@@ -58,6 +58,8 @@ module ob_table_cnt_csa #(
   //
   generate if (op == ob_pkg::CSA_3_2) begin
 
+    // Procedurally generate a CSA reduction tree using 3:2 operators.
+
     function automatic logic [1:0] csa_3_to_2(logic a, logic b, logic c); begin
       csa_3_to_2 [0] = (a ^ b ^ c);
       csa_3_to_2 [1] = a & b | c  & (a | b);
@@ -88,16 +90,21 @@ module ob_table_cnt_csa #(
 
           case (remain_n)
             1: begin
+              // Round with only 1 entry; forgo the CSA operation
+              // and simply reduce input into output.
               s[j + 0] = s[i + 0];
 
               j        += 1;
             end
             2: begin
+              // Similarly in a round with 2 entries, the 3:2 reduction
+              // step is unnecessary, so simply copy over.
               { s[j + 1], s[j + 0] } = { s[i + 1], s [i + 0] };
 
               j                      += 2;
             end
             default: begin
+              // Round with 3 entries; perform 3:2 reduction.
               w_t a = ((i + 0) < N) ? s [i + 0] : '0;
               w_t b = ((i + 1) < N) ? s [i + 1] : '0;
               w_t c = ((i + 2) < N) ? s [i + 2] : '0;
