@@ -215,24 +215,26 @@ bool operator!=(const Bcd& lhs, const Bcd& rhs);
 enum Opcode : vluint8_t {
   //
   Nop = 0,
-
   // Query current bid/ask spread.
   QryBidAsk = 1,
-
   // Buy stock
-  Buy = 2,
-
+  BuyLimit = 2,
   // Sell stock
-  Sell = 3,
-
+  SellLimit = 3,
   // Remove winning bid from table.
   PopTopBid = 4,
-
   // Remove winning ask from table.
   PopTopAsk = 5,
-
   // Cancel specified UID.
-  Cancel = 6
+  Cancel = 6,
+  //
+  BuyMarket = 8,
+  //
+  SellMarket = 9,
+  // Query Ask Table
+  QryTblAskLe = 10,
+  // Query Bid Table
+  QryTblBidGe = 11
 };
 
 enum Status : vluint8_t {

@@ -36,8 +36,8 @@ TEST(Regress, Basic) {
   tb::Bag<vluint8_t> bg;
   bg.push_back(tb::Opcode::Nop, 1);
   bg.push_back(tb::Opcode::QryBidAsk, 4);
-  bg.push_back(tb::Opcode::Buy, 10);
-  bg.push_back(tb::Opcode::Sell, 10);
+  bg.push_back(tb::Opcode::BuyLimit, 10);
+  bg.push_back(tb::Opcode::SellLimit, 10);
   bg.push_back(tb::Opcode::PopTopBid, 3);
   bg.push_back(tb::Opcode::PopTopAsk, 3);
   bg.push_back(tb::Opcode::Cancel, 1);

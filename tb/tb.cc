@@ -187,11 +187,15 @@ const char* to_opcode_string(vluint8_t opcode) {
   switch (opcode) {
     case Opcode::Nop: return "Nop";
     case Opcode::QryBidAsk: return "QryBidAsk";
-    case Opcode::Buy: return "Buy";
-    case Opcode::Sell: return "Sell";
+    case Opcode::BuyLimit: return "BuyLimit";
+    case Opcode::SellLimit: return "SellLimit";
     case Opcode::PopTopBid: return "PopTopBid";
     case Opcode::PopTopAsk: return "PopTopAsk";
     case Opcode::Cancel: return "Cancel";
+    case Opcode::BuyMarket: return "BuyMarket";
+    case Opcode::SellMarket: return "BuyMarket";
+    case Opcode::QryTblAskLe: return "QryTblAskLe";
+    case Opcode::QryTblBidGe: return "QryTblBidGe";
     default: return "Invalid";
   }
 }
@@ -203,12 +207,12 @@ std::string Command::to_string() const {
   r.add_field("uid", utility::hex(uid));
   r.add_field("opcode", to_opcode_string(opcode));
   switch (opcode) {
-    case Opcode::Buy: {
+    case Opcode::BuyLimit: {
       r.add_field("quantity", to_string(quantity));
       const Bcd bcd = Bcd::from_packed(price);
       r.add_field("price", bcd.to_string());
     } break;
-    case Opcode::Sell: {
+    case Opcode::SellLimit: {
       r.add_field("quantity", to_string(quantity));
       const Bcd bcd = Bcd::from_packed(price);
       r.add_field("price", bcd.to_string());
@@ -324,16 +328,21 @@ void VSignals::set(const Command& cmd) {
     } break;
     case Opcode::QryBidAsk: {
     } break;
-    case Opcode::Buy: {
+    case Opcode::BuyLimit: {
       vsupport::set(cmd_quantity_r, cmd.quantity);
       vsupport::set(cmd_price_r, cmd.price);
     } break;
-    case Opcode::Sell: {
+    case Opcode::SellLimit: {
       vsupport::set(cmd_quantity_r, cmd.quantity);
       vsupport::set(cmd_price_r, cmd.price);
     } break;
     case Opcode::Cancel: {
       vsupport::set(cmd_uid1_r, cmd.uid1);
+    } break;
+    case Opcode::QryTblAskLe:
+    case Opcode::QryTblBidGe: {
+      vsupport::set(cmd_quantity_r, cmd.quantity);
+      vsupport::set(cmd_price_r, cmd.price);
     } break;
     default: {
       // Unknown opcode.
@@ -485,7 +494,10 @@ void TB::run() {
   vs_.set(cmd);
 
   // Wind-down simulation
-  step(20);
+  step(209);
+#ifdef OPT_TRACE_ENABLE
+  std::cout << "[TB] " << vs_.cycle() << ": Simulation complete!\n";
+#endif
 }
 
 void TB::reset() {
@@ -611,7 +623,7 @@ std::vector<Response> Model::apply(const Command& cmd) {
       }
       rsps.push_back(rsp);
     } break;
-    case Opcode::Buy: {
+    case Opcode::BuyLimit: {
       // Command executes, therefore emit response
       rsp.valid = true;
       rsp.uid = cmd.uid;
@@ -639,7 +651,7 @@ std::vector<Response> Model::apply(const Command& cmd) {
         bid_table_.pop_back();
       }
     } break;
-    case Opcode::Sell: {
+    case Opcode::SellLimit: {
       // Command executes, therefore emit response
       rsp.valid = true;
       rsp.uid = cmd.uid;
@@ -847,11 +859,11 @@ void StimulusGenerator::generate(Command& cmd) {
     case Opcode::QryBidAsk: {
       // No oprands.
     } break;
-    case Opcode::Buy: {
+    case Opcode::BuyLimit: {
       cmd.quantity = quantity;
       cmd.price = bcd.pack();
     } break;
-    case Opcode::Sell: {
+    case Opcode::SellLimit: {
       cmd.quantity = quantity;
       cmd.price = bcd.pack();
     } break;

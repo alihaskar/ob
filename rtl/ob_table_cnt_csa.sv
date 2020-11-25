@@ -55,8 +55,8 @@ module ob_table_cnt_csa #(
   w_t [N - 1:0]                         s;
 
   function automatic logic [1:0] fa(logic a, logic b, logic c); begin
-    fa[0] = (a ^ b ^ c);
-    fa[1] = a & b | c  & (a | b);
+    fa[0] = ^{a, b, c};
+    fa[1] = (a & b) | c  & (a | b);
   end endfunction
 
   // ------------------------------------------------------------------------ //
@@ -70,7 +70,11 @@ module ob_table_cnt_csa #(
     function w_t [1:0] csa_3_2(w_t [2:0] in); begin
       csa_3_2 = '0;
       for (int i = 0 ; i < $bits(w_t); i++) begin
-        { csa_3_2 [1][i + 1], csa_3_2 [0][i] } = fa(in[2][i], in[1][i], in[0][i]);
+        logic co, sum;
+        { co, sum } =  fa(in[2][i], in[1][i], in[0][i]);
+        csa_3_2 [0][i] = sum;
+        if (i < N - 1)
+          csa_3_2 [1][i + 1] = co;
       end
     end endfunction
 
@@ -97,18 +101,11 @@ module ob_table_cnt_csa #(
 
               j        += 1;
             end
-            2: begin
-              // Similarly in a round with 2 entries, the 3:2 reduction
-              // step is unnecessary, so simply copy over.
-              { s[j + 1], s[j + 0] } = { s[i + 1], s [i + 0] };
-
-              j                      += 2;
-            end
             default: begin
               // Round with 3 entries; perform 3:2 reduction.
-              w_t a                  = ((i + 0) < N) ? s [i + 0] : '0;
-              w_t b                  = ((i + 1) < N) ? s [i + 1] : '0;
-              w_t c                  = ((i + 2) < N) ? s [i + 2] : '0;
+              w_t a                  = ((i + 0) < last) ? s [i + 0] : '0;
+              w_t b                  = ((i + 1) < last) ? s [i + 1] : '0;
+              w_t c                  = ((i + 2) < last) ? s [i + 2] : '0;
 
               { s[j + 1], s[j + 0] } = csa_3_2({a, b, c});
 
@@ -188,13 +185,13 @@ module ob_table_cnt_csa #(
             end
             default: begin
               // Perform 7:2 reduction.
-              w_t a                  = ((i + 0) < N) ? s [i + 0] : '0;
-              w_t b                  = ((i + 1) < N) ? s [i + 1] : '0;
-              w_t c                  = ((i + 2) < N) ? s [i + 2] : '0;
-              w_t d                  = ((i + 3) < N) ? s [i + 3] : '0;
-              w_t e                  = ((i + 4) < N) ? s [i + 4] : '0;
-              w_t f                  = ((i + 5) < N) ? s [i + 5] : '0;
-              w_t g                  = ((i + 6) < N) ? s [i + 6] : '0;
+              w_t a                  = ((i + 0) < last) ? s [i + 0] : '0;
+              w_t b                  = ((i + 1) < last) ? s [i + 1] : '0;
+              w_t c                  = ((i + 2) < last) ? s [i + 2] : '0;
+              w_t d                  = ((i + 3) < last) ? s [i + 3] : '0;
+              w_t e                  = ((i + 4) < last) ? s [i + 4] : '0;
+              w_t f                  = ((i + 5) < last) ? s [i + 5] : '0;
+              w_t g                  = ((i + 6) < last) ? s [i + 6] : '0;
 
               { s[j + 1], s[j + 0] } = csa_7_2({a, b, c, d, e, f, g});
 
@@ -207,6 +204,20 @@ module ob_table_cnt_csa #(
       // Outputs are the final, unreduced, results.
       s_w     = s[0];
       c_w     = s[1];
+
+    end // block: csa_PROC
+
+  end else begin // if (op == ob_pkg::CSA_7_2)
+
+    // Use infered CSA chain
+
+    always_comb begin : csa_PROC
+
+      c_w = '0;
+
+      s_w = '0;
+      for (int i = 0; i < N; i++)
+        s_w += x[i];
 
     end // block: csa_PROC
 

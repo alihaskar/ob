@@ -628,7 +628,7 @@ module ob_cntrl (
               end
             endcase
           end // case: {1'b1, ob_pkg::Op_SellMarket}
-          {1'b1, ob_pkg::Op_QryTblGeAsk}: begin
+          {1'b1, ob_pkg::Op_QryTblAskLe}: begin
             // Issue query commadn
             ask_qry_vld      = 'b1;
             ask_qry_price    = cmd_latch_r.price;
@@ -637,9 +637,9 @@ module ob_cntrl (
             // Transition to await response state.
             fsm_state_en     = 'b1;
             fsm_state_w      = FSM_CNTRL_QRY_TBL;
-          end // case: {1'b1, ob_pkg::Op_QryTblGeAsk}
-          {1'b1, ob_pkg::Op_QryTblLeBid}: begin
-            // Issue query commadn
+          end // case: {1'b1, ob_pkg::Op_QryTblAskLe}
+          {1'b1, ob_pkg::Op_QryTblBidGe}: begin
+            // Issue query command
             bid_qry_vld      = 'b1;
             bid_qry_price    = cmd_latch_r.price;
             bid_qry_quantity = cmd_latch_r.quantity;
@@ -647,7 +647,7 @@ module ob_cntrl (
             // Transition to await response state.
             fsm_state_en = 'b1;
             fsm_state_w  = FSM_CNTRL_QRY_TBL;
-          end // case: {1'b1, ob_pkg::Op_QryTblLeBid}
+          end // case: {1'b1, ob_pkg::Op_QryTblBidGe}
           default: begin
             // Invalid op:
           end
@@ -719,9 +719,11 @@ module ob_cntrl (
                 // Trade occurs limit bid/limit ask.
                 cmp_result_r.lbid_lask_vld,
                 // Trade occurs market bid/limit ask.
-                cmp_result_r.mbid_lask_vld,
+//                cmp_result_r.mbid_lask_vld,
+                1'b0,
                 // Trade occurs limit bid/market ask.
-                cmp_result_r.lbid_mask_vld,
+//                cmp_result_r.lbid_mask_vld,
+                1'b0,
                 // The Bid table has a reject entry.
                 bid_reject_vld_r,
                 // The Ask table has a reject entry.
@@ -828,9 +830,9 @@ module ob_cntrl (
             rsp_out.status = ob_pkg::S_Reject;
             rsp_out.result = '0;
           end
-//          6'b1_?????: begin
+          6'b1_?????: begin
               // Stalled on output resources.
-//          end
+          end
           default: begin
             // Consume command
             cmd_consume  = 'b1;

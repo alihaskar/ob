@@ -114,4 +114,5 @@ macro (create_test testname testfile)
 endmacro ()
 
 create_test(tb_ob_smoke tb_ob_smoke.cc)
+create_test(tb_ob_qry tb_ob_qry.cc)
 #create_test(tb_ob_regress tb_ob_regress.cc)

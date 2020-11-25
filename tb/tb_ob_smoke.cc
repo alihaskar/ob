@@ -38,7 +38,7 @@ TEST(Smoke, SimpleTableSort) {
 
   // Cmd 0:
   cmd.valid = true;
-  cmd.opcode = tb::Opcode::Buy;
+  cmd.opcode = tb::Opcode::BuyLimit;
   cmd.uid = 0;
   bcd = tb::Bcd::from_string("100.55");
   cmd.quantity = 100;
@@ -47,7 +47,7 @@ TEST(Smoke, SimpleTableSort) {
 
   // Cmd 1:
   cmd.valid = true;
-  cmd.opcode = tb::Opcode::Buy;
+  cmd.opcode = tb::Opcode::BuyLimit;
   cmd.uid = 1;
   bcd = tb::Bcd::from_string("100.60");
   cmd.quantity = 100;
@@ -56,7 +56,7 @@ TEST(Smoke, SimpleTableSort) {
 
   // Cmd 2:
   cmd.valid = true;
-  cmd.opcode = tb::Opcode::Buy;
+  cmd.opcode = tb::Opcode::BuyLimit;
   cmd.uid = 2;
   bcd = tb::Bcd::from_string("100.40");
   cmd.quantity = 100;
@@ -95,7 +95,7 @@ TEST(Smoke, SimpleTrade) {
 
   // Cmd 0: Buy 100 shares at $200.00
   cmd.valid = true;
-  cmd.opcode = tb::Opcode::Buy;
+  cmd.opcode = tb::Opcode::BuyLimit;
   cmd.uid = 0;
   bcd = tb::Bcd::from_string("200.00");
   cmd.quantity = 100;
@@ -104,7 +104,7 @@ TEST(Smoke, SimpleTrade) {
 
   // Cmd 2: Sell 100 shares at $100.00
   cmd.valid = true;
-  cmd.opcode = tb::Opcode::Sell;
+  cmd.opcode = tb::Opcode::SellLimit;
   cmd.uid = 1;
   bcd = tb::Bcd::from_string("100.00");
   cmd.quantity = 100;
@@ -123,7 +123,7 @@ TEST(Smoke, Cancel) {
 
   // Cmd 0: issue Buy for 100 at $200.00
   cmd.valid = true;
-  cmd.opcode = tb::Opcode::Buy;
+  cmd.opcode = tb::Opcode::BuyLimit;
   cmd.uid = 0x20;
   const tb::Bcd bcd = tb::Bcd::from_string("200.00");
   cmd.quantity = 100;

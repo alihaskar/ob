@@ -76,9 +76,9 @@ package ob_pkg;
                             // TODO: Market Sell (low-priority).
                             Op_SellMarket = 4'b1001,
                             // TODO: Qry Ask table entries less-than oprand.
-                            Op_QryTblGeAsk = 4'b1010,
+                            Op_QryTblAskLe = 4'b1010,
                             // TODO: Qry Bid table entries greater-than oprand.
-                            Op_QryTblLeBid = 4'b1011
+                            Op_QryTblBidGe = 4'b1011
                             } opcode_t;
 
   // Time-In-Force (TIF) types
@@ -197,7 +197,8 @@ package ob_pkg;
                                           price: bcd_pkg::PRICE_MIN };
 
   typedef enum logic [1:0] { CSA_3_2 = 'b00, // 3:2 compressor
-                             CSA_7_2 = 'b11  // 7:2 compressor
+                             CSA_7_2 = 'b01,  // 7:2 compressor
+                             CSA_INFER = 'b11 // Inferred sum.
                              } csa_op_t;
 
 endpackage // ob_pkg
