@@ -62,6 +62,9 @@ module tb_ob (
   , output ob_pkg::uid_t                          rsp_trade_ask_uid
   , output ob_pkg::quantity_t                     rsp_trade_quantity
 
+  // Qry:
+  , output ob_pkg::accum_quantity_t               rsp_qry_accum
+
   // ======================================================================== //
   // TB support
   , output logic [63:0]                           tb_cycle
@@ -101,8 +104,8 @@ module tb_ob (
   always_comb begin : rsp_PROC
 
     //
-    rsp_uid 	       = rsp.uid;
-    rsp_status 	       = rsp.status;
+    rsp_uid            = rsp.uid;
+    rsp_status         = rsp.status;
 
     // Query Bid/Ask:
     rsp_qry_bid        = rsp.result.qrybidask.bid;
@@ -117,6 +120,9 @@ module tb_ob (
     rsp_trade_bid_uid  = rsp.result.trade.bid_uid;
     rsp_trade_ask_uid  = rsp.result.trade.ask_uid;
     rsp_trade_quantity = rsp.result.trade.quantity;
+
+    // Qry accumulation
+    rsp_qry_accum      = rsp.result.qry.accum;
 
   end // block: rsp_PROC
 

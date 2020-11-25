@@ -279,6 +279,9 @@ struct Response {
       vluint16_t quantity;
       vluint32_t uid;
     } poptop;
+    struct {
+      vluint32_t accum;
+    } qry;
   } result;
 };
 
@@ -315,6 +318,7 @@ struct VSignals {
     v.rsp_trade_bid_uid = std::addressof(u->rsp_trade_bid_uid);
     v.rsp_trade_ask_uid = std::addressof(u->rsp_trade_ask_uid);
     v.rsp_trade_quantity = std::addressof(u->rsp_trade_quantity);
+    v.rsp_qry_accum = std::addressof(u->rsp_qry_accum);
     v.clk = std::addressof(u->clk);
     v.rst = std::addressof(u->rst);
     return v;
@@ -380,6 +384,9 @@ struct VSignals {
   vluint32_t* rsp_trade_bid_uid;
   vluint32_t* rsp_trade_ask_uid;
   vluint16_t* rsp_trade_quantity;
+
+  // Qry:
+  vluint32_t* rsp_qry_accum;
 
   // Clk/Rst
   vluint8_t* clk;

@@ -850,33 +850,33 @@ module ob_cntrl (
         casez ({bid_qry_rsp_vld_r, ask_qry_rsp_vld_r})
           2'b1?: begin
             // Consume command, now completed.
-            cmd_consume    = 'b1;
+            cmd_consume              = 'b1;
 
             // Emit response
-            rsp_out_vld    = 'b1;
-            rsp_out        = '0;
-            rsp_out.uid    = cmd_latch_r.uid;
-            rsp_out.status = ob_pkg::S_Okay;
-            rsp_out.accum  = bid_qry_rsp_qty_r;
+            rsp_out_vld              = 'b1;
+            rsp_out                  = '0;
+            rsp_out.uid              = cmd_latch_r.uid;
+            rsp_out.status           = ob_pkg::S_Okay;
+            rsp_out.result.qry.accum = bid_qry_rsp_qty_r;
 
             // Return to idle state.
-            fsm_state_en   = 'b1;
-            fsm_state_w    = FSM_CNTRL_IDLE;
+            fsm_state_en             = 'b1;
+            fsm_state_w              = FSM_CNTRL_IDLE;
           end
           2'b01: begin
             // Consume command, now completed.
-            cmd_consume    = 'b1;
+            cmd_consume              = 'b1;
 
             // Emit response
-            rsp_out_vld    = 'b1;
-            rsp_out        = '0;
-            rsp_out.uid    = cmd_latch_r.uid;
-            rsp_out.status = ob_pkg::S_Okay;
-            rsp_out.accum  = ask_qry_rsp_qty_r;
+            rsp_out_vld              = 'b1;
+            rsp_out                  = '0;
+            rsp_out.uid              = cmd_latch_r.uid;
+            rsp_out.status           = ob_pkg::S_Okay;
+            rsp_out.result.qry.accum = ask_qry_rsp_qty_r;
 
             // Return to idle state.
-            fsm_state_en   = 'b1;
-            fsm_state_w    = FSM_CNTRL_IDLE;
+            fsm_state_en             = 'b1;
+            fsm_state_w              = FSM_CNTRL_IDLE;
           end
           default: begin
             // Otherwise, continue to await response from table count

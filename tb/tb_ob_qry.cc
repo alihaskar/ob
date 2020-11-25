@@ -34,9 +34,12 @@ TEST(Qry, BidBasic) {
   opts.wave_enable = true;
   tb::TB tb{opts};
 
+  vluint32_t uid = 0;
+
   // Issue Buy for: 100 @ $100.00
   tb::Command cmd;
   cmd.valid = true;
+  cmd.uid = uid++;
   cmd.opcode = tb::Opcode::BuyLimit;
   cmd.quantity = 100;
   cmd.price = tb::Bcd::from_string("100.00").pack();
@@ -44,6 +47,7 @@ TEST(Qry, BidBasic) {
 
   // Issue Buy for: 23 @ $110.23
   cmd.valid = true;
+  cmd.uid = uid++;
   cmd.opcode = tb::Opcode::BuyLimit;
   cmd.quantity = 23;
   cmd.price = tb::Bcd::from_string("110.23").pack();
@@ -51,6 +55,7 @@ TEST(Qry, BidBasic) {
 
   // Issue Qry for $99.99 -> Expect: 0
   cmd.valid = true;
+  cmd.uid = uid++;
   cmd.opcode = tb::Opcode::QryTblBidGe;
   cmd.price = tb::Bcd::from_string("99.99").pack();
   cmd.quantity = 0;
@@ -58,6 +63,7 @@ TEST(Qry, BidBasic) {
 
   // Issue Qry for $100.00 -> Expect: 100
   cmd.valid = true;
+  cmd.uid = uid++;
   cmd.opcode = tb::Opcode::QryTblBidGe;
   cmd.price = tb::Bcd::from_string("100.00").pack();
   cmd.quantity = 0;
@@ -65,6 +71,7 @@ TEST(Qry, BidBasic) {
 
   // Issue Qry for $100.01 -> Expect: 100
   cmd.valid = true;
+  cmd.uid = uid++;
   cmd.opcode = tb::Opcode::QryTblBidGe;
   cmd.price = tb::Bcd::from_string("100.01").pack();
   cmd.quantity = 0;
@@ -72,6 +79,7 @@ TEST(Qry, BidBasic) {
 
   // Issue Qry for $120.00 -> Expect: 123
   cmd.valid = true;
+  cmd.uid = uid++;
   cmd.opcode = tb::Opcode::QryTblBidGe;
   cmd.price = tb::Bcd::from_string("120.00").pack();
   cmd.quantity = 0;

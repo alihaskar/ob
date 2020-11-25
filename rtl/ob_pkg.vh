@@ -1,4 +1,4 @@
-//========================================================================== //
+>//========================================================================== //
 // Copyright (c) 2020, Stephen Henry
 // All rights reserved.
 //
@@ -75,9 +75,12 @@ package ob_pkg;
                             Op_BuyMarket  = 4'b1000,
                             // TODO: Market Sell (low-priority).
                             Op_SellMarket = 4'b1001,
-                            // TODO: Qry Ask table entries less-than oprand.
+                            // Qry Ask table entries less-than oprand.
                             Op_QryTblAskLe = 4'b1010,
-                            // TODO: Qry Bid table entries greater-than oprand.
+                            // Qry Bid table entries greater-than oprand; for
+                            // example, for a given ask price (oprand), compute
+                            // the number of shares that can be traded from the
+                            // bid limit table that can be traded.
                             Op_QryTblBidGe = 4'b1011
                             } opcode_t;
 
@@ -152,6 +155,11 @@ package ob_pkg;
     uid_t                uid; // 32b
   } result_poptop_t;
 
+  typedef struct packed { // 68b
+    logic [67:$bits(accum_quantity_t)] padding;
+    accum_quantity_t accum;
+  } result_qry_t;
+
   typedef union packed {
     // Query Bid/Ask spread
     result_qrybidask_t qrybidask;
@@ -159,6 +167,8 @@ package ob_pkg;
     result_poptop_t poptop;
     // Trade result type
     result_trade_t trade;
+    // Accumulated Qry
+    result_qry_t qry;
   } result_t;
 
   //
@@ -171,9 +181,6 @@ package ob_pkg;
 
     // Response result.
     result_t        result;
-
-    // Accumulated response on query (total count)
-    accum_quantity_t accum;
   } rsp_t;
 
   // Order-book table (bid/ask) entry.

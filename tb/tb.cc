@@ -26,6 +26,7 @@
 //========================================================================== //
 
 #include "tb.h"
+#include <cerrno>
 #include "vsupport.h"
 #include "utility.h"
 #include "vobj/Vtb_ob.h"
@@ -295,6 +296,10 @@ bool compare(vluint8_t opcode, const Response& actual, const Response& expected)
       case Opcode::PopTopBid:
       case Opcode::PopTopAsk: {
       } break;
+      case Opcode::QryTblAskLe:
+      case Opcode::QryTblBidGe: {
+        EXPECT_EQ(actual.result.qry.accum, expected.result.qry.accum);
+      } break;
     }
   }
 
@@ -376,6 +381,7 @@ void VSignals::get(Response& rsp) {
   rsp.result.poptop.price = vsupport::get(rsp_pop_price);
   rsp.result.poptop.quantity = vsupport::get(rsp_pop_quantity);
   rsp.result.poptop.uid = vsupport::get(rsp_pop_uid);
+  rsp.result.qry.accum = vsupport::get(rsp_qry_accum);
 }
 
 TB::TB(const Options& opts)
@@ -494,7 +500,7 @@ void TB::run() {
   vs_.set(cmd);
 
   // Wind-down simulation
-  step(209);
+  step(20);
 #ifdef OPT_TRACE_ENABLE
   std::cout << "[TB] " << vs_.cycle() << ": Simulation complete!\n";
 #endif
@@ -728,6 +734,24 @@ std::vector<Response> Model::apply(const Command& cmd) {
       rsp.valid = true;
       rsp.uid = cmd.uid;
       rsp.status = did_cancel ? Status::CancelHit : Status::CancelMiss;
+      rsps.push_back(rsp);
+    } break;
+    case Opcode::QryTblAskLe: {
+      rsp.valid = true;
+      rsp.uid = cmd.uid;
+      rsp.status = Status::Okay;
+      //rsp.accum = 0;
+      // rsps.push_back(rsp);
+    } break;
+    case Opcode::QryTblBidGe: {
+      rsp.valid = true;
+      rsp.uid = cmd.uid;
+      rsp.status = Status::Okay;
+      rsp.result.qry.accum = 0;
+      for (const Entry& e : bid_table_) {
+        if (cmd.price >= e.price)
+          rsp.result.qry.accum += e.quantity;
+      }
       rsps.push_back(rsp);
     } break;
   }
