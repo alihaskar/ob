@@ -171,6 +171,9 @@ package ob_pkg;
 
     // Response result.
     result_t        result;
+
+    // Accumulated response on query (total count)
+    accum_quantity_t accum;
   } rsp_t;
 
   // Order-book table (bid/ask) entry.

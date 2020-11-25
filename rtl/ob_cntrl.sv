@@ -67,6 +67,14 @@ module ob_cntrl (
   //
   , output logic                                  bid_cancel
   , output ob_pkg::uid_t                          bid_cancel_uid
+  // Qry interface:
+  , input                                         bid_qry_rsp_vld_r
+  , input                                         bid_qry_rsp_is_ge_r
+  , input ob_pkg::accum_quantity_t                bid_qry_rsp_qty_r
+  //
+  , output logic                                  bid_qry_vld
+  , output bcd_pkg::price_t                       bid_qry_price
+  , output ob_pkg::quantity_t                     bid_qry_quantity
 
   // ======================================================================== //
   // Ask Table Interface
@@ -91,6 +99,14 @@ module ob_cntrl (
   //
   , output logic                                  ask_cancel
   , output ob_pkg::uid_t                          ask_cancel_uid
+  // Qry interface:
+  , input                                         ask_qry_rsp_vld_r
+  , input                                         ask_qry_rsp_is_ge_r
+  , input ob_pkg::accum_quantity_t                ask_qry_rsp_qty_r
+  //
+  , output logic                                  ask_qry_vld
+  , output bcd_pkg::price_t                       ask_qry_price
+  , output ob_pkg::quantity_t                     ask_qry_quantity
 
   // ======================================================================== //
   // Market Buy Interface
@@ -312,14 +328,16 @@ module ob_cntrl (
 
   // ------------------------------------------------------------------------ //
   //
-  typedef enum logic [2:0] { // Default idle state
-                             FSM_CNTRL_IDLE            = 3'b000,
+  typedef enum logic [4:0] { // Default idle state
+                             FSM_CNTRL_IDLE            = 5'b0_0000,
                              // Issue table query on current
-                             FSM_CNTRL_TABLE_ISSUE_QRY = 3'b001,
+                             FSM_CNTRL_TABLE_ISSUE_QRY = 5'b1_0001,
                              // Execute query response
-                             FSM_CNTRL_TABLE_EXECUTE   = 3'b010,
+                             FSM_CNTRL_TABLE_EXECUTE   = 5'b1_0010,
                              // Receive cancel notification
-                             FSM_CNTRL_CANCEL_RESP     = 3'b011
+                             FSM_CNTRL_CANCEL_RESP     = 5'b1_0011,
+                             // Perform 'count' lookup on the nominated table.
+                             FSM_CNTRL_QRY_TBL         = 5'b0100
                              } fsm_state_t;
 
   // State flop
@@ -357,6 +375,11 @@ module ob_cntrl (
 
     bid_reject_pop        = 'b0;
 
+    // Bid query
+    bid_qry_vld           = 'b0;
+    bid_qry_price         = '0;
+    bid_qry_quantity      = '0;
+
     // Ask Table:
     ask_insert            = 'b0;
     ask_insert_tbl        = '0;
@@ -370,6 +393,11 @@ module ob_cntrl (
     ask_cancel_uid        = '0;
 
     ask_reject_pop        = 'b0;
+
+    // Ask query
+    ask_qry_vld           = 'b0;
+    ask_qry_price         = '0;
+    ask_qry_quantity      = '0;
 
     // Buy Market queue
     mk_buy_cmd_vld        = 'b0;
@@ -599,7 +627,27 @@ module ob_cntrl (
                 fsm_state_w                    = FSM_CNTRL_TABLE_ISSUE_QRY;
               end
             endcase
-          end
+          end // case: {1'b1, ob_pkg::Op_SellMarket}
+          {1'b1, ob_pkg::Op_QryTblGeAsk}: begin
+            // Issue query commadn
+            ask_qry_vld      = 'b1;
+            ask_qry_price    = cmd_latch_r.price;
+            ask_qry_quantity = cmd_latch_r.quantity;
+
+            // Transition to await response state.
+            fsm_state_en     = 'b1;
+            fsm_state_w      = FSM_CNTRL_QRY_TBL;
+          end // case: {1'b1, ob_pkg::Op_QryTblGeAsk}
+          {1'b1, ob_pkg::Op_QryTblLeBid}: begin
+            // Issue query commadn
+            bid_qry_vld      = 'b1;
+            bid_qry_price    = cmd_latch_r.price;
+            bid_qry_quantity = cmd_latch_r.quantity;
+
+            // Transition to await response state.
+            fsm_state_en = 'b1;
+            fsm_state_w  = FSM_CNTRL_QRY_TBL;
+          end // case: {1'b1, ob_pkg::Op_QryTblLeBid}
           default: begin
             // Invalid op:
           end
@@ -793,7 +841,48 @@ module ob_cntrl (
           end
         endcase // casez ({...
 
-      end
+      end // case: FSM_CNTRL_TABLE_EXECUTE
+
+      FSM_CNTRL_QRY_TBL: begin
+
+        casez ({bid_qry_rsp_vld_r, ask_qry_rsp_vld_r})
+          2'b1?: begin
+            // Consume command, now completed.
+            cmd_consume    = 'b1;
+
+            // Emit response
+            rsp_out_vld    = 'b1;
+            rsp_out        = '0;
+            rsp_out.uid    = cmd_latch_r.uid;
+            rsp_out.status = ob_pkg::S_Okay;
+            rsp_out.accum  = bid_qry_rsp_qty_r;
+
+            // Return to idle state.
+            fsm_state_en   = 'b1;
+            fsm_state_w    = FSM_CNTRL_IDLE;
+          end
+          2'b01: begin
+            // Consume command, now completed.
+            cmd_consume    = 'b1;
+
+            // Emit response
+            rsp_out_vld    = 'b1;
+            rsp_out        = '0;
+            rsp_out.uid    = cmd_latch_r.uid;
+            rsp_out.status = ob_pkg::S_Okay;
+            rsp_out.accum  = ask_qry_rsp_qty_r;
+
+            // Return to idle state.
+            fsm_state_en   = 'b1;
+            fsm_state_w    = FSM_CNTRL_IDLE;
+          end
+          default: begin
+            // Otherwise, continue to await response from table count
+            // controller.
+          end
+        endcase // casez ({bid_qry_rsp_vld_r, ask_qry_rsp_vld_r})
+
+      end // case: FSM_CNTRL_QRY_TBL
 
       default:;
 

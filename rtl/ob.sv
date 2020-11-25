@@ -74,6 +74,12 @@ module ob (
   ob_pkg::table_t                       cntrl_bid_cancel_hit_tbl_w;
   logic                                 cntrl_bid_cancel;
   ob_pkg::uid_t                         cntrl_bid_cancel_uid;
+  logic                                 cntrl_bid_qry_rsp_vld_r;
+  logic                                 cntrl_bid_qry_rsp_is_ge_r;
+  ob_pkg::accum_quantity_t              cntrl_bid_qry_rsp_qty_r;
+  logic                                 cntrl_bid_qry_vld;
+  bcd_pkg::price_t                      cntrl_bid_qry_price;
+  ob_pkg::quantity_t                    cntrl_bid_qry_quantity;
   //
   logic                                 cntrl_ask_table_vld_r;
   ob_pkg::table_t                       cntrl_ask_table_r;
@@ -89,6 +95,12 @@ module ob (
   ob_pkg::table_t                       cntrl_ask_cancel_hit_tbl_w;
   logic                                 cntrl_ask_cancel;
   ob_pkg::uid_t                         cntrl_ask_cancel_uid;
+  logic                                 cntrl_ask_qry_rsp_vld_r;
+  logic                                 cntrl_ask_qry_rsp_is_ge_r;
+  ob_pkg::accum_quantity_t              cntrl_ask_qry_rsp_qty_r;
+  logic                                 cntrl_ask_qry_vld;
+  bcd_pkg::price_t                      cntrl_ask_qry_price;
+  ob_pkg::quantity_t                    cntrl_ask_qry_quantity;
   //
   ob_pkg::table_t                       cntrl_mk_buy_head_r;
   logic                                 cntrl_mk_buy_cmd_vld;
@@ -175,12 +187,13 @@ module ob (
     , .reject_vld_r      (cntrl_bid_reject_vld_r       )
     , .reject_r          (cntrl_bid_reject_r           )
     //
-    , .qry_vld           ()
-    , .qry_price         ()
-    , .qry_quantity      ()
+    , .qry_vld           (cntrl_bid_qry_vld            )
+    , .qry_price         (cntrl_bid_qry_price          )
+    , .qry_quantity      (cntrl_bid_qry_quantity       )
     //
-    , .qry_rsp_vld_r     ()
-    , .qry_rsp_is_ge_r   ()
+    , .qry_rsp_vld_r     (cntrl_bid_qry_rsp_vld_r      )
+    , .qry_rsp_is_ge_r   (cntrl_bid_qry_rsp_is_ge_r    )
+    , .qry_rsp_qty_r     (cntrl_bid_qry_rsp_qty_r      )
     //
     , .clk               (clk                          )
     , .rst               (rst                          )
@@ -212,12 +225,13 @@ module ob (
     , .reject_vld_r      (cntrl_ask_reject_vld_r       )
     , .reject_r          (cntrl_ask_reject_r           )
     //
-    , .qry_vld           ()
-    , .qry_price         ()
-    , .qry_quantity      ()
+    , .qry_vld           (cntrl_ask_qry_vld            )
+    , .qry_price         (cntrl_ask_qry_price          )
+    , .qry_quantity      (cntrl_ask_qry_quantity       )
     //
-    , .qry_rsp_vld_r     ()
-    , .qry_rsp_is_ge_r   ()
+    , .qry_rsp_vld_r     (cntrl_ask_qry_rsp_vld_r      )
+    , .qry_rsp_is_ge_r   (cntrl_ask_qry_rsp_is_ge_r    )
+    , .qry_rsp_qty_r     (cntrl_ask_qry_rsp_qty_r      )
     //
     , .clk               (clk                          )
     , .rst               (rst                          )
@@ -227,7 +241,7 @@ module ob (
 
     // Ingress Queue -> Ob. Cntrl.
     cntrl_cmd_in_vld       = (~ingress_queue_empty_r);
-    cntrl_cmd_in       = ingress_queue_pop_data;
+    cntrl_cmd_in           = ingress_queue_pop_data;
     ingress_queue_pop      = cntrl_cmd_in_pop;
 
     // Ob. Cntrl. -> Egress Queue
@@ -272,6 +286,14 @@ module ob (
     , .bid_cancel             (cntrl_bid_cancel             )
     , .bid_cancel_uid         (cntrl_bid_cancel_uid         )
     //
+    , .bid_qry_rsp_vld_r      (cntrl_bid_qry_rsp_vld_r      )
+    , .bid_qry_rsp_is_ge_r    (cntrl_bid_qry_rsp_is_ge_r    )
+    , .bid_qry_rsp_qty_r      (cntrl_bid_qry_rsp_qty_r      )
+    //
+    , .bid_qry_vld            (cntrl_bid_qry_vld            )
+    , .bid_qry_price          (cntrl_bid_qry_price          )
+    , .bid_qry_quantity       (cntrl_bid_qry_quantity       )
+    //
     , .ask_table_vld_r        (cntrl_ask_table_vld_r        )
     , .ask_table_r            (cntrl_ask_table_r            )
     //
@@ -293,6 +315,14 @@ module ob (
     //
     , .ask_cancel             (cntrl_ask_cancel             )
     , .ask_cancel_uid         (cntrl_ask_cancel_uid         )
+    //
+    , .ask_qry_rsp_vld_r      (cntrl_ask_qry_rsp_vld_r      )
+    , .ask_qry_rsp_is_ge_r    (cntrl_ask_qry_rsp_is_ge_r    )
+    , .ask_qry_rsp_qty_r      (cntrl_ask_qry_rsp_qty_r      )
+    //
+    , .ask_qry_vld            (cntrl_ask_qry_vld            )
+    , .ask_qry_price          (cntrl_ask_qry_price          )
+    , .ask_qry_quantity       (cntrl_ask_qry_quantity       )
     //
     , .mk_buy_head_r          (cntrl_mk_buy_head_r          )
     , .mk_buy_cmd_pop_data    ()

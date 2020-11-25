@@ -70,6 +70,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   //
   , output logic                                  qry_rsp_vld_r
   , output logic                                  qry_rsp_is_ge_r
+  , output ob_pkg::accum_quantity_t               qry_rsp_qty_r
 
   // ======================================================================== //
   // Clk/Reset
@@ -418,7 +419,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
     // Output reject latch.
     reject_en 	 = reject_vld_w;
-    reject_w 	 = tbl_w [0];
+    reject_w 	   = tbl_w [0];
 
   end // block: reject_PROC
 
@@ -427,10 +428,12 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   logic                                 cnt_cmd_vld;
   bcd_pkg::price_t                      cnt_cmd_price;
   ob_pkg::quantity_t                    cnt_cmd_quantity;
-  logic                                 cnt_rsp_attained;
+  logic                                 cnt_rsp_attained_w;
+  ob_pkg::accum_quantity_t              cnt_rsp_quantity_w;
   `LIBV_REG_RST(logic, cnt_cmd_busy, 'b0);
   `LIBV_REG_RST_W(logic, qry_rsp_vld, 'b0);
-  `LIBV_REG_EN_RST_W(logic, qry_rsp_is_ge, 'b0);
+  `LIBV_REG_EN_W(logic, qry_rsp_is_ge);
+  `LIBV_REG_EN_W(ob_pkg::accum_quantity_t, qry_rsp_qty);
 
   always_comb begin : qry_PROC
 
@@ -443,7 +446,9 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     // idle state.
     qry_rsp_vld_w    = cnt_cmd_busy_r & (~cnt_cmd_busy_w);
     qry_rsp_is_ge_en = qry_rsp_vld_w;
-    qry_rsp_is_ge_w  = cnt_rsp_attained;
+    qry_rsp_is_ge_w  = cnt_rsp_attained_w;
+    qry_rsp_qty_en   = qry_rsp_vld_w;
+    qry_rsp_qty_w    = cnt_rsp_quantity_w;
 
   end // block: qry_PROC
 
@@ -480,8 +485,8 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     , .cmd_price              (cnt_cmd_price           )
     , .cmd_quantity           (cnt_cmd_quantity        )
     //
-    , .rsp_attained_w         (cnt_rsp_attained        )
-    , .rsp_quantity_w         () // UNUSED
+    , .rsp_attained_w         (cnt_rsp_attained_w      )
+    , .rsp_quantity_w         (cnt_rsp_quantity_w      )
     //
     , .tbl_r                  (tbl_r                   )
     , .tbl_vld_r              (tbl_vld_r               )

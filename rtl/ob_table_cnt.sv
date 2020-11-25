@@ -364,7 +364,6 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
     // chain.
     //
     mux_out_en = fsm_mux_out_en;
-
 `ifdef OPT_EARLY_TERMINATION
 
     // Compute mux_out_all_vld, which is a flag which denotes if all the entires
@@ -419,8 +418,10 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
   // Form final accumulated sum.
   always_comb begin : rsp_PROC
 
+    // Compute final CLA.
     rsp_quantity_w = acc_s_r + acc_c_r;
 
+    // Flag indicating whether the targeted quantity has been attained.
     rsp_attained_w = (rsp_quantity_w >= fsm_context_r.quantity);
 
   end // block: rsp_PROC
