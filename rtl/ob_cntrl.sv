@@ -435,8 +435,8 @@ module ob_cntrl (
 
             bid_table          = '0;
             bid_table.uid      = cmd_latch_r.uid;
-            bid_table.quantity = cmd_latch_r.oprand.buy.quantity;
-            bid_table.price    = cmd_latch_r.oprand.buy.price;
+            bid_table.quantity = cmd_latch_r.quantity;
+            bid_table.price    = cmd_latch_r.price;
 
             // Insert in Bid Table.
             bid_insert         = 'b1;
@@ -460,8 +460,8 @@ module ob_cntrl (
             // Await result of install operation.
             ask_table          = '0;
             ask_table.uid      = cmd_latch_r.uid;
-            ask_table.quantity = cmd_latch_r.oprand.sell.quantity;
-            ask_table.price    = cmd_latch_r.oprand.sell.price;
+            ask_table.quantity = cmd_latch_r.quantity;
+            ask_table.price    = cmd_latch_r.price;
 
             // Insert in Ask Table.
             ask_insert         = 'b1;
@@ -529,11 +529,11 @@ module ob_cntrl (
 
             // Issue cancel op. to Bid table.
             bid_cancel     = 'b1;
-            bid_cancel_uid = cmd_latch_r.oprand.cancel.uid;
+            bid_cancel_uid = cmd_latch_r.uid1;
 
             // Issue cancel op. to Ask table.
             ask_cancel     = 'b1;
-            ask_cancel_uid = cmd_latch_r.oprand.cancel.uid;
+            ask_cancel_uid = cmd_latch_r.uid1;
 
             // Advance to next state when egress queue is non-full, as
             // next state does not support back-pressure.
@@ -561,8 +561,8 @@ module ob_cntrl (
                 mk_buy_cmd_op                 = libv_pkg::OpPushBack;
                 mk_buy_cmd_push_data          = '0;
                 mk_buy_cmd_push_data.uid      = cmd_latch_r.uid;
-                mk_buy_cmd_push_data.quantity = cmd_latch_r.oprand.buy.quantity;
-                mk_buy_cmd_push_data.price    = cmd_latch_r.oprand.buy.price;
+                mk_buy_cmd_push_data.quantity = cmd_latch_r.quantity;
+                mk_buy_cmd_push_data.price    = cmd_latch_r.price;
 
                 // Advance to query state
                 fsm_state_en                   = (~rsp_out_full_r);
@@ -591,8 +591,8 @@ module ob_cntrl (
                 mk_sell_cmd_op                 = libv_pkg::OpPushBack;
                 mk_sell_cmd_push_data          = '0;
                 mk_sell_cmd_push_data.uid      = cmd_latch_r.uid;
-                mk_sell_cmd_push_data.quantity = cmd_latch_r.oprand.sell.quantity;
-                mk_sell_cmd_push_data.price    = cmd_latch_r.oprand.sell.price;
+                mk_sell_cmd_push_data.quantity = cmd_latch_r.quantity;
+                mk_sell_cmd_push_data.price    = cmd_latch_r.price;
 
                 // Advance to query state.
                 fsm_state_en                   = (~rsp_out_full_r);

@@ -71,10 +71,14 @@ package ob_pkg;
                             Op_PopTopAsk  = 4'b0101,
 			                      // Cancel prior Bid/Ask
 			                      Op_Cancel     = 4'b0110,
-                            // TODO: Market Buy (low-priority)
+                            // TODO: Market Buy (low-priority).
                             Op_BuyMarket  = 4'b1000,
-                            // TODO: Market Sell (low-priority)
-                            Op_SellMarket = 4'b1001
+                            // TODO: Market Sell (low-priority).
+                            Op_SellMarket = 4'b1001,
+                            // TODO: Qry Ask table entries less-than oprand.
+                            Op_QryTblGeAsk = 4'b1010,
+                            // TODO: Qry Bid table entries greater-than oprand.
+                            Op_QryTblLeBid = 4'b1011
                             } opcode_t;
 
   // Time-In-Force (TIF) types
@@ -89,47 +93,19 @@ package ob_pkg;
                             } tif_t;
 
   //
-  typedef struct packed { // 36b
-    // Number of equities to trade.
-    quantity_t quantity; // 16b
-
-    // Price at which to buy.
-    bcd_pkg::price_t price; // 20b
-  } oprand_buy_t;
-
-  //
-  typedef struct packed { // 36b
-    // Number of equities to trade.
-    quantity_t quantity; // 16b
-
-    // Price at which to sell.
-    bcd_pkg::price_t price; // 20b
-  } oprand_sell_t;
-
-  //
-  typedef struct packed { // 36b
-    logic [3:0]     padding; // 4b
-    // ID to cancel.
-    uid_t           uid;     // 32b
-  } oprand_cancel_t;
-
-  //
-  typedef union packed {
-    oprand_buy_t buy;
-    oprand_sell_t sell;
-    oprand_cancel_t cancel;
-  } oprand_t;
-
-  //
   typedef struct packed {
     // Unique command identifier.
-    uid_t           uid;
+    uid_t                uid;
     // Command opcode.
-    opcode_t        opcode;
+    opcode_t             opcode;
     // Time in force (TIF)
-    tif_t           tif;
-    // Command oprand.
-    oprand_t        oprand;
+    tif_t                tif;
+    // Price oprand; where applicable.
+    bcd_pkg::price_t     price;
+    // Quantity oprand; where applicable.
+    quantity_t           quantity;
+    // Secondary UID (on cancel); where applicable
+    uid_t                uid1;
   } cmd_t;
 
   //

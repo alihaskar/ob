@@ -27,6 +27,9 @@
 
 `include "ob_pkg.vh"
 `include "libv_pkg.vh"
+`include "macros_pkg.vh"
+
+`define OPT_EARLY_TERMINATION
 
 module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
@@ -35,7 +38,9 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
     input                                         cmd_vld
   , input bcd_pkg::price_t                        cmd_price
+  , input ob_pkg::quantity_t                      cmd_quantity
   //
+  , output logic                                  rsp_attained_w
   , output ob_pkg::accum_quantity_t               rsp_quantity_w
 
   // ======================================================================== //
@@ -75,13 +80,39 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
     logic [3:0]          st;
   } fsm_state_t;
 
-  typedef enum fsm_state_t { FSM_IDLE = 5'b0_00000
+  typedef enum fsm_state_t { // FSM Idle state
+                             FSM_IDLE  = 5'b0_0000,
+                             // FSM Accumulating state.
+                             FSM_ACCUM = 5'b1_0001,
+                             // FSM Wait response 0.
+                             FSM_WAIT0 = 5'b1_0010,
+                             // FSM Wait response 1.
+                             FSM_WAIT1 = 5'b1_0011
                              } fsm_state_enc_t;
 
   `LIBV_REG_EN_RST(fsm_state_t, fsm_state, FSM_IDLE);
 
+  typedef struct packed {
+    // Price for which to search.
+    bcd_pkg::price_t price;
+    // Quantity to find.
+    ob_pkg::accum_quantity_t quantity;
+  } fsm_context_t;
+
+  `LIBV_REG_EN(fsm_context_t, fsm_context);
+
+  // FSM Datapath wires:
+  logic                                           fsm_mux_sel_init;
+  logic                                           fsm_mux_sel_upt;
+  logic                                           fsm_acc_init;
+  logic                                           fsm_acc_upt;
+  logic                                           fsm_mux_out_en;
 
   localparam int MUX_IN_N = libv_pkg::ceil(N, CSA_DEGREE_N - 2);
+
+  // The number of accumulation rounds required to accumulate all values across
+  // the entire table.
+  localparam int ACCUM_ROUNDS_N = MUX_IN_N;
 
   typedef struct packed {
     logic                vld;
@@ -91,16 +122,22 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
   table_sel_t
     [MUX_IN_N - 1:0][CSA_DEGREE_N - 1:2]          mux_in_tbl_sel;
   ob_pkg::accum_quantity_t
-    [MUX_IN_N - 1:0][CSA_DEGREE_N - 1:2]          mux_in;
-  logic [CSA_DEGREE_N - 1:2]                      mux_all_vld;
-  logic [CSA_DEGREE_N - 1:2][MUX_IN_N - 1:0]      mux_sel;
-  ob_pkg::accum_quantity_t [CSA_DEGREE_N - 1:2]   mux_out;
-
+    [CSA_DEGREE_N - 1:2][MUX_IN_N - 1:0]          mux_in;
+  logic
+    [CSA_DEGREE_N - 1:2][MUX_IN_N - 1:0]          mux_in_vld;
+`ifdef OPT_EARLY_TERMINATION
+  logic                                           mux_in_all_vld;
+`endif
+  `LIBV_REG_EN(logic [MUX_IN_N - 1:0], mux_sel);
+  logic                                           mux_sel_is_last;
+  ob_pkg::accum_quantity_t [CSA_DEGREE_N - 1:2]   mux_out_w;
+  ob_pkg::accum_quantity_t [CSA_DEGREE_N - 1:2]   mux_out_r;
+  logic                                           mux_out_en;
 
   // CSA partially accumulated results.
   ob_pkg::accum_quantity_t [CSA_DEGREE_N - 1:0]   csa_x;
-  ob_pkg::accum_quantity_t                        csa_s_w;
-  ob_pkg::accum_quantity_t                        csa_c_w;
+  ob_pkg::accum_quantity_t                        csa_s;
+  ob_pkg::accum_quantity_t                        csa_c;
 
   `LIBV_REG_EN(ob_pkg::accum_quantity_t, acc_s);
   `LIBV_REG_EN(ob_pkg::accum_quantity_t, acc_c);
@@ -118,35 +155,110 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
     // Defaults:
 
     // FSM:
-    fsm_state_en = 'b0;
-    fsm_state_w  = fsm_state_r;
+    fsm_state_en     = 'b0;
+    fsm_state_w      = fsm_state_r;
+
+    // FSM (context):
+    fsm_context_en   = 'b0;
+    fsm_context_w    = fsm_context_r;
 
     // Accumulation flops
-
-    // Sum:
-    acc_s_w      = csa_s_w;
-    acc_s_en     = 'b0;
-
-    // Carry:
-    acc_c_w      = csa_c_w;
-    acc_c_en     = 'b0;
+    fsm_acc_init     = 'b0;
+    fsm_acc_upt      = 'b0;
 
     // Mux sel:
-    mux_sel      = 'b0;
+    fsm_mux_sel_init = 'b0;
+    fsm_mux_sel_upt  = 'b0;
+
+    // TBL -> MUX out latch enable
+    fsm_mux_out_en   = 'b0;
 
     case (fsm_state_r)
 
       FSM_IDLE: begin
 
-        // Zero accumulated state
+        if (cmd_vld) begin
 
-        // Sum:
-        acc_s_w  = '0;
-        acc_s_en = 'b1;
+          // Retain context
+          fsm_context_en         = 'b1;
+          fsm_context_w          = '0;
+          fsm_context_w.price    = cmd_price;
+          fsm_context_w.quantity = ob_pkg::accum_quantity_t'(cmd_quantity);
 
-        // Carry:
-        acc_c_w  = '0;
-        acc_c_en = 'b1;
+          // Zero accumulated state
+          fsm_acc_init           = 'b1;
+
+          // Initialize mux selection.
+          fsm_mux_sel_init       = 'b1;
+
+          // Transition to accumulating state.
+          fsm_state_en           = 'b1;
+          fsm_state_w            = FSM_ACCUM;
+        end
+      end // case: FSM_IDLE
+      FSM_ACCUM: begin
+
+        // Latch input to CSA.
+        fsm_mux_out_en  = 'b1;
+
+        // Advance mux selection
+        fsm_mux_sel_upt = 'b1;
+
+        // Update accumulator state
+        fsm_acc_upt     = 'b1;
+
+        casez ({// This is the final round in the mux selection.
+                  mux_sel_is_last
+`ifdef OPT_EARLY_TERMINATION
+                // The partially accumulated result already exceeds
+                // the goal value as defined at the outset.
+                , rsp_attained_w
+`else
+                // Otherwise, no dependency on this timing path.
+                , 1'b0
+`endif
+`ifdef OPT_EARLY_TERMINATION
+                // The accumulation is partial; that it's not all entries within
+                // the CSA are value. By consequence of the strictly ordered
+                // nature of the table, we know that no further entries can be
+                // value and can now quit the search early.
+                , mux_in_all_vld
+`else
+                // Otherwise, disable as this is a rather aggressive
+                // timing-path.
+                , 1'b0
+`endif
+                })
+          3'b1??,
+          3'b01?,
+          3'b001: begin
+            // Operation terminates, transition to wait state to
+            // await the complexted accumulated result.
+            fsm_state_en = 'b1;
+            fsm_state_w  = FSM_WAIT0;
+          end
+          default: begin
+            // Otherwise, continue accumulating.
+          end
+        endcase // casez ({...
+
+      end
+
+      FSM_WAIT0: begin
+
+        fsm_acc_upt  = 'b1;
+
+        fsm_state_en = 'b1;
+        fsm_state_w  = FSM_WAIT1;
+      end
+
+      FSM_WAIT1: begin
+
+        // rsp_* is now valid at this point, and with the tradition of busy_w
+        // back to false, is now ready to be latched by the parent.
+
+        fsm_state_en = 'b1;
+        fsm_state_w  = FSM_IDLE;
       end
 
       default: begin
@@ -154,7 +266,28 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
     endcase // case (fsm_state_t)
 
-  end
+    // Busy flag is MSB of state vector.
+    busy_w = fsm_state_w.busy;
+
+  end // block: fsm_PROC
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_comb begin : fsm_dp_PROC
+
+    // Update mux selection on initialization or update.
+    mux_sel_en = (fsm_mux_sel_init | fsm_mux_sel_upt);
+
+    casez ({fsm_mux_sel_init, fsm_mux_sel_upt})
+      2'b1?:   mux_sel_w = 'b1;
+      2'b01:   mux_sel_w = mux_sel_r << 1;
+      default: mux_sel_w = mux_sel_r;
+    endcase // casez ({fsm_mux_sel_init, fsm_mux_sel_upt})
+
+    // Is final mux select round.
+    mux_sel_is_last = mux_sel_r [MUX_IN_N - 1];
+
+  end // block: fsm_dp_PROC
 
   // ------------------------------------------------------------------------ //
   //
@@ -171,7 +304,7 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
     end
   end endfunction
 
-  always_comb begin : mux_PROC
+  always_comb begin : mux_in_PROC
     int tbl_idx = 0;
 
     mux_in_tbl_sel  = '0;
@@ -196,11 +329,13 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
     for (int mux_id = 0; mux_id < CSA_DEGREE_N - 2; mux_id++) begin
 
-      mux_all_vld [mux_id] = 'b1;
+      for (int in_id = 0; in_id < MUX_IN_N; in_id++) begin
+        logic tbl_entry_vld         = mux_in_tbl_sel [mux_id][in_id].vld;
+        ob_pkg::table_t tbl_entry   = mux_in_tbl_sel [mux_id][in_id].tbl;
 
-      for (int in_idx = 0; in_idx < MUX_IN_N; in_idx++) begin
-        logic tbl_entry_vld       = mux_in_tbl_sel [mux_id][in_idx].vld;
-        ob_pkg::table_t tbl_entry = mux_in_tbl_sel [mux_id][in_idx].tbl;
+`ifdef OPT_EARLY_TERMINATION
+        mux_in_vld [in_id][mux_id] = 'b0;
+`endif
 
         casez ({ // Entry is valid
                  tbl_entry_vld,
@@ -209,13 +344,15 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
                 })
           2'b1_1: begin
             // Current table entry can be considered in the count.
-            mux_in [mux_id][in_idx] = ob_pkg::accum_quantity_t'(
+`ifdef OPT_EARLY_TERMINATION
+            mux_in_vld [in_id][mux_id] = 'b1;
+`endif
+            mux_in [mux_id][in_id]      = ob_pkg::accum_quantity_t'(
               tbl_entry.quantity);
           end
           default: begin
             // Otherwise, invalid and not considered in the current round.
-            mux_all_vld [mux_id]    = 'b0;
-            mux_in [mux_id][in_idx] = '0;
+            mux_in [mux_id][in_id] = '0;
           end
         endcase
 
@@ -223,7 +360,24 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
     end // for (int mux_id = 0; mux_id < CSA_DEGREE_N - 2; mux_id++)
 
-  end // block: mux_PROC
+    // FSM enables latch at the output of the muxes and at the input to the CSA
+    // chain.
+    //
+    mux_out_en = fsm_mux_out_en;
+
+`ifdef OPT_EARLY_TERMINATION
+
+    // Compute mux_out_all_vld, which is a flag which denotes if all the entires
+    // into the CSA in the next cycle are valid. If false, this flag indicates
+    // that the search operation can be quit.
+    //
+    mux_in_all_vld = 'b1;
+    for (int mux_id = 2; mux_id < CSA_DEGREE_N; mux_id++) begin
+      mux_in_all_vld &= ((mux_in_vld [mux_id] & mux_sel_r) != '0);
+    end
+`endif
+
+  end // block: mux_in_PROC
 
   // ------------------------------------------------------------------------ //
   //
@@ -235,14 +389,41 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
     // Inject entries from table.
     for (int i = 2; i < CSA_DEGREE_N; i++) begin
-      csa_x [i] = mux_out [i];
+      csa_x [i] = mux_out_r [i];
     end
+
+    acc_s_en = (fsm_acc_init | fsm_acc_upt);
+    acc_c_en = (fsm_acc_init | fsm_acc_upt);
+
+    casez ({fsm_acc_init, fsm_acc_upt})
+      2'b1?: begin
+        // Initialize.
+        acc_s_w = '0;
+        acc_c_w = '0;
+      end
+      2'b01: begin
+        // Latch, output of ACC chain; accumulated result.
+        acc_s_w = csa_s;
+        acc_c_w = csa_c;
+      end
+      default: begin
+        // Otherwise, retain.
+        acc_s_w = acc_s_r;
+        acc_c_w = acc_c_r;
+      end
+    endcase
 
   end // block: csa_PROC
 
   // ------------------------------------------------------------------------ //
   // Form final accumulated sum.
-  always_comb rsp_quantity_w = csa_s_w + csa_c_w;
+  always_comb begin : rsp_PROC
+
+    rsp_quantity_w = acc_s_r + acc_c_r;
+
+    rsp_attained_w = (rsp_quantity_w >= fsm_context_r.quantity);
+
+  end // block: rsp_PROC
 
   // ======================================================================== //
   //                                                                          //
@@ -252,14 +433,17 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
   // ------------------------------------------------------------------------ //
   //
-  libv_mux #(.W($bits(ob_pkg::accum_quantity_t)),
-             .N(MUX_IN_N)) u_mux [CSA_DEGREE_N - 1:2] (
-    //
-      .in                     (mux_in              )
-    , .sel                    (mux_sel             )
-    //
-    , .out                    (mux_out             )
-  );
+  generate for (genvar g = 2; g < CSA_DEGREE_N; g++) begin
+
+    libv_mux #(.W($bits(ob_pkg::accum_quantity_t)), .N(MUX_IN_N)) u_table_mux (
+      //
+        .in                     (mux_in [g]          )
+      , .sel                    (mux_sel_r           )
+      //
+      , .out                    (mux_out_w [g]       )
+    );
+
+  end endgenerate
 
   // ------------------------------------------------------------------------ //
   //
@@ -268,8 +452,21 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
     //
       .x                     (csa_x                 )
     //
-    , .s_w                   (csa_s_w               )
-    , .c_w                   (csa_c_w               )
+    , .s_w                   (csa_s                 )
+    , .c_w                   (csa_c                 )
   );
+
+  // ======================================================================== //
+  //                                                                          //
+  // Flops                                                                    //
+  //                                                                          //
+  // ======================================================================== //
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_ff @(posedge clk) begin
+    if (mux_out_en)
+      mux_out_r <= mux_out_w;
+  end
 
 endmodule // ob_table_cnt

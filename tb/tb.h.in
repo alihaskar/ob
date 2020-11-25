@@ -250,19 +250,9 @@ struct Command {
   bool valid = false;
   vluint8_t opcode;
   vluint32_t uid;
-  union {
-    struct {
-      vluint16_t quantity;
-      vluint32_t price;
-    } buy;
-    struct {
-      vluint16_t quantity;
-      vluint32_t price;
-    } sell;
-    struct {
-      vluint32_t uid;
-    } cancel;
-  } oprands;
+  vluint16_t quantity;
+  vluint32_t price;
+  vluint32_t uid1;
 };
 
 struct Response {
@@ -302,15 +292,15 @@ struct VSignals {
   static VSignals bind(U* u) {
     VSignals v;
     v.tb_cycle = std::addressof(u->tb_cycle);
+    // Command:
     v.cmd_vld_r = std::addressof(u->cmd_vld_r);
     v.cmd_opcode_r = std::addressof(u->cmd_opcode_r);
     v.cmd_uid_r = std::addressof(u->cmd_uid_r);
-    v.cmd_buy_quantity_r = std::addressof(u->cmd_buy_quantity_r);
-    v.cmd_buy_price_r = std::addressof(u->cmd_buy_price_r);
-    v.cmd_sell_quantity_r = std::addressof(u->cmd_ask_quantity_r);
-    v.cmd_sell_price_r = std::addressof(u->cmd_ask_price_r);
-    v.cmd_cancel_uid_r = std::addressof(u->cmd_cancel_uid_r);
+    v.cmd_quantity_r = std::addressof(u->cmd_quantity_r);
+    v.cmd_price_r = std::addressof(u->cmd_price_r);
+    v.cmd_uid1_r = std::addressof(u->cmd_uid1_r);
     v.cmd_full_r = std::addressof(u->cmd_full_r);
+    // Response:
     v.rsp_accept = std::addressof(u->rsp_accept);
     v.rsp_vld = std::addressof(u->rsp_vld);
     v.rsp_uid = std::addressof(u->rsp_uid);
@@ -363,14 +353,9 @@ struct VSignals {
   //
   vluint8_t* cmd_opcode_r;
   vluint32_t* cmd_uid_r;
-  // Buy
-  vluint16_t* cmd_buy_quantity_r;
-  vluint32_t* cmd_buy_price_r;
-  // Ask
-  vluint16_t* cmd_sell_quantity_r;
-  vluint32_t* cmd_sell_price_r;
-  // Cancel
-  vluint32_t* cmd_cancel_uid_r;
+  vluint16_t* cmd_quantity_r;
+  vluint32_t* cmd_price_r;
+  vluint32_t* cmd_uid1_r;
   //
   vluint8_t* cmd_full_r;
 

@@ -175,6 +175,13 @@ module ob (
     , .reject_vld_r      (cntrl_bid_reject_vld_r       )
     , .reject_r          (cntrl_bid_reject_r           )
     //
+    , .qry_vld           ()
+    , .qry_price         ()
+    , .qry_quantity      ()
+    //
+    , .qry_rsp_vld_r     ()
+    , .qry_rsp_is_ge_r   ()
+    //
     , .clk               (clk                          )
     , .rst               (rst                          )
   );
@@ -204,6 +211,13 @@ module ob (
     , .reject_pop        (cntrl_ask_reject_pop         )
     , .reject_vld_r      (cntrl_ask_reject_vld_r       )
     , .reject_r          (cntrl_ask_reject_r           )
+    //
+    , .qry_vld           ()
+    , .qry_price         ()
+    , .qry_quantity      ()
+    //
+    , .qry_rsp_vld_r     ()
+    , .qry_rsp_is_ge_r   ()
     //
     , .clk               (clk                          )
     , .rst               (rst                          )

@@ -63,6 +63,15 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   , output ob_pkg::table_t                        reject_r
 
   // ======================================================================== //
+  // Query Interface
+  , input                                         qry_vld
+  , input bcd_pkg::price_t                        qry_price
+  , input ob_pkg::quantity_t                      qry_quantity
+  //
+  , output logic                                  qry_rsp_vld_r
+  , output logic                                  qry_rsp_is_ge_r
+
+  // ======================================================================== //
   // Clk/Reset
   , input                                         clk
   , input                                         rst
@@ -413,6 +422,31 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
   end // block: reject_PROC
 
+  // ------------------------------------------------------------------------ //
+  //
+  logic                                 cnt_cmd_vld;
+  bcd_pkg::price_t                      cnt_cmd_price;
+  ob_pkg::quantity_t                    cnt_cmd_quantity;
+  logic                                 cnt_rsp_attained;
+  `LIBV_REG_RST(logic, cnt_cmd_busy, 'b0);
+  `LIBV_REG_RST_W(logic, qry_rsp_vld, 'b0);
+  `LIBV_REG_EN_RST_W(logic, qry_rsp_is_ge, 'b0);
+
+  always_comb begin : qry_PROC
+
+    cnt_cmd_vld      = qry_vld;
+    cnt_cmd_price    = qry_price;
+    cnt_cmd_quantity = qry_quantity;
+
+
+    // Latch response on the transiton of the controller ('cnt') back to the
+    // idle state.
+    qry_rsp_vld_w    = cnt_cmd_busy_r & (~cnt_cmd_busy_w);
+    qry_rsp_is_ge_en = qry_rsp_vld_w;
+    qry_rsp_is_ge_w  = cnt_rsp_attained;
+
+  end // block: qry_PROC
+
   // ======================================================================== //
   //                                                                          //
   // Flops                                                                    //
@@ -442,15 +476,17 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   //
   ob_table_cnt #(.N(N), .is_ask(is_ask)) u_table_cnt (
     //
-      .cmd_vld                ()
-    , .cmd_price              ()
+      .cmd_vld                (cnt_cmd_vld             )
+    , .cmd_price              (cnt_cmd_price           )
+    , .cmd_quantity           (cnt_cmd_quantity        )
     //
-    , .rsp_quantity_w         ()
+    , .rsp_attained_w         (cnt_rsp_attained        )
+    , .rsp_quantity_w         () // UNUSED
     //
     , .tbl_r                  (tbl_r                   )
     , .tbl_vld_r              (tbl_vld_r               )
     //
-    , .busy_w                 ()
+    , .busy_w                 (cnt_cmd_busy_w          )
     //
     , .clk                    (clk                     )
     , .rst                    (rst                     )

@@ -41,8 +41,8 @@ TEST(Smoke, SimpleTableSort) {
   cmd.opcode = tb::Opcode::Buy;
   cmd.uid = 0;
   bcd = tb::Bcd::from_string("100.55");
-  cmd.oprands.sell.quantity = 100;
-  cmd.oprands.sell.price = bcd.pack();
+  cmd.quantity = 100;
+  cmd.price = bcd.pack();
   tb.push_back(cmd);
 
   // Cmd 1:
@@ -50,8 +50,8 @@ TEST(Smoke, SimpleTableSort) {
   cmd.opcode = tb::Opcode::Buy;
   cmd.uid = 1;
   bcd = tb::Bcd::from_string("100.60");
-  cmd.oprands.sell.quantity = 100;
-  cmd.oprands.sell.price = bcd.pack();
+  cmd.quantity = 100;
+  cmd.price = bcd.pack();
   tb.push_back(cmd);
 
   // Cmd 2:
@@ -59,8 +59,8 @@ TEST(Smoke, SimpleTableSort) {
   cmd.opcode = tb::Opcode::Buy;
   cmd.uid = 2;
   bcd = tb::Bcd::from_string("100.40");
-  cmd.oprands.sell.quantity = 100;
-  cmd.oprands.sell.price = bcd.pack();
+  cmd.quantity = 100;
+  cmd.price = bcd.pack();
   tb.push_back(cmd);
 
 
@@ -98,8 +98,8 @@ TEST(Smoke, SimpleTrade) {
   cmd.opcode = tb::Opcode::Buy;
   cmd.uid = 0;
   bcd = tb::Bcd::from_string("200.00");
-  cmd.oprands.buy.quantity = 100;
-  cmd.oprands.buy.price = bcd.pack();
+  cmd.quantity = 100;
+  cmd.price = bcd.pack();
   tb.push_back(cmd);
 
   // Cmd 2: Sell 100 shares at $100.00
@@ -107,8 +107,8 @@ TEST(Smoke, SimpleTrade) {
   cmd.opcode = tb::Opcode::Sell;
   cmd.uid = 1;
   bcd = tb::Bcd::from_string("100.00");
-  cmd.oprands.sell.quantity = 100;
-  cmd.oprands.sell.price = bcd.pack();
+  cmd.quantity = 100;
+  cmd.price = bcd.pack();
   tb.push_back(cmd);
 
   // Run simulation.
@@ -126,22 +126,22 @@ TEST(Smoke, Cancel) {
   cmd.opcode = tb::Opcode::Buy;
   cmd.uid = 0x20;
   const tb::Bcd bcd = tb::Bcd::from_string("200.00");
-  cmd.oprands.buy.quantity = 100;
-  cmd.oprands.buy.price = bcd.pack();
+  cmd.quantity = 100;
+  cmd.price = bcd.pack();
   tb.push_back(cmd);
 
   // Cmd 1: issue cancel for Buy command.
   cmd.valid = true;
   cmd.opcode = tb::Opcode::Cancel;
   cmd.uid = 0x30;
-  cmd.oprands.cancel.uid = 0x20;
+  cmd.uid1 = 0x20;
   tb.push_back(cmd);
 
   // Cmd 2: issue cancel for Buy command.
   cmd.valid = true;
   cmd.opcode = tb::Opcode::Cancel;
   cmd.uid = 0x31;
-  cmd.oprands.cancel.uid = 0x20;
+  cmd.uid1 = 0x20;
   tb.push_back(cmd);
 
   // Run simulation

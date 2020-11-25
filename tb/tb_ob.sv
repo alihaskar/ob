@@ -34,17 +34,9 @@ module tb_ob (
     input                                         cmd_vld_r
   , input ob_pkg::opcode_t                        cmd_opcode_r
   , input ob_pkg::uid_t                           cmd_uid_r
-  //
-  // Oprands (Buy)
-  , input ob_pkg::quantity_t                      cmd_buy_quantity_r
-  , input bcd_pkg::price_t                        cmd_buy_price_r
-  //
-  // Oprands (Ask)
-  , input ob_pkg::quantity_t                      cmd_ask_quantity_r
-  , input bcd_pkg::price_t                        cmd_ask_price_r
-  //
-  // Oprands (Cancel)
-  , input ob_pkg::uid_t                           cmd_cancel_uid_r
+  , input ob_pkg::quantity_t                      cmd_quantity_r
+  , input bcd_pkg::price_t                        cmd_price_r
+  , input ob_pkg::uid_t                           cmd_uid1_r
   //
   , output logic                                  cmd_full_r
 
@@ -93,39 +85,12 @@ module tb_ob (
 
   always_comb begin : cmd_PROC
 
-    cmd_r         = '0;
-    cmd_r.uid     = cmd_uid_r;
-    cmd_r.opcode  = cmd_opcode_r;
-
-    case (cmd_r.opcode)
-      ob_pkg::Op_Nop: begin
-      end
-      ob_pkg::Op_QryBidAsk: begin
-      end
-      ob_pkg::Op_BuyLimit: begin
-        ob_pkg::oprand_buy_t oprand;
-
-        oprand.quantity  = cmd_buy_quantity_r;
-        oprand.price     = cmd_buy_price_r;
-
-	      cmd_r.oprand     = '0;
-        cmd_r.oprand.buy = oprand;
-      end
-      ob_pkg::Op_SellLimit: begin
-        ob_pkg::oprand_sell_t oprand;
-
-        oprand.quantity   = cmd_ask_quantity_r;
-        oprand.price      = cmd_ask_price_r;
-
-	      cmd_r.oprand      = '0;
-
-        cmd_r.oprand.sell = oprand;
-      end
-      ob_pkg::Op_Cancel: begin
-	      cmd_r.oprand.cancel.uid = cmd_cancel_uid_r;
-      end
-      default: ;
-    endcase // case (cmd_r.opcode_r)
+    cmd_r          = '0;
+    cmd_r.opcode   = cmd_opcode_r;
+    cmd_r.uid      = cmd_uid_r;
+    cmd_r.quantity = cmd_quantity_r;
+    cmd_r.price    = cmd_price_r;
+    cmd_r.uid1     = cmd_uid1_r;
 
   end // block: cmd_PROC
 

@@ -204,17 +204,17 @@ std::string Command::to_string() const {
   r.add_field("opcode", to_opcode_string(opcode));
   switch (opcode) {
     case Opcode::Buy: {
-      r.add_field("quantity", to_string(oprands.buy.quantity));
-      const Bcd bcd = Bcd::from_packed(oprands.buy.price);
+      r.add_field("quantity", to_string(quantity));
+      const Bcd bcd = Bcd::from_packed(price);
       r.add_field("price", bcd.to_string());
     } break;
     case Opcode::Sell: {
-      r.add_field("quantity", to_string(oprands.sell.quantity));
-      const Bcd bcd = Bcd::from_packed(oprands.sell.price);
+      r.add_field("quantity", to_string(quantity));
+      const Bcd bcd = Bcd::from_packed(price);
       r.add_field("price", bcd.to_string());
     } break;
     case Opcode::Cancel: {
-      r.add_field("cancel_uid", utility::hex(oprands.cancel.uid));
+      r.add_field("cancel_uid", utility::hex(uid1));
     } break;
   }
   return r.to_string();
@@ -325,15 +325,15 @@ void VSignals::set(const Command& cmd) {
     case Opcode::QryBidAsk: {
     } break;
     case Opcode::Buy: {
-      vsupport::set(cmd_buy_quantity_r, cmd.oprands.buy.quantity);
-      vsupport::set(cmd_buy_price_r, cmd.oprands.buy.price);
+      vsupport::set(cmd_quantity_r, cmd.quantity);
+      vsupport::set(cmd_price_r, cmd.price);
     } break;
     case Opcode::Sell: {
-      vsupport::set(cmd_sell_quantity_r, cmd.oprands.sell.quantity);
-      vsupport::set(cmd_sell_price_r, cmd.oprands.sell.price);
+      vsupport::set(cmd_quantity_r, cmd.quantity);
+      vsupport::set(cmd_price_r, cmd.price);
     } break;
     case Opcode::Cancel: {
-      vsupport::set(cmd_cancel_uid_r, cmd.oprands.cancel.uid);
+      vsupport::set(cmd_uid1_r, cmd.uid1);
     } break;
     default: {
       // Unknown opcode.
@@ -620,8 +620,8 @@ std::vector<Response> Model::apply(const Command& cmd) {
 
       Entry e;
       e.uid = cmd.uid;
-      e.quantity = cmd.oprands.buy.quantity;
-      e.price = cmd.oprands.buy.price;
+      e.quantity = cmd.quantity;
+      e.price = cmd.price;
       bid_table_.push_back(e);
       std::stable_sort(bid_table_.begin(), bid_table_.end(), BidComparer{});
 
@@ -648,8 +648,8 @@ std::vector<Response> Model::apply(const Command& cmd) {
 
       Entry e;
       e.uid = cmd.uid;
-      e.quantity = cmd.oprands.sell.quantity;
-      e.price = cmd.oprands.sell.price;
+      e.quantity = cmd.quantity;
+      e.price = cmd.price;
       ask_table_.push_back(e);
       std::stable_sort(ask_table_.begin(), ask_table_.end(), AskComparer{});
 
@@ -697,7 +697,7 @@ std::vector<Response> Model::apply(const Command& cmd) {
     } break;
     case Opcode::Cancel: {
       bool did_cancel = false;
-      const vluint32_t uid_to_cancel = cmd.oprands.cancel.uid;
+      const vluint32_t uid_to_cancel = cmd.uid1;
       if (auto it = std::find_if(bid_table_.begin(), bid_table_.end(),
                                  UidFinder{uid_to_cancel});
           !did_cancel && (it != bid_table_.end())) {
@@ -848,12 +848,12 @@ void StimulusGenerator::generate(Command& cmd) {
       // No oprands.
     } break;
     case Opcode::Buy: {
-      cmd.oprands.buy.quantity = quantity;
-      cmd.oprands.buy.price = bcd.pack();
+      cmd.quantity = quantity;
+      cmd.price = bcd.pack();
     } break;
     case Opcode::Sell: {
-      cmd.oprands.sell.quantity = quantity;
-      cmd.oprands.sell.price = bcd.pack();
+      cmd.quantity = quantity;
+      cmd.price = bcd.pack();
     } break;
     case Opcode::PopTopBid: {
       // No oprands.
@@ -865,11 +865,11 @@ void StimulusGenerator::generate(Command& cmd) {
       const bool do_definately_miss = Random::boolean(0.1);
       if (!do_definately_miss) {
         auto it = Random::select_one(prior_uid_.begin(), prior_uid_.end());
-        cmd.oprands.cancel.uid = *it;
+        cmd.uid1 = *it;
       } else {
         // Some UID we haven't issued yet and which is guarenteed to
         // miss.
-        cmd.oprands.cancel.uid = (uid_i_ + 100);
+        cmd.uid1 = (uid_i_ + 100);
       }
     } break;
   }
