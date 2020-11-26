@@ -52,6 +52,11 @@ package libv_pkg;
     end
   end endfunction
 
+  typedef enum logic [1:0] { CSA_3_2 = 'b00, // 3:2 compressor
+                             CSA_7_2 = 'b01,  // 7:2 compressor
+                             CSA_INFER = 'b11 // Inferred sum.
+                             } csa_op_t;
+
 endpackage // libv_pkg
 
 `endif

@@ -25,11 +25,11 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-`include "ob_pkg.vh"
+`include "libv_pkg.vh"
 
 `define OPT_DEBUG
 
-module ob_lm_table_cnt_csa #(
+module libv_csa #(
 
   // Width of each word in bits
     parameter int W = 32
@@ -38,7 +38,7 @@ module ob_lm_table_cnt_csa #(
   , parameter int N = 8
 
   // Compression function to perform.
-  , parameter ob_pkg::csa_op_t op = ob_pkg::CSA_3_2
+  , parameter libv_pkg::csa_op_t op = libv_pkg::CSA_3_2
 ) (
 
   // ======================================================================== //
@@ -63,7 +63,7 @@ module ob_lm_table_cnt_csa #(
 
   // ------------------------------------------------------------------------ //
   //
-  generate if (op == ob_pkg::CSA_3_2) begin
+  generate if (op == libv_pkg::CSA_3_2) begin
 
     // 3:2 CSA reduction network
 
@@ -124,7 +124,7 @@ module ob_lm_table_cnt_csa #(
 
     end // block: csa_PROC
 
-  end else if (op == ob_pkg::CSA_7_2) begin // if (op == ob_pkg::CSA_3_2)
+  end else if (op == libv_pkg::CSA_7_2) begin // if (op == libv_pkg::CSA_3_2)
 
     // 7:2 CSA reduction network
 
@@ -210,7 +210,7 @@ module ob_lm_table_cnt_csa #(
 
     end // block: csa_PROC
 
-  end else begin // if (op == ob_pkg::CSA_7_2)
+  end else begin // if (op == libc_pkg::CSA_7_2)
 
     // Use infered CSA chain
 
@@ -224,6 +224,6 @@ module ob_lm_table_cnt_csa #(
 
     end // block: csa_PROC
 
-  end endgenerate // if (op == ob_pkg::CSA_7_2)
+  end endgenerate // else: !if(op == libc_pkg::CSA_7_2)
 
-endmodule // ob_table_cnt_csa
+endmodule // libv_csa
