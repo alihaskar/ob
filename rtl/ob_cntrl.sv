@@ -910,4 +910,28 @@ module ob_cntrl (
   //                                                                          //
   // ======================================================================== //
 
+  // ------------------------------------------------------------------------ //
+  //
+  ob_cntrl_mk u_ob_cntrl_mk (
+    //
+      .lm_bid_vld_r           ()
+    , .lm_bid_r               ()
+    //
+    , .lm_ask_vld_r           ()
+    , .lm_ask_r               ()
+    //
+    , .mk_buy_head_r          ()
+    , .mk_buy_empty_w         ()
+    //
+    , .mk_sell_head_r         ()
+    , .mk_sell_empty_w        ()
+    //
+    , .trade_qry              ()
+    , .trade_vld_r            ()
+    , .trade_r                ()
+    //
+    , .clk                    (clk                )
+    , .rst                    (rst                )
+  );
+
 endmodule // ob_cntrl

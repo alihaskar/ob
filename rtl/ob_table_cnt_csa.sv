@@ -60,32 +60,6 @@ module ob_table_cnt_csa #(
     fa[0] = a ^ b ^ c;
     fa[1] = (a & b) | (c  & (a | b));
   end endfunction
-`ifdef OPT_DEBUG
-
-  // ------------------------------------------------------------------------ //
-  //
-  logic [W - 1:0]                       debug_x_0;
-  logic [W - 1:0]                       debug_x_1;
-  logic [W - 1:0]                       debug_x_2;
-  logic [W - 1:0]                       debug_x_3;
-  logic [W - 1:0]                       debug_x_4;
-  logic [W - 1:0]                       debug_x_5;
-  logic [W - 1:0]                       debug_x_6;
-  logic [W - 1:0]                       debug_x_7;
-
-  always_comb begin : debug_PROC
-
-    debug_x_0 = x [0];
-    debug_x_1 = x [1];
-    debug_x_2 = x [2];
-    debug_x_3 = x [3];
-    debug_x_4 = x [4];
-    debug_x_5 = x [5];
-    debug_x_6 = x [6];
-    debug_x_7 = x [7];
-
-  end // block: debug_PROC
-`endif
 
   // ------------------------------------------------------------------------ //
   //

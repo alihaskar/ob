@@ -194,6 +194,10 @@ package ob_pkg;
     bcd_pkg::price_t     price;
   } table_t;
 
+  typedef struct packed {
+    logic        foo;
+  } cntrl_mk_t;
+
   //
   localparam table_t TABLE_ASK_INIT  = '{ uid: '0,
                                           quantity: '0,
