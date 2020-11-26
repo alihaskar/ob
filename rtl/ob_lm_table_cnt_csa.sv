@@ -29,7 +29,7 @@
 
 `define OPT_DEBUG
 
-module ob_table_cnt_csa #(
+module ob_lm_table_cnt_csa #(
 
   // Width of each word in bits
     parameter int W = 32

@@ -31,7 +31,7 @@
 
 //`define OPT_EARLY_TERMINATION
 
-module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
+module ob_lm_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
   // ======================================================================== //
   // Command interface
@@ -446,7 +446,7 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
   // ------------------------------------------------------------------------ //
   //
-  ob_table_cnt_csa #(.W($bits(ob_pkg::accum_quantity_t)),
+  ob_lm_table_cnt_csa #(.W($bits(ob_pkg::accum_quantity_t)),
                      .N(CSA_DEGREE_N), .op(ob_pkg::CSA_3_2)) u_ob_table_cnt_csa (
     //
       .x                     (csa_x                 )

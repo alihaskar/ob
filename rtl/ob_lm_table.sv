@@ -29,7 +29,7 @@
 `include "bcd_pkg.vh"
 `include "macros_pkg.vh"
 
-module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
+module ob_lm_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
   // ======================================================================== //
   // Head Status
@@ -479,7 +479,7 @@ module ob_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
   // ------------------------------------------------------------------------ //
   //
-  ob_table_cnt #(.N(N), .is_ask(is_ask)) u_table_cnt (
+  ob_lm_table_cnt #(.N(N), .is_ask(is_ask)) u_lm_table_cnt (
     //
       .cmd_vld                (cnt_cmd_vld             )
     , .cmd_price              (cnt_cmd_price           )

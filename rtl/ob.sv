@@ -163,7 +163,7 @@ module ob (
 
   // ------------------------------------------------------------------------ //
   //
-  ob_table #(.N(cfg_pkg::BID_TABLE_DEPTH_N), .is_ask('b0)) u_bid_table (
+  ob_lm_table #(.N(cfg_pkg::BID_TABLE_DEPTH_N), .is_ask('b0)) u_lm_table_bid (
     //
       .head_pop          (cntrl_bid_pop                )
       //
@@ -201,7 +201,7 @@ module ob (
 
   // ------------------------------------------------------------------------ //
   //
-  ob_table #(.N(cfg_pkg::ASK_TABLE_DEPTH_N), .is_ask('b1)) u_ask_table (
+  ob_lm_table #(.N(cfg_pkg::ASK_TABLE_DEPTH_N), .is_ask('b1)) u_lm_table_ask (
     //
       .head_pop          (cntrl_ask_pop                )
       //

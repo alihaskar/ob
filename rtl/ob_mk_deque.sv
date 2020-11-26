@@ -87,12 +87,12 @@ module ob_mk_deque #(parameter int N = 8) (
       libv_pkg::OpPushFront,
       libv_pkg::OpPushBack: begin
         // Push, increment count.
-        quantity_w = quantity_w + quantity_lhs_accum;
+        quantity_w = quantity_r + quantity_lhs_accum;
       end
       libv_pkg::OpPopFront,
       libv_pkg::OpPopBack: begin
         // Pop, decrement count.
-        quantity_w = quantity_w - quantity_lhs_accum;
+        quantity_w = quantity_r - quantity_lhs_accum;
       end
       default: begin
         // Retain prior
