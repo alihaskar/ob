@@ -350,6 +350,46 @@ module ob (
 
   // ------------------------------------------------------------------------ //
   //
+  ob_mk_deque #(.N(cfg_pkg::MARKET_BUY_DEPTH_N)) u_mk_deque_buy (
+    //
+      .cmd_vld                ()
+    , .cmd_op                 ()
+    , .cmd_push_data          ()
+    //
+    , .head_vld_r             ()
+    , .head_r                 ()
+    //
+    , .empty_w                ()
+    , .full_w                 ()
+    //
+    , .quantity_r             ()
+    //
+    , .clk                    (clk                          )
+    , .rst                    (rst                          )
+  );
+
+  // ------------------------------------------------------------------------ //
+  //
+  ob_mk_deque #(.N(cfg_pkg::MARKET_SELL_DEPTH_N)) u_mk_deque_sell (
+    //
+      .cmd_vld                ()
+    , .cmd_op                 ()
+    , .cmd_push_data          ()
+    //
+    , .head_vld_r             ()
+    , .head_r                 ()
+    //
+    , .empty_w                ()
+    , .full_w                 ()
+    //
+    , .quantity_r             ()
+    //
+    , .clk                    (clk                          )
+    , .rst                    (rst                          )
+  );
+
+  // ------------------------------------------------------------------------ //
+  //
   libv_deque #(
     .W($bits(ob_pkg::table_t)), .N(cfg_pkg::MARKET_BUY_DEPTH_N)) u_market_buy (
     //
