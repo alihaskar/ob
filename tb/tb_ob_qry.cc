@@ -30,8 +30,6 @@
 
 TEST(Qry, BidBasic) {
   tb::Options opts;
-  opts.trace_enable = true;
-  opts.wave_enable = true;
   tb::TB tb{opts};
 
   vluint32_t uid = 0;
@@ -53,7 +51,7 @@ TEST(Qry, BidBasic) {
   cmd.price = tb::Bcd::from_string("110.23").pack();
   tb.push_back(cmd);
 
-  // Issue Qry for $99.99 -> Expect: 0
+  // Issue Qry for $99.99 -> Expect: 123
   cmd.valid = true;
   cmd.uid = uid++;
   cmd.opcode = tb::Opcode::QryTblBidGe;
@@ -61,7 +59,7 @@ TEST(Qry, BidBasic) {
   cmd.quantity = 0;
   tb.push_back(cmd);
 
-  // Issue Qry for $100.00 -> Expect: 100
+  // Issue Qry for $100.00 -> Expect: 123
   cmd.valid = true;
   cmd.uid = uid++;
   cmd.opcode = tb::Opcode::QryTblBidGe;
@@ -69,7 +67,7 @@ TEST(Qry, BidBasic) {
   cmd.quantity = 0;
   tb.push_back(cmd);
 
-  // Issue Qry for $100.01 -> Expect: 100
+  // Issue Qry for $100.01 -> Expect: 123
   cmd.valid = true;
   cmd.uid = uid++;
   cmd.opcode = tb::Opcode::QryTblBidGe;
@@ -77,7 +75,15 @@ TEST(Qry, BidBasic) {
   cmd.quantity = 0;
   tb.push_back(cmd);
 
-  // Issue Qry for $120.00 -> Expect: 123
+  // Issue Qry for $115.00 -> Expect: 23
+  cmd.valid = true;
+  cmd.uid = uid++;
+  cmd.opcode = tb::Opcode::QryTblBidGe;
+  cmd.price = tb::Bcd::from_string("120.00").pack();
+  cmd.quantity = 0;
+  tb.push_back(cmd);
+
+  // Issue Qry for $120.00 -> Expect: 0
   cmd.valid = true;
   cmd.uid = uid++;
   cmd.opcode = tb::Opcode::QryTblBidGe;
@@ -88,14 +94,66 @@ TEST(Qry, BidBasic) {
   tb.run();
 }
 
-/*
+
 TEST(Qry, Bid) {
   tb::Options opts;
   tb::TB tb{opts};
 
+  vluint32_t uid = 0;
+
+  tb::Command cmd;
+
+  // Issue Sell 100 @ 100.00
+  cmd.valid = true;
+  cmd.uid = uid++;
+  cmd.opcode = tb::Opcode::SellLimit;
+  cmd.quantity = 100;
+  cmd.price = tb::Bcd::from_string("100.00").pack();
+  tb.push_back(cmd);
+
+  // Issue Sell 45 @ 123.23
+  cmd.valid = true;
+  cmd.uid = uid++;
+  cmd.opcode = tb::Opcode::SellLimit;
+  cmd.quantity = 45;
+  cmd.price = tb::Bcd::from_string("123.23").pack();
+  tb.push_back(cmd);
+
+  // Issue Qry for $50.00 -> Expect: 0
+  cmd.valid = true;
+  cmd.uid = uid++;
+  cmd.opcode = tb::Opcode::QryTblAskLe;
+  cmd.price = tb::Bcd::from_string("50.00").pack();
+  cmd.quantity = 0;
+  tb.push_back(cmd);
+
+  // Issue Qry for $99.99 -> Expect: 0
+  cmd.valid = true;
+  cmd.uid = uid++;
+  cmd.opcode = tb::Opcode::QryTblAskLe;
+  cmd.price = tb::Bcd::from_string("99.99").pack();
+  cmd.quantity = 0;
+  tb.push_back(cmd);
+
+  // Issue Qry for $110.00 -> Expect: 100
+  cmd.valid = true;
+  cmd.uid = uid++;
+  cmd.opcode = tb::Opcode::QryTblAskLe;
+  cmd.price = tb::Bcd::from_string("110.00").pack();
+  cmd.quantity = 0;
+  tb.push_back(cmd);
+
+  // Issue Qry for $140.00 -> Expect: 145
+  cmd.valid = true;
+  cmd.uid = uid++;
+  cmd.opcode = tb::Opcode::QryTblAskLe;
+  cmd.price = tb::Bcd::from_string("140.00").pack();
+  cmd.quantity = 0;
+  tb.push_back(cmd);
+
   tb.run();
 }
-*/
+
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

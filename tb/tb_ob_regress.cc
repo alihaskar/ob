@@ -41,10 +41,18 @@ TEST(Regress, Basic) {
   bg.push_back(tb::Opcode::PopTopBid, 3);
   bg.push_back(tb::Opcode::PopTopAsk, 3);
   bg.push_back(tb::Opcode::Cancel, 1);
+  bg.push_back(tb::Opcode::QryTblAskLe, 1);
+  bg.push_back(tb::Opcode::QryTblBidGe, 1);
   tb::StimulusGenerator gen(bg, 100.0, 10.0);
 
   // Construct testbench environment.
   tb::Options opts;
+#ifdef OPT_TRACE_ENABLE
+  opts.trace_enable = true;
+#endif
+#ifdef OPT_WAVE_ENABLE
+  opts.wave_enable = true;
+#endif
   tb::TB tb{opts};
   for (const tb::Command& cmd : gen.generate(200000)) {
     tb.push_back(cmd);

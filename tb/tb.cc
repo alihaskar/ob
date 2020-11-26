@@ -221,6 +221,10 @@ std::string Command::to_string() const {
     case Opcode::Cancel: {
       r.add_field("cancel_uid", utility::hex(uid1));
     } break;
+    case Opcode::QryTblAskLe:
+    case Opcode::QryTblBidGe: {
+      r.add_field("price", Bcd::from_packed(price).to_string());
+    } break;
   }
   return r.to_string();
 }
@@ -253,10 +257,12 @@ std::string Response::to_string(vluint8_t opcode) const {
     switch (opcode) {
       case Opcode::QryBidAsk: {
         r.add_field("op", to_opcode_string(opcode));
-        const Bcd bid = Bcd::from_packed(result.qrybidask.bid);
-        r.add_field("bid", bid.to_string());
-        const Bcd ask = Bcd::from_packed(result.qrybidask.ask);
-        r.add_field("ask", ask.to_string());
+        if (status != Status::Bad) {
+          const Bcd bid = Bcd::from_packed(result.qrybidask.bid);
+          r.add_field("bid", bid.to_string());
+          const Bcd ask = Bcd::from_packed(result.qrybidask.ask);
+          r.add_field("ask", ask.to_string());
+        }
       } break;
       case Opcode::PopTopBid:
       case Opcode::PopTopAsk: {
@@ -265,6 +271,10 @@ std::string Response::to_string(vluint8_t opcode) const {
         r.add_field("price", price.to_string());
         r.add_field("quantity", to_string(result.poptop.quantity));
         r.add_field("uid", utility::hex(uid));
+      } break;
+      case Opcode::QryTblAskLe:
+      case Opcode::QryTblBidGe: {
+        r.add_field("accum", to_string(result.qry.accum));
       } break;
     }
   }
@@ -451,6 +461,15 @@ void TB::run() {
       if (opts_.trace_enable) {
         std::cout << "[TB] " << vs_.cycle()
                   << " ;Issue command: " << cmd.to_string() << "\n";
+#ifdef OPT_VERBOSE
+        switch (cmd.opcode) {
+          case Opcode::QryTblBidGe: {
+            for (const Entry& e : model_.bid_table_) {
+              std::cout << e.to_string() << "\n";
+            }
+          } break;
+        }
+#endif
       }
 #endif
       cmds_.pop_front();
@@ -502,7 +521,9 @@ void TB::run() {
   // Wind-down simulation
   step(20);
 #ifdef OPT_TRACE_ENABLE
-  std::cout << "[TB] " << vs_.cycle() << ": Simulation complete!\n";
+  if (opts_.trace_enable) {
+    std::cout << "[TB] " << vs_.cycle() << ": Simulation complete!\n";
+  }
 #endif
 }
 
@@ -740,8 +761,13 @@ std::vector<Response> Model::apply(const Command& cmd) {
       rsp.valid = true;
       rsp.uid = cmd.uid;
       rsp.status = Status::Okay;
-      //rsp.accum = 0;
-      // rsps.push_back(rsp);
+      rsp.result.qry.accum = 0;
+      for (const Entry& e : ask_table_) {
+        if (cmd.price >= e.price) {
+          rsp.result.qry.accum += e.quantity;
+        }
+      }
+      rsps.push_back(rsp);
     } break;
     case Opcode::QryTblBidGe: {
       rsp.valid = true;
@@ -749,7 +775,7 @@ std::vector<Response> Model::apply(const Command& cmd) {
       rsp.status = Status::Okay;
       rsp.result.qry.accum = 0;
       for (const Entry& e : bid_table_) {
-        if (cmd.price >= e.price)
+        if (cmd.price <= e.price)
           rsp.result.qry.accum += e.quantity;
       }
       rsps.push_back(rsp);
@@ -907,6 +933,11 @@ void StimulusGenerator::generate(Command& cmd) {
         // miss.
         cmd.uid1 = (uid_i_ + 100);
       }
+    } break;
+    case Opcode::QryTblAskLe:
+    case Opcode::QryTblBidGe: {
+      // Query either table for some random price.
+      cmd.price = bcd.pack();
     } break;
   }
 }

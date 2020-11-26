@@ -27,6 +27,8 @@
 
 `include "ob_pkg.vh"
 
+`define OPT_DEBUG
+
 module ob_table_cnt_csa #(
 
   // Width of each word in bits
@@ -55,9 +57,35 @@ module ob_table_cnt_csa #(
   w_t [N - 1:0]                         s;
 
   function automatic logic [1:0] fa(logic a, logic b, logic c); begin
-    fa[0] = ^{a, b, c};
-    fa[1] = (a & b) | c  & (a | b);
+    fa[0] = a ^ b ^ c;
+    fa[1] = (a & b) | (c  & (a | b));
   end endfunction
+`ifdef OPT_DEBUG
+
+  // ------------------------------------------------------------------------ //
+  //
+  logic [W - 1:0]                       debug_x_0;
+  logic [W - 1:0]                       debug_x_1;
+  logic [W - 1:0]                       debug_x_2;
+  logic [W - 1:0]                       debug_x_3;
+  logic [W - 1:0]                       debug_x_4;
+  logic [W - 1:0]                       debug_x_5;
+  logic [W - 1:0]                       debug_x_6;
+  logic [W - 1:0]                       debug_x_7;
+
+  always_comb begin : debug_PROC
+
+    debug_x_0 = x [0];
+    debug_x_1 = x [1];
+    debug_x_2 = x [2];
+    debug_x_3 = x [3];
+    debug_x_4 = x [4];
+    debug_x_5 = x [5];
+    debug_x_6 = x [6];
+    debug_x_7 = x [7];
+
+  end // block: debug_PROC
+`endif
 
   // ------------------------------------------------------------------------ //
   //
@@ -73,7 +101,7 @@ module ob_table_cnt_csa #(
         logic co, sum;
         { co, sum } =  fa(in[2][i], in[1][i], in[0][i]);
         csa_3_2 [0][i] = sum;
-        if (i < N - 1)
+        if (i < W - 1)
           csa_3_2 [1][i + 1] = co;
       end
     end endfunction
@@ -90,8 +118,9 @@ module ob_table_cnt_csa #(
 
         last = j;
         j    = 0;
+
         for (i = 0; i < last; i += 3) begin
-          int remain_n = (last - i - 1);
+          int remain_n = (last - i);
 
           case (remain_n)
             1: begin
@@ -103,9 +132,9 @@ module ob_table_cnt_csa #(
             end
             default: begin
               // Round with 3 entries; perform 3:2 reduction.
-              w_t a                  = ((i + 0) < last) ? s [i + 0] : '0;
-              w_t b                  = ((i + 1) < last) ? s [i + 1] : '0;
-              w_t c                  = ((i + 2) < last) ? s [i + 2] : '0;
+              w_t a                  = ((i + 0) < last) ? s[i + 0] : '0;
+              w_t b                  = ((i + 1) < last) ? s[i + 1] : '0;
+              w_t c                  = ((i + 2) < last) ? s[i + 2] : '0;
 
               { s[j + 1], s[j + 0] } = csa_3_2({a, b, c});
 

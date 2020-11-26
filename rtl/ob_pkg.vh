@@ -80,7 +80,8 @@ package ob_pkg;
                             // Qry Bid table entries greater-than oprand; for
                             // example, for a given ask price (oprand), compute
                             // the number of shares that can be traded from the
-                            // bid limit table that can be traded.
+                            // bid limit table that can be traded (the number of
+                            // bidding orders that are greater than the oprand).
                             Op_QryTblBidGe = 4'b1011
                             } opcode_t;
 

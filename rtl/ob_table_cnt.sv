@@ -309,16 +309,16 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
     if (is_ask) begin
       // Ask: if the command (Buy) price is greater than or equal to the current
       // asking price, the transaction can take place.
-      return (c <= t);
+      return (c >= t);
     end else begin
       // Put: if the command (Sell) price is lesser than or equal to the current
       // market price, the transaction can take place.
-      return (c >= t);
+      return (c <= t);
     end
   end endfunction
 
   always_comb begin : mux_in_PROC
-    int tbl_idx = 0;
+    int tbl_idx = N;
 
     mux_in_tbl_sel  = '0;
 
@@ -326,13 +326,13 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
       for (int mux_id = 0; mux_id < MUX_N; mux_id++) begin
 
-        if (tbl_idx <= N) begin
+        if (tbl_idx >= 0) begin
           // Pipe table input approprate location in mux
           mux_in_tbl_sel [mux_id][in_idx] =
             '{vld: tbl_vld_r [tbl_idx], tbl: tbl_r [tbl_idx]};
 
           // Advance index.
-          tbl_idx++;
+          tbl_idx--;
         end
         // Otherwise, mux-input is driven zero.
 
@@ -392,26 +392,12 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
   // ------------------------------------------------------------------------ //
   //
-  ob_pkg::accum_quantity_t debug_mux_out_0;
-  ob_pkg::accum_quantity_t debug_mux_out_1;
-  ob_pkg::accum_quantity_t debug_mux_out_2;
-  ob_pkg::accum_quantity_t debug_mux_out_3;
-  ob_pkg::accum_quantity_t debug_mux_out_4;
-  ob_pkg::accum_quantity_t debug_mux_out_5;
-
   always_comb begin : csa_PROC
 
     // Inject entries from table.
     for (int i = 0; i < MUX_N; i++) begin
       csa_x [i] = ob_pkg::accum_quantity_t'(mux_out_r [i]);
     end
-
-    debug_mux_out_0          = csa_x [0];
-    debug_mux_out_1          = csa_x [1];
-    debug_mux_out_2          = csa_x [2];
-    debug_mux_out_3          = csa_x [3];
-    debug_mux_out_4          = csa_x [4];
-    debug_mux_out_5          = csa_x [5];
 
     // Inject prior accumulated result
     csa_x [CSA_DEGREE_N - 2] = acc_s_r;
@@ -420,23 +406,9 @@ module ob_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
     acc_s_en                 = (fsm_acc_init | fsm_acc_upt);
     acc_c_en                 = (fsm_acc_init | fsm_acc_upt);
 
-    casez ({fsm_acc_init, fsm_acc_upt})
-      2'b1?: begin
-        // Initialize.
-        acc_s_w = '0;
-        acc_c_w = '0;
-      end
-      2'b01: begin
-        // Latch, output of ACC chain; accumulated result.
-        acc_s_w = csa_s;
-        acc_c_w = csa_c;
-      end
-      default: begin
-        // Otherwise, retain.
-        acc_s_w = acc_s_r;
-        acc_c_w = acc_c_r;
-      end
-    endcase
+    // Set to zero, or CSA output.
+    acc_s_w                  = fsm_acc_init ? '0 : csa_s;
+    acc_c_w                  = fsm_acc_init ? '0 : csa_c;
 
   end // block: csa_PROC
 
