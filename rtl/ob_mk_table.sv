@@ -57,6 +57,7 @@ module ob_mk_table #(parameter int N = 16) (
   // ======================================================================== //
   // Status
   , output logic                                  full_w
+  , output logic                                  empty_w
   , output ob_pkg::quantity_t                     quantity_r
 
   // ======================================================================== //
@@ -202,6 +203,9 @@ module ob_mk_table #(parameter int N = 16) (
 
     // Table becomes full when all slots are becoming occupied.
     full_w            = (tbl_vld_w == 'b1);
+
+    // Table becomes empty when all slots are unoccupied.
+    empty_w           = (tbl_vld_w == '0);
 
   end // block: tbl_update_PROC
 

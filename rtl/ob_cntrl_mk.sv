@@ -155,7 +155,7 @@ module ob_cntrl_mk (
     // the current cycle. Prefer Limit <-> Market, over Market <-> Market as
     // these trade enjoy a higher overall commission per trade.
     //
-    casez ({// Query current tradeable state
+    case  ({// Query current tradeable state
             trade_qry,
             // Limit Buy <-> Market Sell trade
             lm_b_mk_trade,
@@ -163,7 +163,7 @@ module ob_cntrl_mk (
             lm_s_mk_trade,
             // Market Sell <-> Market Buy trade
             mk_mk_trade_r
-            })
+            }) inside
       4'b1_1??: begin
         // Limit Buy <-> Market Sell trade takes place
         trade_vld_w = 'b1;

@@ -115,6 +115,7 @@ module ob (
   logic                                 mk_buy_cancel_hit_w;
   ob_pkg::table_t                       mk_buy_cancel_hit_tbl_w;
   logic                                 mk_buy_full_w;
+  logic                                 mk_buy_empty_w;
   ob_pkg::quantity_t                    mk_buy_quantity_r;
   //
   logic                                 mk_sell_head_pop;
@@ -130,24 +131,8 @@ module ob (
   logic                                 mk_sell_cancel_hit_w;
   ob_pkg::table_t                       mk_sell_cancel_hit_tbl_w;
   logic                                 mk_sell_full_w;
+  logic                                 mk_sell_empty_w;
   ob_pkg::quantity_t                    mk_sell_quantity_r;
-  //
-
-  ob_pkg::table_t                       cntrl_mk_buy_head_r;
-  logic                                 cntrl_mk_buy_cmd_vld;
-  libv_pkg::deque_op_t                  cntrl_mk_buy_cmd_op;
-  ob_pkg::table_t                       cntrl_mk_buy_cmd_push_data;
-  ob_pkg::table_t                       cntrl_mk_buy_cmd_pop_data;
-  logic                                 cntrl_mk_buy_full_w;
-  logic                                 cntrl_mk_buy_empty_w;
-  //
-  ob_pkg::table_t                       cntrl_mk_sell_head_r;
-  logic                                 cntrl_mk_sell_cmd_vld;
-  libv_pkg::deque_op_t                  cntrl_mk_sell_cmd_op;
-  ob_pkg::table_t                       cntrl_mk_sell_cmd_push_data;
-  ob_pkg::table_t                       cntrl_mk_sell_cmd_pop_data;
-  logic                                 cntrl_mk_sell_full_w;
-  logic                                 cntrl_mk_sell_empty_w;
 
   // ------------------------------------------------------------------------ //
   //
@@ -355,25 +340,37 @@ module ob (
     , .ask_qry_price          (cntrl_ask_qry_price          )
     , .ask_qry_quantity       (cntrl_ask_qry_quantity       )
     //
-    , .mk_buy_head_r          (cntrl_mk_buy_head_r          )
-    , .mk_buy_cmd_pop_data    ()
+    , .mk_buy_head_pop        (mk_buy_head_pop              )
+    , .mk_buy_head_push       (mk_buy_head_push             )
+    , .mk_buy_head_push_tbl   (mk_buy_head_push_tbl         )
+    , .mk_buy_head_vld_r      (mk_buy_head_vld_r            )
+    , .mk_buy_head_did_update_r(mk_buy_head_did_update_r    )
+    , .mk_buy_head_r          (mk_buy_head_r                )
+    , .mk_buy_insert          (mk_buy_insert                )
+    , .mk_buy_insert_tbl      (mk_buy_insert_tbl            )
+    , .mk_buy_cancel          (mk_buy_cancel                )
+    , .mk_buy_cancel_uid      (mk_buy_cancel_uid            )
+    , .mk_buy_cancel_hit_w    (mk_buy_cancel_hit_w          )
+    , .mk_buy_cancel_hit_tbl_w(mk_buy_cancel_hit_tbl_w      )
+    , .mk_buy_full_w          (mk_buy_full_w                )
+    , .mk_buy_empty_w         (mk_buy_empty_w               )
+    , .mk_buy_quantity_r      (mk_buy_quantity_r            )
     //
-    , .mk_buy_cmd_vld         (cntrl_mk_buy_cmd_vld         )
-    , .mk_buy_cmd_op          (cntrl_mk_buy_cmd_op          )
-    , .mk_buy_cmd_push_data   (cntrl_mk_buy_cmd_push_data   )
-    //
-    , .mk_buy_empty_w         (cntrl_mk_sell_empty_w        )
-    , .mk_buy_full_w          (cntrl_mk_sell_full_w         )
-    //
-    , .mk_sell_head_r         (cntrl_mk_sell_head_r         )
-    , .mk_sell_cmd_pop_data   ()
-    //
-    , .mk_sell_cmd_vld        (cntrl_mk_sell_cmd_vld        )
-    , .mk_sell_cmd_op         (cntrl_mk_sell_cmd_op         )
-    , .mk_sell_cmd_push_data  (cntrl_mk_sell_cmd_push_data  )
-    //
-    , .mk_sell_empty_w        (cntrl_mk_sell_empty_w        )
-    , .mk_sell_full_w         (cntrl_mk_sell_full_w         )
+    , .mk_sell_head_pop       (mk_sell_head_pop             )
+    , .mk_sell_head_push      (mk_sell_head_push            )
+    , .mk_sell_head_push_tbl  (mk_sell_head_push_tbl        )
+    , .mk_sell_head_vld_r     (mk_sell_head_vld_r           )
+    , .mk_sell_head_did_update_r(mk_sell_head_did_update_r  )
+    , .mk_sell_head_r         (mk_sell_head_r               )
+    , .mk_sell_insert         (mk_sell_insert               )
+    , .mk_sell_insert_tbl     (mk_sell_insert_tbl           )
+    , .mk_sell_cancel         (mk_sell_cancel               )
+    , .mk_sell_cancel_uid     (mk_sell_cancel_uid           )
+    , .mk_sell_cancel_hit_w   (mk_sell_cancel_hit_w         )
+    , .mk_sell_cancel_hit_tbl_w(mk_sell_cancel_hit_tbl_w    )
+    , .mk_sell_full_w         (mk_sell_full_w               )
+    , .mk_sell_empty_w        (mk_sell_empty_w              )
+    , .mk_sell_quantity_r     (mk_buy_quantity_r            )
     //
     , .clk                    (clk                          )
     , .rst                    (rst                          )
@@ -401,6 +398,7 @@ module ob (
     , .cancel_hit_tbl_w       (mk_buy_cancel_hit_tbl_w      )
     //
     , .full_w                 (mk_buy_full_w                )
+    , .empty_w                (mk_buy_empty_w               )
     , .quantity_r             (mk_buy_quantity_r            )
     //
     , .clk                    (clk                          )
@@ -429,6 +427,7 @@ module ob (
     , .cancel_hit_tbl_w       (mk_sell_cancel_hit_tbl_w     )
     //
     , .full_w                 (mk_sell_full_w               )
+    , .empty_w                (mk_sell_empty_w              )
     , .quantity_r             (mk_sell_quantity_r           )
     //
     , .clk                    (clk                          )

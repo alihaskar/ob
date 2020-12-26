@@ -110,27 +110,49 @@ module ob_cntrl (
 
   // ======================================================================== //
   // Market Buy Interface
+  , input                                         mk_buy_head_vld_r
+  , input                                         mk_buy_head_did_update_r
   , input ob_pkg::table_t                         mk_buy_head_r
-  , input ob_pkg::table_t                         mk_buy_cmd_pop_data
   //
-  , output logic                                  mk_buy_cmd_vld
-  , output libv_pkg::deque_op_t                   mk_buy_cmd_op
-  , output ob_pkg::table_t                        mk_buy_cmd_push_data
+  , output logic                                  mk_buy_head_pop
+  , output logic                                  mk_buy_head_push
+  , output ob_pkg::table_t                        mk_buy_head_push_tbl
   //
-  , input logic                                   mk_buy_empty_w
-  , input logic                                   mk_buy_full_w
+  , input                                         mk_buy_cancel_hit_w
+  , input ob_pkg::table_t                         mk_buy_cancel_hit_tbl_w
+  // Status
+  , input                                         mk_buy_full_w
+  , input                                         mk_buy_empty_w
+  , input ob_pkg::quantity_t                      mk_buy_quantity_r
+  // Control Interface
+  , output logic                                  mk_buy_insert
+  , output ob_pkg::table_t                        mk_buy_insert_tbl
+  // Cancel UID Interface
+  , output                                        mk_buy_cancel
+  , output ob_pkg::uid_t                          mk_buy_cancel_uid
 
   // ======================================================================== //
   // Market Sell Interface
+  , input                                         mk_sell_head_vld_r
+  , input                                         mk_sell_head_did_update_r
   , input ob_pkg::table_t                         mk_sell_head_r
-  , input ob_pkg::table_t                         mk_sell_cmd_pop_data
   //
-  , output logic                                  mk_sell_cmd_vld
-  , output libv_pkg::deque_op_t                   mk_sell_cmd_op
-  , output ob_pkg::table_t                        mk_sell_cmd_push_data
+  , output logic                                  mk_sell_head_pop
+  , output logic                                  mk_sell_head_push
+  , output ob_pkg::table_t                        mk_sell_head_push_tbl
   //
-  , input logic                                   mk_sell_empty_w
-  , input logic                                   mk_sell_full_w
+  , input                                         mk_sell_cancel_hit_w
+  , input ob_pkg::table_t                         mk_sell_cancel_hit_tbl_w
+  // Status
+  , input                                         mk_sell_full_w
+  , input                                         mk_sell_empty_w
+  , input ob_pkg::quantity_t                      mk_sell_quantity_r
+  // Control Interface
+  , output logic                                  mk_sell_insert
+  , output ob_pkg::table_t                        mk_sell_insert_tbl
+  // Cancel UID Interface
+  , output                                        mk_sell_cancel
+  , output ob_pkg::uid_t                          mk_sell_cancel_uid
 
   // ======================================================================== //
   // Clk/Reset
@@ -149,6 +171,12 @@ module ob_cntrl (
 
   `LIBV_REG_RST_R(logic, ask_cancel_hit, 'b0);
   `LIBV_REG_EN_R(ob_pkg::table_t, ask_cancel_hit_tbl);
+
+  `LIBV_REG_RST_R(logic, mk_buy_cancel_hit, 'b0);
+  `LIBV_REG_EN_R(ob_pkg::table_t, mk_buy_cancel_hit_tbl);
+
+  `LIBV_REG_RST_R(logic, mk_sell_cancel_hit, 'b0);
+  `LIBV_REG_EN_R(ob_pkg::table_t, mk_sell_cancel_hit_tbl);
 
   `LIBV_REG_RST_R(logic, mk_buy_full, 'b0);
   `LIBV_REG_RST_R(logic, mk_buy_empty, 'b1);
@@ -297,7 +325,7 @@ module ob_cntrl (
     // Compute Market (bid) <-> Limit (ask):
     //
     casez ({ // Market queue is not empty
-             mk_buy_empty_r,
+             1'b0, //mk_buy_empty_r,
              //
              ask_table_vld_r
             })
@@ -314,7 +342,7 @@ module ob_cntrl (
     casez ({ // Market queue is not empty
              bid_table_vld_r,
              //
-             mk_sell_empty_r
+             1'b0 // mk_sell_empty_r
             })
       2'b01: begin
         cmp_result_w.lbid_mask_vld = 'b1;
@@ -348,69 +376,67 @@ module ob_cntrl (
     // Defaults:
 
     // Command In:
-    cmd_in_pop            = 'b0;
+    cmd_in_pop         = 'b0;
 
     // Response Out:
-    rsp_out_vld           = 'b0;
-    rsp_out               = '0;
+    rsp_out_vld        = 'b0;
+    rsp_out            = '0;
 
     // State update:
-    fsm_state_w           = fsm_state_r;
-    fsm_state_en          = 'b0;
+    fsm_state_w        = fsm_state_r;
+    fsm_state_en       = 'b0;
 
     // Command latch:
-    cmd_consume           = 'b0;
+    cmd_consume        = 'b0;
 
     // Bid Table:
-    bid_insert            = 'b0;
-    bid_insert_tbl        = '0;
+    bid_insert         = 'b0;
+    bid_insert_tbl     = '0;
 
-    bid_pop               = 'b0;
+    bid_pop            = 'b0;
 
-    bid_update_vld        = 'b0;
-    bid_update            = '0;
+    bid_update_vld     = 'b0;
+    bid_update         = '0;
 
-    bid_cancel            = 'b0;
-    bid_cancel_uid        = '0;
+    bid_cancel         = 'b0;
+    bid_cancel_uid     = '0;
 
-    bid_reject_pop        = 'b0;
+    bid_reject_pop     = 'b0;
 
     // Bid query
-    bid_qry_vld           = 'b0;
-    bid_qry_price         = '0;
-    bid_qry_quantity      = '0;
+    bid_qry_vld        = 'b0;
+    bid_qry_price      = '0;
+    bid_qry_quantity   = '0;
 
     // Ask Table:
-    ask_insert            = 'b0;
-    ask_insert_tbl        = '0;
+    ask_insert         = 'b0;
+    ask_insert_tbl     = '0;
 
-    ask_pop               = 'b0;
+    ask_pop            = 'b0;
 
-    ask_update_vld        = 'b0;
-    ask_update            = '0;
+    ask_update_vld     = 'b0;
+    ask_update         = '0;
 
-    ask_cancel            = 'b0;
-    ask_cancel_uid        = '0;
+    ask_cancel         = 'b0;
+    ask_cancel_uid     = '0;
 
-    ask_reject_pop        = 'b0;
+    ask_reject_pop     = 'b0;
 
     // Ask query
-    ask_qry_vld           = 'b0;
-    ask_qry_price         = '0;
-    ask_qry_quantity      = '0;
+    ask_qry_vld        = 'b0;
+    ask_qry_price      = '0;
+    ask_qry_quantity   = '0;
 
     // Buy Market queue
-    mk_buy_cmd_vld        = 'b0;
-    mk_buy_cmd_op         = '0;
-    mk_buy_cmd_push_data  = '0;
+    mk_buy_insert      = 'b0;
+    mk_buy_insert_tbl  = '0;
 
     // Sell Market queue
-    mk_sell_cmd_vld       = 'b0;
-    mk_sell_cmd_op        = '0;
-    mk_sell_cmd_push_data = '0;
+    mk_sell_insert     = 'b0;
+    mk_sell_insert_tbl = '0;
 
     // Compare query
-    cmp_result_en         = 'b0;
+    cmp_result_en      = 'b0;
 
     case (fsm_state_r)
 
@@ -585,16 +611,15 @@ module ob_cntrl (
               default: begin
                 // Otherwise, push current command to the tail of the command
                 // queue.
-                mk_buy_cmd_vld                = 'b1;
-                mk_buy_cmd_op                 = libv_pkg::OpPushBack;
-                mk_buy_cmd_push_data          = '0;
-                mk_buy_cmd_push_data.uid      = cmd_latch_r.uid;
-                mk_buy_cmd_push_data.quantity = cmd_latch_r.quantity;
-                mk_buy_cmd_push_data.price    = cmd_latch_r.price;
+                mk_buy_insert              = 'b1;
+                mk_buy_insert_tbl          = '0;
+                mk_buy_insert_tbl.uid      = cmd_latch_r.uid;
+                mk_buy_insert_tbl.quantity = cmd_latch_r.quantity;
+                mk_buy_insert_tbl.price    = cmd_latch_r.price;
 
                 // Advance to query state
-                fsm_state_en                   = (~rsp_out_full_r);
-                fsm_state_w                    = FSM_CNTRL_TABLE_ISSUE_QRY;
+                fsm_state_en               = (~rsp_out_full_r);
+                fsm_state_w                = FSM_CNTRL_TABLE_ISSUE_QRY;
               end
             endcase
           end
@@ -615,16 +640,15 @@ module ob_cntrl (
               default: begin
                 // Otherwise, push current command to the tail of the command
                 // queue.
-                mk_sell_cmd_vld                = 'b1;
-                mk_sell_cmd_op                 = libv_pkg::OpPushBack;
-                mk_sell_cmd_push_data          = '0;
-                mk_sell_cmd_push_data.uid      = cmd_latch_r.uid;
-                mk_sell_cmd_push_data.quantity = cmd_latch_r.quantity;
-                mk_sell_cmd_push_data.price    = cmd_latch_r.price;
+                mk_sell_insert              = 'b1;
+                mk_sell_insert_tbl          = '0;
+                mk_sell_insert_tbl.uid      = cmd_latch_r.uid;
+                mk_sell_insert_tbl.quantity = cmd_latch_r.quantity;
+                mk_sell_insert_tbl.price    = cmd_latch_r.price;
 
                 // Advance to query state.
-                fsm_state_en                   = (~rsp_out_full_r);
-                fsm_state_w                    = FSM_CNTRL_TABLE_ISSUE_QRY;
+                fsm_state_en                = (~rsp_out_full_r);
+                fsm_state_w                 = FSM_CNTRL_TABLE_ISSUE_QRY;
               end
             endcase
           end // case: {1'b1, ob_pkg::Op_SellMarket}
@@ -668,20 +692,36 @@ module ob_cntrl (
         rsp_out     = '0;
         rsp_out.uid = cmd_latch_r.uid;
 
-        casez ({bid_cancel_hit_r, ask_cancel_hit_r})
-          2'b1?: begin
+        case ({// Bid limit table hits cancel
+               bid_cancel_hit_r,
+               // Ask limit table hits cancel
+               ask_cancel_hit_r,
+               // Bid market table hits cancel
+               mk_buy_cancel_hit_r,
+               // Ask market table table cancel
+               mk_sell_cancel_hit_r
+               }) inside
+          4'b1???: begin
             // Hit on bid table.
             rsp_out.status = ob_pkg::S_CancelHit;
           end
-          2'b01: begin
+          4'b01??: begin
             // Hit on ask table.
+            rsp_out.status = ob_pkg::S_CancelHit;
+          end
+          4'b001?: begin
+            // Hit on bid market table.
+            rsp_out.status = ob_pkg::S_CancelHit;
+          end
+          4'b0001: begin
+            // Hit on ask market table.
             rsp_out.status = ob_pkg::S_CancelHit;
           end
           default: begin
             // Miss, UID not found
             rsp_out.status = ob_pkg::S_CancelMiss;
           end
-        endcase // casez ({bid_cancel_hit_r, ask_cancel_hit_r})
+        endcase // case ({...
 
         // Advance to next state.
         fsm_state_en = 'b1;
@@ -897,10 +937,16 @@ module ob_cntrl (
   always_comb begin : cancel_PROC
 
     // Latch on next is valid.
-    bid_cancel_hit_tbl_en = bid_cancel_hit_w;
+    bid_cancel_hit_tbl_en    = bid_cancel_hit_w;
 
     // Latch on next is valid.
-    ask_cancel_hit_tbl_en = ask_cancel_hit_w;
+    ask_cancel_hit_tbl_en    = ask_cancel_hit_w;
+
+    // Latch on next is valid.
+    mk_buy_cancel_hit_tbl_en = mk_buy_cancel_hit_w;
+
+    // Latch on next is valid.
+    mk_sell_cancel_hit_tbl_en = mk_sell_cancel_hit_w;
 
   end // block: cancel_PROC
 
