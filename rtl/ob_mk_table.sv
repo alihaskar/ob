@@ -29,7 +29,7 @@
 `include "bcd_pkg.vh"
 `include "macros_pkg.vh"
 
-module ob_mk_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
+module ob_mk_table #(parameter int N = 16) (
 
   // ======================================================================== //
   // Head Status
@@ -129,11 +129,6 @@ module ob_mk_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   //                                                                          //
   // ======================================================================== //
 
-  // is_ask == 'b0; Buy-Table; order entries such that greatest are at head.
-  // is_ask == 'b1; Ask-Table; order entries such that smallest are at head.
-
-  // Table ordered according to is_ask/!is_ask: Nth entry is the head
-  // entry, the zeroth entry is the reject.
   ob_pkg::table_t [N - 1:0]             tbl_r;
   ob_pkg::table_t [N - 1:0]             tbl_w;
   logic [N:0]                           tbl_en;
@@ -145,6 +140,7 @@ module ob_mk_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   logic [N - 1:0]                       tbl_shift_up;
   logic [N - 1:0]                       tbl_ld;
   `LIBV_REG_RST_R(logic, full, 'b0);
+  `LIBV_REG_RST_W(logic, head_did_update, '0);
 
   always_comb begin : tbl_update_PROC
 
@@ -188,6 +184,7 @@ module ob_mk_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
           tbl_w [i]     = insert_tbl;
         end
         default: begin
+          tbl_vld_w [i] = tbl_vld_r [i];
           tbl_w [i]     = tbl_r [i];
         end
       endcase // case ({head_pop, head_push, insert})
@@ -200,8 +197,11 @@ module ob_mk_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
       tbl_en [i] = (tbl_shift_dn [i] | tbl_shift_up [i] | tbl_ld [i]);
     end
 
+    // Flag denoting that the head entry was modified in the prior cycle.
+    head_did_update_w = tbl_en [N - 1];
+
     // Table becomes full when all slots are becoming occupied.
-    full_w  = (tbl_vld_w == 'b1);
+    full_w            = (tbl_vld_w == 'b1);
 
   end // block: tbl_update_PROC
 
@@ -236,7 +236,7 @@ module ob_mk_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     // The interface definition does not disallow this but implicitly only
     // one modification to the table may occur during a given clock cycle.
     //
-    priority case ({insert, head_push, head_pop, cancel_hit_w}) inside
+    unique case ({insert, head_push, head_pop, cancel_hit_w}) inside
       4'b1???: begin
         // On insert (to tail), increment the quantity.
         quantity_w = quantity_r + insert_tbl.quantity;
@@ -272,14 +272,9 @@ module ob_mk_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk) begin : t_FLOP
-    if (rst) begin
-      for (int i = 0; i < N + 1; i++)
-	      tbl_r [i] <= is_ask ? ob_pkg::TABLE_ASK_INIT : ob_pkg::TABLE_BID_INIT;
-    end else begin
-      for (int i = 0; i < N + 1; i++)
-	      if (tbl_en [i])
-	        tbl_r [i] <= tbl_w [i];
-    end
+    for (int i = 0; i < N + 1; i++)
+	    if (tbl_en [i])
+	      tbl_r [i] <= tbl_w [i];
   end // block: t_FLOP
 
 endmodule // ob_mk_table

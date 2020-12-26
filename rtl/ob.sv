@@ -102,6 +102,37 @@ module ob (
   bcd_pkg::price_t                      cntrl_ask_qry_price;
   ob_pkg::quantity_t                    cntrl_ask_qry_quantity;
   //
+  logic                                 mk_buy_head_pop;
+  logic                                 mk_buy_head_push;
+  ob_pkg::table_t                       mk_buy_head_push_tbl;
+  logic                                 mk_buy_head_vld_r;
+  logic                                 mk_buy_head_did_update_r;
+  ob_pkg::table_t                       mk_buy_head_r;
+  logic                                 mk_buy_insert;
+  ob_pkg::table_t                       mk_buy_insert_tbl;
+  logic                                 mk_buy_cancel;
+  ob_pkg::uid_t                         mk_buy_cancel_uid;
+  logic                                 mk_buy_cancel_hit_w;
+  ob_pkg::table_t                       mk_buy_cancel_hit_tbl_w;
+  logic                                 mk_buy_full_w;
+  ob_pkg::quantity_t                    mk_buy_quantity_r;
+  //
+  logic                                 mk_sell_head_pop;
+  logic                                 mk_sell_head_push;
+  ob_pkg::table_t                       mk_sell_head_push_tbl;
+  logic                                 mk_sell_head_vld_r;
+  logic                                 mk_sell_head_did_update_r;
+  ob_pkg::table_t                       mk_sell_head_r;
+  logic                                 mk_sell_insert;
+  ob_pkg::table_t                       mk_sell_insert_tbl;
+  logic                                 mk_sell_cancel;
+  ob_pkg::uid_t                         mk_sell_cancel_uid;
+  logic                                 mk_sell_cancel_hit_w;
+  ob_pkg::table_t                       mk_sell_cancel_hit_tbl_w;
+  logic                                 mk_sell_full_w;
+  ob_pkg::quantity_t                    mk_sell_quantity_r;
+  //
+
   ob_pkg::table_t                       cntrl_mk_buy_head_r;
   logic                                 cntrl_mk_buy_cmd_vld;
   libv_pkg::deque_op_t                  cntrl_mk_buy_cmd_op;
@@ -352,25 +383,25 @@ module ob (
   //
   ob_mk_table #(.N(cfg_pkg::MARKET_BUY_DEPTH_N)) u_mk_table_buy (
     //
-      .head_pop               ()
+      .head_pop               (mk_buy_head_pop              )
     //
-    , .head_push              ()
-    , .head_push_tbl          ()
+    , .head_push              (mk_buy_head_push             )
+    , .head_push_tbl          (mk_buy_head_push_tbl         )
     //
-    , .head_vld_r             ()
-    , .head_did_update_r      ()
-    , .head_r                 ()
+    , .head_vld_r             (mk_buy_head_vld_r            )
+    , .head_did_update_r      (mk_buy_head_did_update_r     )
+    , .head_r                 (mk_buy_head_r                )
     //
-    , .insert                 ()
-    , .insert_tbl             ()
+    , .insert                 (mk_buy_insert                )
+    , .insert_tbl             (mk_buy_insert_tbl            )
     //
-    , .cancel                 ()
-    , .cancel_uid             ()
-    , .cancel_hit_w           ()
-    , .cancel_hit_tbl_w       ()
+    , .cancel                 (mk_buy_cancel                )
+    , .cancel_uid             (mk_buy_cancel_uid            )
+    , .cancel_hit_w           (mk_buy_cancel_hit_w          )
+    , .cancel_hit_tbl_w       (mk_buy_cancel_hit_tbl_w      )
     //
-    , .full_w                 ()
-    , .quantity_r             ()
+    , .full_w                 (mk_buy_full_w                )
+    , .quantity_r             (mk_buy_quantity_r            )
     //
     , .clk                    (clk                          )
     , .rst                    (rst                          )
@@ -380,65 +411,25 @@ module ob (
   //
   ob_mk_table #(.N(cfg_pkg::MARKET_SELL_DEPTH_N)) u_mk_table_sell (
     //
-      .head_pop               ()
+      .head_pop               (mk_sell_head_pop             )
     //
-    , .head_push              ()
-    , .head_push_tbl          ()
+    , .head_push              (mk_sell_head_push            )
+    , .head_push_tbl          (mk_sell_head_push_tbl        )
     //
-    , .head_vld_r             ()
-    , .head_did_update_r      ()
-    , .head_r                 ()
+    , .head_vld_r             (mk_sell_head_vld_r           )
+    , .head_did_update_r      (mk_sell_head_did_update_r    )
+    , .head_r                 (mk_sell_head_r               )
     //
-    , .insert                 ()
-    , .insert_tbl             ()
+    , .insert                 (mk_sell_insert               )
+    , .insert_tbl             (mk_sell_insert_tbl           )
     //
-    , .cancel                 ()
-    , .cancel_uid             ()
-    , .cancel_hit_w           ()
-    , .cancel_hit_tbl_w       ()
+    , .cancel                 (mk_sell_cancel               )
+    , .cancel_uid             (mk_sell_cancel_uid           )
+    , .cancel_hit_w           (mk_sell_cancel_hit_w         )
+    , .cancel_hit_tbl_w       (mk_sell_cancel_hit_tbl_w     )
     //
-    , .full_w                 ()
-    , .quantity_r             ()
-    //
-    , .clk                    (clk                          )
-    , .rst                    (rst                          )
-  );
-
-  // ------------------------------------------------------------------------ //
-  //
-  libv_deque #(
-    .W($bits(ob_pkg::table_t)), .N(cfg_pkg::MARKET_BUY_DEPTH_N)) u_market_buy (
-    //
-      .cmd_vld                (cntrl_mk_buy_cmd_vld         )
-    , .cmd_op                 (cntrl_mk_buy_cmd_op          )
-    , .cmd_push_data          (cntrl_mk_buy_cmd_push_data   )
-    , .cmd_pop_data           (cntrl_mk_buy_cmd_pop_data    )
-    //
-    , .head_r                 (cntrl_mk_buy_head_r          )
-    , .tail_r                 () // Unused
-    //
-    , .empty_w                (cntrl_mk_buy_empty_w         )
-    , .full_w                 (cntrl_mk_buy_full_w          )
-    //
-    , .clk                    (clk                          )
-    , .rst                    (rst                          )
-  );
-
-  // ------------------------------------------------------------------------ //
-  //
-  libv_deque #(
-    .W($bits(ob_pkg::table_t)), .N(cfg_pkg::MARKET_SELL_DEPTH_N)) u_market_sell (
-    //
-      .cmd_vld                (cntrl_mk_sell_cmd_vld        )
-    , .cmd_op                 (cntrl_mk_sell_cmd_op         )
-    , .cmd_push_data          (cntrl_mk_sell_cmd_push_data  )
-    , .cmd_pop_data           (cntrl_mk_sell_cmd_pop_data   )
-    //
-    , .head_r                 (cntrl_mk_sell_head_r         )
-    , .tail_r                 () // Unused
-    //
-    , .empty_w                (cntrl_mk_sell_empty_w        )
-    , .full_w                 (cntrl_mk_sell_full_w         )
+    , .full_w                 (mk_sell_full_w               )
+    , .quantity_r             (mk_sell_quantity_r           )
     //
     , .clk                    (clk                          )
     , .rst                    (rst                          )
