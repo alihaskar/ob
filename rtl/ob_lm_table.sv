@@ -216,10 +216,10 @@ module ob_lm_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     end
 
     // A hit on a cancel operation has occurred.
-    cancel_hit_w 	    = cancel & (cancel_match_uid_d != 'b0);
+    cancel_hit_w            = cancel & (cancel_match_uid_d != 'b0);
 
     // Mux nominanted table entry as output.
-    cancel_hit_tbl_w 	    = cancel ? mux(cancel_match_uid_d, tbl_r) : '0;
+    cancel_hit_tbl_w        = cancel ? mux(cancel_match_uid_d, tbl_r) : '0;
 
     // Form mask such that table entries preceeding current hit vector
     // are shifted up, to account for the canceld entry.

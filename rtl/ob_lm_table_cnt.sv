@@ -432,7 +432,7 @@ module ob_lm_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
   // ------------------------------------------------------------------------ //
   //
-  generate for (genvar g = 0; g < MUX_N; g++) begin
+  for (genvar g = 0; g < MUX_N; g++) begin
 
     libv_mux #(.W($bits(ob_pkg::quantity_t)), .N(MUX_IN_N)) u_table_mux (
       //
@@ -442,7 +442,7 @@ module ob_lm_table_cnt #(parameter int N = 16, parameter bit is_ask = 'b1) (
       , .out                    (mux_out_w [g]       )
     );
 
-  end endgenerate
+  end
 
   // ------------------------------------------------------------------------ //
   //

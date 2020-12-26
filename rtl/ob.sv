@@ -350,18 +350,26 @@ module ob (
 
   // ------------------------------------------------------------------------ //
   //
-  ob_mk_deque #(.N(cfg_pkg::MARKET_BUY_DEPTH_N)) u_mk_deque_buy (
+  ob_mk_table #(.N(cfg_pkg::MARKET_BUY_DEPTH_N)) u_mk_table_buy (
     //
-      .cmd_vld                ()
-    , .cmd_op                 ()
-    , .cmd_push_data          ()
+      .head_pop               ()
+    //
+    , .head_push              ()
+    , .head_push_tbl          ()
     //
     , .head_vld_r             ()
+    , .head_did_update_r      ()
     , .head_r                 ()
     //
-    , .empty_w                ()
-    , .full_w                 ()
+    , .insert                 ()
+    , .insert_tbl             ()
     //
+    , .cancel                 ()
+    , .cancel_uid             ()
+    , .cancel_hit_w           ()
+    , .cancel_hit_tbl_w       ()
+    //
+    , .full_w                 ()
     , .quantity_r             ()
     //
     , .clk                    (clk                          )
@@ -370,18 +378,26 @@ module ob (
 
   // ------------------------------------------------------------------------ //
   //
-  ob_mk_deque #(.N(cfg_pkg::MARKET_SELL_DEPTH_N)) u_mk_deque_sell (
+  ob_mk_table #(.N(cfg_pkg::MARKET_SELL_DEPTH_N)) u_mk_table_sell (
     //
-      .cmd_vld                ()
-    , .cmd_op                 ()
-    , .cmd_push_data          ()
+      .head_pop               ()
+    //
+    , .head_push              ()
+    , .head_push_tbl          ()
     //
     , .head_vld_r             ()
+    , .head_did_update_r      ()
     , .head_r                 ()
     //
-    , .empty_w                ()
-    , .full_w                 ()
+    , .insert                 ()
+    , .insert_tbl             ()
     //
+    , .cancel                 ()
+    , .cancel_uid             ()
+    , .cancel_hit_w           ()
+    , .cancel_hit_tbl_w       ()
+    //
+    , .full_w                 ()
     , .quantity_r             ()
     //
     , .clk                    (clk                          )
