@@ -58,7 +58,7 @@ module ob_mk_table #(parameter int N = 16) (
   // Status
   , output logic                                  full_w
   , output logic                                  empty_w
-  , output ob_pkg::quantity_t                     quantity_r
+  , output ob_pkg::accum_quantity_t               quantity_r
 
   // ======================================================================== //
   // Clk/Reset
@@ -233,7 +233,7 @@ module ob_mk_table #(parameter int N = 16) (
 
   // ------------------------------------------------------------------------ //
   //
-  `LIBV_REG_EN_RST_W(ob_pkg::quantity_t, quantity, '0);
+  `LIBV_REG_EN_RST_W(ob_pkg::accum_quantity_t, quantity, '0);
 
   always_comb begin : quantity_PROC
 
@@ -243,19 +243,19 @@ module ob_mk_table #(parameter int N = 16) (
     unique case ({insert, head_push, head_pop, cancel_hit_w}) inside
       4'b1???: begin
         // On insert (to tail), increment the quantity.
-        quantity_w = quantity_r + insert_tbl.quantity;
+        quantity_w = quantity_r + ob_pkg::accum_quantity_t'(insert_tbl.quantity);
       end
       4'b01??: begin
         // On a push (to head), increment the quantity in the head entry.
-        quantity_w = quantity_r + head_push_tbl.quantity;
+        quantity_w = quantity_r + ob_pkg::accum_quantity_t'(head_push_tbl.quantity);
       end
       4'b001?: begin
         // On a pop, deduct the quantity from the head entry.
-        quantity_w = quantity_r - head_r.quantity;
+        quantity_w = quantity_r - ob_pkg::accum_quantity_t'(head_r.quantity);
       end
       4'b0001: begin
         // On cancel hit, deduct the quantity retained by the table entry.
-        quantity_w = quantity_r - cancel_hit_tbl_w.quantity;
+        quantity_w = quantity_r - ob_pkg::accum_quantity_t'(cancel_hit_tbl_w.quantity);
       end
       default: begin
         quantity_w = quantity_r;

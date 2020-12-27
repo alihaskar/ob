@@ -123,7 +123,7 @@ module ob_cntrl (
   // Status
   , input                                         mk_buy_full_w
   , input                                         mk_buy_empty_w
-  , input ob_pkg::quantity_t                      mk_buy_quantity_r
+  , input ob_pkg::accum_quantity_t                mk_buy_quantity_r
   // Control Interface
   , output logic                                  mk_buy_insert
   , output ob_pkg::table_t                        mk_buy_insert_tbl
@@ -146,7 +146,7 @@ module ob_cntrl (
   // Status
   , input                                         mk_sell_full_w
   , input                                         mk_sell_empty_w
-  , input ob_pkg::quantity_t                      mk_sell_quantity_r
+  , input ob_pkg::accum_quantity_t                mk_sell_quantity_r
   // Control Interface
   , output logic                                  mk_sell_insert
   , output ob_pkg::table_t                        mk_sell_insert_tbl
@@ -212,6 +212,20 @@ module ob_cntrl (
     cmd_in_pop        = cmd_fetch;
 
   end // block: cmd_latch_PROC
+
+  // ------------------------------------------------------------------------ //
+  //
+  ob_pkg::accum_quantity_t                   qry_qty_combined;
+
+  always_comb begin : qry_PROC
+
+    case ({bid_qry_rsp_vld_r, ask_qry_rsp_vld_r}) inside
+      2'b1?:   qry_qty_combined = bid_qry_rsp_qty_r + mk_buy_quantity_r;
+      2'b01:   qry_qty_combined = ask_qry_rsp_qty_r + mk_sell_quantity_r;
+      default: qry_qty_combined = '0;
+    endcase
+
+  end // block: qry_PROC
 
   // ------------------------------------------------------------------------ //
   //
@@ -888,7 +902,7 @@ module ob_cntrl (
       FSM_CNTRL_QRY_TBL: begin
 
         casez ({bid_qry_rsp_vld_r, ask_qry_rsp_vld_r})
-          2'b1?: begin
+          2'b1?, 2'b01: begin
             // Consume command, now completed.
             cmd_consume              = 'b1;
 
@@ -897,22 +911,7 @@ module ob_cntrl (
             rsp_out                  = '0;
             rsp_out.uid              = cmd_latch_r.uid;
             rsp_out.status           = ob_pkg::S_Okay;
-            rsp_out.result.qry.accum = bid_qry_rsp_qty_r;
-
-            // Return to idle state.
-            fsm_state_en             = 'b1;
-            fsm_state_w              = FSM_CNTRL_IDLE;
-          end
-          2'b01: begin
-            // Consume command, now completed.
-            cmd_consume              = 'b1;
-
-            // Emit response
-            rsp_out_vld              = 'b1;
-            rsp_out                  = '0;
-            rsp_out.uid              = cmd_latch_r.uid;
-            rsp_out.status           = ob_pkg::S_Okay;
-            rsp_out.result.qry.accum = ask_qry_rsp_qty_r;
+            rsp_out.result.qry.accum = qry_qty_combined;
 
             // Return to idle state.
             fsm_state_en             = 'b1;
@@ -967,10 +966,10 @@ module ob_cntrl (
     , .lm_ask_r               ()
     //
     , .mk_buy_head_r          ()
-    , .mk_buy_empty_w         ()
+    , .mk_buy_empty_r         ()
     //
     , .mk_sell_head_r         ()
-    , .mk_sell_empty_w        ()
+    , .mk_sell_empty_r        ()
     //
     , .trade_qry              ()
     , .trade_vld_r            ()

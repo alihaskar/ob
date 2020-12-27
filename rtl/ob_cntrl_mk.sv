@@ -43,14 +43,12 @@ module ob_cntrl_mk (
   // ======================================================================== //
   // Market Buy Interface
   , input ob_pkg::table_t                         mk_buy_head_r
-  //
-  , input logic                                   mk_buy_empty_w
+  , input logic                                   mk_buy_empty_r
 
   // ======================================================================== //
   // Market Sell Interface
   , input ob_pkg::table_t                         mk_sell_head_r
-  //
-  , input logic                                   mk_sell_empty_w
+  , input logic                                   mk_sell_empty_r
 
   // ======================================================================== //
   // Decision Interface
@@ -65,78 +63,244 @@ module ob_cntrl_mk (
   , input                                         rst
 );
 
-  `LIBV_REG_RST(logic, mk_mk_trade, 'b0);
-  `LIBV_REG_RST_R(logic, mk_buy_empty, 'b1);
-  `LIBV_REG_RST_R(logic, mk_sell_empty, 'b1);
-
   // ------------------------------------------------------------------------ //
   //
-  ob_pkg::quantity_arith_t              mk_cmp_quantity;
-  logic                                 mk_cmp_buy_excess;
-  logic                                 mk_cmp_equal;
+  ob_pkg::quantity_arith_t              mk_ask_mk_bid_quantity_bid;
+  logic                                 mk_ask_mk_bid_excess_bid;
+  ob_pkg::quantity_arith_t              mk_ask_mk_bid_quantity_ask;
+  logic                                 mk_ask_mk_bid_excess_ask;
+  logic                                 mk_ask_mk_bid_do_trade;
+  bcd_pkg::price_t                      mk_ask_mk_bid_price;
+  logic                                 mk_ask_mk_bid_ask_consumed;
+  logic                                 mk_ask_mk_bid_bid_consumed;
+  ob_pkg::quantity_t                    mk_ask_mk_bid_quantity;
+  ob_pkg::quantity_t                    mk_ask_mk_bid_remainder;
 
   always_comb begin : mk_PROC
 
+    // Compute excess Bid quantity.
     //
-    mk_cmp_quantity   = (mk_buy_head_r.quantity - mk_sell_head_r.quantity);
+    mk_ask_mk_bid_quantity_bid = (mk_buy_head_r.quantity - mk_sell_head_r.quantity);
 
     // Flag indicating that the current head market buy order quantity exceeds
     // the corresponding head market sell order quantity.
     //
-    mk_cmp_buy_excess = (mk_cmp_quantity > '0);
+    mk_ask_mk_bid_excess_bid   = (mk_ask_mk_bid_quantity_bid > '0);
 
-    // The quantity in the buy/sell queues are equal, therefore both can be
-    // executed.
+    // Compute excess Ask quantity.
     //
-    mk_cmp_equal      = (mk_cmp_quantity == '0);
+    mk_ask_mk_bid_quantity_ask = (mk_sell_head_r.quantity - mk_buy_head_r.quantity);
+
+    // Flag indiciating that the Ask quantity exceeds the Bid quantity.
+    //
+    mk_ask_mk_bid_excess_ask   = (mk_ask_mk_bid_quantity_ask > '0);
 
     // A trade can occur by default whenever the market buy/sell queues are
     // non-empty.
     //
-    mk_mk_trade_w     = ~(mk_buy_empty_w | mk_sell_empty_w);
+    mk_ask_mk_bid_do_trade     = ~(mk_buy_empty_r | mk_sell_empty_r);
+
+    // In the Market <-> Market case, the price at which the trade occurs is not
+    // necessarily relevant, as the trade takes place simply in the presence of
+    // current market bid/ask orders. Logically therefore, the trade occufrs
+    // at the current asking price, whatever that price is in relation to
+    // the bidding price of the corresponding market bid order.
+    //
+    mk_ask_mk_bid_price        = mk_sell_head_r.price;
+
+    case ({// Quantity(Bid) > Quantity(Ask)
+           mk_ask_mk_bid_excess_bid,
+           // Quantity(Ask) > Quantity(Bid)
+           mk_ask_mk_bid_excess_ask }) inside
+      2'b00: begin
+        // Quantity(Bid) == Quantity(Ask)
+        mk_ask_mk_bid_ask_consumed = 'b1;
+        mk_ask_mk_bid_bid_consumed = 'b1;
+        mk_ask_mk_bid_quantity     = mk_buy_head_r.quantity;
+        mk_ask_mk_bid_remainder    = '0; // N/A
+      end
+      2'b10: begin
+        // Quantity(Bid) > Quantity(Ask)
+        mk_ask_mk_bid_ask_consumed = 'b1;
+        mk_ask_mk_bid_bid_consumed = 'b0;
+        mk_ask_mk_bid_quantity     = mk_sell_head_r.quantity;
+        mk_ask_mk_bid_remainder    =
+          ob_pkg::quantity_t'(mk_ask_mk_bid_excess_bid);
+      end
+      2'b01: begin
+        // Quantity(Ask) > Quantity(Bid)
+        mk_ask_mk_bid_ask_consumed = 'b0;
+        mk_ask_mk_bid_bid_consumed = 'b1;
+        mk_ask_mk_bid_quantity     = mk_buy_head_r.quantity;
+        mk_ask_mk_bid_remainder    =
+          ob_pkg::quantity_t'(mk_ask_mk_bid_quantity_ask);
+      end
+      default: begin
+        // Otherwise, trade does not occur.
+        mk_ask_mk_bid_ask_consumed = 'b0;
+        mk_ask_mk_bid_bid_consumed = 'b0;
+        mk_ask_mk_bid_quantity     = '0;
+        mk_ask_mk_bid_remainder    = '0;
+      end
+    endcase // case ({...
 
   end // block: mk_PROC
 
   // ------------------------------------------------------------------------ //
   //
-  logic                                 lm_b_mk_trade;
-  ob_pkg::quantity_arith_t              lm_b_mk_cmp_quantity;
-  logic                                 lm_b_mk_lm_excess;
-  logic                                 lm_s_mk_trade;
-  ob_pkg::quantity_arith_t              lm_s_mk_cmp_quantity;
-  logic                                 lm_s_mk_lm_excess;
+  ob_pkg::quantity_arith_t              mk_ask_lm_bid_cmp_quantity_lm;
+  logic                                 mk_ask_lm_bid_excess_lm;
+  ob_pkg::quantity_arith_t              mk_ask_lm_bid_cmp_quantity_mk;
+  logic                                 mk_ask_lm_bid_excess_mk;
+  logic                                 mk_ask_lm_bid_do_trade;
+  logic                                 mk_ask_lm_bid_ask_consumed;
+  logic                                 mk_ask_lm_bid_bid_consumed;
+  ob_pkg::quantity_t                    mk_ask_lm_bid_quantity;
+  ob_pkg::quantity_t                    mk_ask_lm_bid_remainder;
 
-  always_comb begin : lm_PROC
+  always_comb begin : mk_ask_lm_bid_PROC
 
     // Compute relative delta between Limit Buy/Market Sell orders.
     //
-    lm_b_mk_cmp_quantity = (lm_bid_r.quantity - mk_sell_head_r.quantity);
+    mk_ask_lm_bid_cmp_quantity_lm = (lm_bid_r.quantity - mk_sell_head_r.quantity);
 
     // For Limit Buy to Market trade, flag indicates that Limit quantity
     // exceeds Market quantity.
     //
-    lm_b_mk_lm_excess    = (lm_b_mk_cmp_quantity > '0);
+    mk_ask_lm_bid_excess_lm       = (mk_ask_lm_bid_cmp_quantity_lm > '0);
+
+    // Compute relative delta between Limit Buy/Market Sell orders.
+    //
+    mk_ask_lm_bid_cmp_quantity_mk = (mk_sell_head_r.quantity - lm_bid_r.quantity);
+
+    // For Limit Buy to Market trade, flag indicates that Limit quantity
+    // exceeds Market quantity.
+    //
+    mk_ask_lm_bid_excess_mk       = (mk_ask_lm_bid_cmp_quantity_mk > '0);
 
     // Limit Buy <-> Market Sell occurs whenever entries are present in both
     // tables (disregard relative prices).
     //
-    lm_b_mk_trade        = lm_bid_vld_r & (~mk_sell_empty_r);
+    mk_ask_lm_bid_do_trade        = lm_bid_vld_r & (~mk_sell_empty_r);
 
-    // Compute relative delta between Limit Sell/Market Buy orders.
+    // If a trade occurs, compute the update to the machine's state.
     //
-    lm_s_mk_cmp_quantity = (lm_ask_r.quantity - mk_buy_head_r.quantity);
-
-    // For Limit Sell to Market trade, flag indicates that Limit quantity
-    // exceeds Market quantity.
-    //
-    lm_s_mk_lm_excess    = (lm_s_mk_cmp_quantity > '0);
-
-    // Limit Sell <-> Market Market occurs whenever entries are present in both
-    // tables (disregard relative prices).
-    //
-    lm_s_mk_trade        = lm_ask_vld_r & (~mk_buy_empty_r);
+    case ({//
+           mk_ask_lm_bid_excess_lm,
+           //
+           mk_ask_lm_bid_excess_mk}) inside
+      2'b00: begin
+        // No excess on Bid/Ask therefore quantities are equal and therefore
+        // both are consumed
+        mk_ask_lm_bid_ask_consumed = 'b1;
+        mk_ask_lm_bid_bid_consumed = 'b1;
+        mk_ask_lm_bid_quantity     = '0;
+        mk_ask_lm_bid_remainder    = '0; // N/A
+      end
+      2'b10: begin
+        // Quantity(LM) > Quantity(MK)
+        mk_ask_lm_bid_ask_consumed = 'b1;
+        mk_ask_lm_bid_bid_consumed = 'b0;
+        mk_ask_lm_bid_quantity     = mk_sell_head_r.quantity;
+        mk_ask_lm_bid_remainder    =
+          ob_pkg::quantity_t'(mk_ask_lm_bid_cmp_quantity_lm);
+      end
+      2'b01: begin
+        // Quantity(MK) > Quantity(LM)
+        mk_ask_lm_bid_ask_consumed = 'b0;
+        mk_ask_lm_bid_bid_consumed = 'b1;
+        mk_ask_lm_bid_quantity     = lm_bid_r.quantity;
+        mk_ask_lm_bid_remainder    =
+          ob_pkg::quantity_t'(mk_ask_lm_bid_cmp_quantity_mk);
+      end
+      default: begin
+        // Otherwise, trade does not occur.
+        mk_ask_lm_bid_ask_consumed = 'b0;
+        mk_ask_lm_bid_bid_consumed = 'b0;
+        mk_ask_lm_bid_quantity     = '0;
+        mk_ask_lm_bid_remainder    = '0;
+      end
+    endcase // case ({...
 
   end // block: lm_PROC
+
+  // ------------------------------------------------------------------------ //
+  //
+  ob_pkg::quantity_arith_t              mk_bid_lm_ask_cmp_quantity_lm;
+  logic                                 mk_bid_lm_ask_excess_lm;
+  ob_pkg::quantity_arith_t              mk_bid_lm_ask_cmp_quantity_mk;
+  logic                                 mk_bid_lm_ask_excess_mk;
+  logic                                 mk_bid_lm_ask_do_trade;
+  logic                                 mk_bid_lm_ask_ask_consumed;
+  logic                                 mk_bid_lm_ask_bid_consumed;
+  ob_pkg::quantity_t                    mk_bid_lm_ask_quantity;
+  ob_pkg::quantity_t                    mk_bid_lm_ask_remainder;
+
+  always_comb begin : mk_bid_lm_ask_PROC
+
+    // Compute relative delta between Limit Buy/Market Sell orders.
+    //
+    mk_bid_lm_ask_cmp_quantity_lm = (lm_ask_r.quantity - mk_buy_head_r.quantity);
+
+    // For Limit Buy to Market trade, flag indicates that Limit quantity
+    // exceeds Market quantity.
+    //
+    mk_bid_lm_ask_excess_lm       = (mk_bid_lm_ask_cmp_quantity_lm > '0);
+
+    // Compute relative delta between Limit Buy/Market Sell orders.
+    //
+    mk_bid_lm_ask_cmp_quantity_mk = (mk_buy_head_r.quantity - lm_ask_r.quantity);
+
+    // For Limit Buy to Market trade, flag indicates that Limit quantity
+    // exceeds Market quantity.
+    //
+    mk_bid_lm_ask_excess_mk       = (mk_bid_lm_ask_cmp_quantity_mk > '0);
+
+    // Limit Buy <-> Market Sell occurs whenever entries are present in both
+    // tables (disregard relative prices).
+    //
+    mk_bid_lm_ask_do_trade        = lm_ask_vld_r & (~mk_buy_empty_r);
+
+    // If a trade occurs, compute the update to the machine's state.
+    //
+    case ({//
+           mk_bid_lm_ask_excess_lm,
+           //
+           mk_bid_lm_ask_excess_mk}) inside
+      2'b00: begin
+        // No excess on Bid/Ask therefore quantities are equal and therefore
+        // both are consumed
+        mk_bid_lm_ask_ask_consumed = 'b1;
+        mk_bid_lm_ask_bid_consumed = 'b1;
+        mk_bid_lm_ask_quantity     = '0;
+        mk_bid_lm_ask_remainder    = '0; // N/A
+      end
+      2'b10: begin
+        // Quantity(LM) > Quantity(MK)
+        mk_bid_lm_ask_ask_consumed = 'b1;
+        mk_bid_lm_ask_bid_consumed = 'b0;
+        mk_bid_lm_ask_quantity     = mk_sell_head_r.quantity;
+        mk_bid_lm_ask_remainder    =
+          ob_pkg::quantity_t'(mk_bid_lm_ask_cmp_quantity_lm);
+      end
+      2'b01: begin
+        // Quantity(MK) > Quantity(LM)
+        mk_bid_lm_ask_ask_consumed = 'b0;
+        mk_bid_lm_ask_bid_consumed = 'b1;
+        mk_bid_lm_ask_quantity     = lm_bid_r.quantity;
+        mk_bid_lm_ask_remainder    =
+          ob_pkg::quantity_t'(mk_bid_lm_ask_cmp_quantity_mk);
+      end
+      default: begin
+        // Otherwise, trade does not occur.
+        mk_bid_lm_ask_ask_consumed = 'b0;
+        mk_bid_lm_ask_bid_consumed = 'b0;
+        mk_bid_lm_ask_quantity     = '0;
+        mk_bid_lm_ask_remainder    = '0;
+      end
+    endcase // case ({...
+
+  end // block: mk_bid_lm_ask_PROC
 
   // ------------------------------------------------------------------------ //
   //
@@ -158,25 +322,62 @@ module ob_cntrl_mk (
     case  ({// Query current tradeable state
             trade_qry,
             // Limit Buy <-> Market Sell trade
-            lm_b_mk_trade,
+            mk_ask_lm_bid_do_trade,
             // Limit Sell <-> Market Buy trade
-            lm_s_mk_trade,
+            mk_bid_lm_ask_do_trade,
             // Market Sell <-> Market Buy trade
-            mk_mk_trade_r
+            mk_ask_mk_bid_do_trade
             }) inside
       4'b1_1??: begin
         // Limit Buy <-> Market Sell trade takes place
-        trade_vld_w = 'b1;
+        trade_vld_w           = 'b1;
+        trade_w.mk_ask_lm_bid = 'b1;
+        // Market:
+        trade_w.ask_uid       = mk_sell_head_r.uid;
+        trade_w.ask_price     = mk_sell_head_r.price;
+        trade_w.ask_consumed  = mk_ask_lm_bid_ask_consumed;
+        // Limit:
+        trade_w.bid_uid       = lm_bid_r.uid;
+        trade_w.bid_price     = lm_bid_r.price;
+        trade_w.bid_consumed  = mk_ask_lm_bid_bid_consumed;
+        // Remainder:
+        trade_w.quantity      = mk_ask_lm_bid_quantity;
+        trade_w.remainder     = mk_ask_lm_bid_remainder;
       end
       4'b1_01?: begin
         // Limit Sell <-> Market Buy trade takes place
-        trade_vld_w = 'b1;
+        trade_vld_w           = 'b1;
+        trade_w.lm_ask_mk_bid = 'b1;
+        // Limit:
+        trade_w.ask_uid       = lm_ask_r.uid;
+        trade_w.ask_price     = lm_ask_r.price;
+        trade_w.ask_consumed  = mk_bid_lm_ask_ask_consumed;
+        // Market:
+        trade_w.bid_uid       = mk_buy_head_r.uid;
+        trade_w.bid_price     = mk_buy_head_r.price;
+        trade_w.bid_consumed  = mk_bid_lm_ask_bid_consumed;
+        // Remainder:
+        trade_w.quantity      = mk_bid_lm_ask_quantity;
+        trade_w.remainder     = mk_bid_lm_ask_remainder;
       end
       4'b1_001: begin
         // Market Sell <-> Market Buy trade takes place
-        trade_vld_w = 'b1;
+        trade_vld_w           = 'b1;
+        trade_w.mk_ask_mk_bid = 'b1;
+        // Market:
+        trade_w.ask_uid       = mk_sell_head_r.uid;
+        trade_w.ask_price     = mk_ask_mk_bid_price;
+        trade_w.ask_consumed  = '0;
+        // Market:
+        trade_w.bid_uid       = mk_buy_head_r.uid;
+        trade_w.bid_price     = mk_ask_mk_bid_price;
+        trade_w.bid_consumed  = '0;
+        // Remainder:
+        trade_w.quantity      = '0;
+        trade_w.remainder     = '0;
       end
       default: begin
+        // Otherwise, no trade occurs. Drive to quiescent state.
         trade_vld_w = 'b0;
       end
     endcase // casez ({...
