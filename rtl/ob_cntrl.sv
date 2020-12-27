@@ -957,26 +957,44 @@ module ob_cntrl (
 
   // ------------------------------------------------------------------------ //
   //
+  ob_cntrl_lm u_ob_cntrl_lm (
+    //
+      .lm_bid_vld_r                (bid_table_vld_r         )
+    , .lm_bid_r                    (bid_table_r             )
+    //
+    , .lm_ask_vld_r                (ask_table_vld_r         )
+    , .lm_ask_r                    (ask_table_r             )
+    //
+    , .trade_qry                   ()
+    , .trade_vld_r                 ()
+    , .trade_r                     ()
+    //
+    , .clk                         (clk                     )
+    , .rst                         (rst                     )
+  );
+
+  // ------------------------------------------------------------------------ //
+  //
   ob_cntrl_mk u_ob_cntrl_mk (
     //
-      .lm_bid_vld_r           ()
-    , .lm_bid_r               ()
+      .lm_bid_vld_r                (bid_table_vld_r         )
+    , .lm_bid_r                    (bid_table_r             )
     //
-    , .lm_ask_vld_r           ()
-    , .lm_ask_r               ()
+    , .lm_ask_vld_r                (ask_table_vld_r         )
+    , .lm_ask_r                    (ask_table_r             )
     //
-    , .mk_buy_head_r          ()
-    , .mk_buy_empty_r         ()
+    , .mk_buy_head_vld_r           (mk_buy_head_vld_r       )
+    , .mk_buy_head_r               (mk_buy_head_r           )
     //
-    , .mk_sell_head_r         ()
-    , .mk_sell_empty_r        ()
+    , .mk_sell_head_vld_r          (mk_sell_head_vld_r      )
+    , .mk_sell_head_r              (mk_sell_head_r          )
     //
-    , .trade_qry              ()
-    , .trade_vld_r            ()
-    , .trade_r                ()
+    , .trade_qry                   ()
+    , .trade_vld_r                 ()
+    , .trade_r                     ()
     //
-    , .clk                    (clk                )
-    , .rst                    (rst                )
+    , .clk                         (clk                     )
+    , .rst                         (rst                     )
   );
 
 endmodule // ob_cntrl

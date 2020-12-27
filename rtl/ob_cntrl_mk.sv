@@ -42,13 +42,13 @@ module ob_cntrl_mk (
 
   // ======================================================================== //
   // Market Buy Interface
+  , input logic                                   mk_buy_head_vld_r
   , input ob_pkg::table_t                         mk_buy_head_r
-  , input logic                                   mk_buy_empty_r
 
   // ======================================================================== //
   // Market Sell Interface
+  , input logic                                   mk_sell_head_vld_r
   , input ob_pkg::table_t                         mk_sell_head_r
-  , input logic                                   mk_sell_empty_r
 
   // ======================================================================== //
   // Decision Interface
@@ -98,7 +98,7 @@ module ob_cntrl_mk (
     // A trade can occur by default whenever the market buy/sell queues are
     // non-empty.
     //
-    mk_ask_mk_bid_do_trade     = ~(mk_buy_empty_r | mk_sell_empty_r);
+    mk_ask_mk_bid_do_trade     = (mk_buy_head_vld_r & mk_sell_head_vld_r);
 
     // In the Market <-> Market case, the price at which the trade occurs is not
     // necessarily relevant, as the trade takes place simply in the presence of
@@ -181,7 +181,7 @@ module ob_cntrl_mk (
     // Limit Buy <-> Market Sell occurs whenever entries are present in both
     // tables (disregard relative prices).
     //
-    mk_ask_lm_bid_do_trade        = lm_bid_vld_r & (~mk_sell_empty_r);
+    mk_ask_lm_bid_do_trade        = lm_bid_vld_r & mk_sell_head_vld_r;
 
     // If a trade occurs, compute the update to the machine's state.
     //
@@ -259,7 +259,7 @@ module ob_cntrl_mk (
     // Limit Buy <-> Market Sell occurs whenever entries are present in both
     // tables (disregard relative prices).
     //
-    mk_bid_lm_ask_do_trade        = lm_ask_vld_r & (~mk_buy_empty_r);
+    mk_bid_lm_ask_do_trade        = lm_ask_vld_r & mk_buy_head_vld_r;
 
     // If a trade occurs, compute the update to the machine's state.
     //
