@@ -36,8 +36,8 @@ module ob_cn_table_entry (
   //
   , input                                         dl_vld
   //
-  , output logic                                  busy_r
-  , output logic                                  mtr_r
+  , output logic                                  busy_w
+  , output logic                                  mtr_vld_w
   //
   , output ob_pkg::cmd_t                          cmd_r
 
@@ -148,10 +148,10 @@ module ob_cn_table_entry (
     endcase // case (fsm_state_r)
 
     // FSM is busy
-    busy_r = fsm_state_r.busy;
+    busy_w    = fsm_state_w.busy;
 
     // FSM entry has matured.
-    mtr_r  = fsm_state_r.matured;
+    mtr_vld_w = fsm_state_w.matured;
 
   end // block: fsm_PROC
 

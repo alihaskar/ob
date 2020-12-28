@@ -65,6 +65,11 @@ module ob_cn_table #(parameter int N = 4) (
 
   // ------------------------------------------------------------------------ //
   //
+  logic [N - 1:0]                       entry_busy_w;
+  logic [N - 1:0]                       entry_mtr_vld_w;
+  ob_pkg::cmd_t [N - 1:0]               entry_cmd_r;
+  ob_pkg::cmd_t                         entry_cmd_sel;
+
   for (genvar g = 0; g < N; g++) begin
 
     ob_cn_table_entry u_ob_cn_table_entry (
@@ -74,10 +79,10 @@ module ob_cn_table #(parameter int N = 4) (
       //
       , .dl_vld                    ()
       //
-      , .busy_r                    ()
-      , .mtr_r                     ()
+      , .busy_w                    (entry_busy_w [g]        )
+      , .mtr_vld_w                 (entry_mtr_vld_w [g]     )
       //
-      , .cmd_r                     ()
+      , .cmd_r                     (entry_cmd_r [g]         )
       //
       , .cntrl_evt_texe_r          (cntrl_evt_texe_r        )
       , .lm_bid_table_vld_r        (lm_bid_table_vld_r      )
@@ -90,5 +95,71 @@ module ob_cn_table #(parameter int N = 4) (
     );
 
   end
+
+  // ------------------------------------------------------------------------ //
+  //
+  logic [N - 1:0]                       rr_req;
+  logic                                 rr_ack;
+  logic [N - 1:0]                       rr_gnt;
+
+  always_comb begin : rr_PROC
+
+    // From set of matured entries:
+    rr_req = entry_mtr_vld_w;
+
+    // Advance arbiter state when currently nominated entry advances.
+    rr_ack = mtr_vld_r & mtr_accept;
+
+  end // block: rr_PROC
+
+  // ------------------------------------------------------------------------ //
+  //
+  libv_rr #(.W(N)) u_libv_rr (
+    //
+      .req                    (rr_req                  )
+    , .ack                    (rr_ack                  )
+    , .gnt                    (rr_gnt                  )
+    , .gnt_enc                ()
+    //
+    , .clk                    (clk                     )
+    , .rst                    (rst                     )
+  );
+
+  // ------------------------------------------------------------------------ //
+  //
+  `LIBV_REG_RST_W(logic, full, 'b0);
+  `LIBV_REG_EN_RST_W(logic, mtr_vld, 'b0);
+  `LIBV_REG_EN_W(ob_pkg::cmd_t, mtr);
+
+  always_comb begin : cntrl_PROC
+
+    // All slots/entries in the conditional table are occupied.
+    full_w     = (entry_busy_w == '1);
+
+    // Maturity becomes full whenever one of the subordinate threads indicate
+    // that they have matured.
+    mtr_vld_w  = (entry_mtr_vld_w != '0);
+
+    // Retention circuit for maturity validity. Sample validity for the machines
+    // otherwise retain current validity until accepted.
+    mtr_vld_en = (~mtr_vld_r) | mtr_accept;
+
+    // Latch new matured command on new valid.
+    mtr_en     = mtr_vld_en;
+
+    // Latch nominated command from matured engine.
+    mtr_w      = entry_cmd_sel;
+
+  end // block: cntrl_PROC
+
+  // ------------------------------------------------------------------------ //
+  //
+  libv_mux #(.N(N), .W($bits(ob_pkg::cmd_t))) u_libv_mux (
+    //
+      .in                     (entry_cmd_r             )
+    , .sel                    (rr_gnt                  )
+    //
+    , .out                    (entry_cmd_sel           )
+  );
 
 endmodule // ob_cn_table
