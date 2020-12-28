@@ -32,6 +32,30 @@ relatively modest, and low budget FPGA, this (relatively unoptimized)
 implementation is capable of performing upto 40M trades per second,
 when maintaining a set of upto 32 active Bids and 32 active Asks.
 
+# Implementation
+
+The current implementation supports the following command/trade types:
+
+* Market Buy/Sell orders; Buy/Sell orders take place immediate regardless the
+  current market bidding/asking prices.
+* Limit Buy/Sell orders; Buy/Sell orders take place once the current market
+  bidding price exceeds the current market asking price.
+* Conditional Buy/Sell Stop (Limit) orders; Buy/Sell orders which take place
+  only when some prior market condition has been attained, after which they
+  mature into either a market or limit order.
+* Cancel pending orders.
+
+With the following Time-In-Force (TIF) attributes:
+
+* Good Until Cancelled (GUC); comand remains in force until executed or until
+  explicitly cancelled.
+* Immediate Or Cancel (IOC); command must be initiated immediately otherwise
+  cancelled (partial fulfillment are allowed).
+* Fill Or Kill (FOK); command must be initiated immediately and must complete in
+  its entirety (partial fulfillment is disallowed).
+
+All Or None (AON) commands are not yet supported.
+
 # Dependencies
 
 The following external dependencies must be satisifed to run the project.
@@ -167,4 +191,3 @@ The RTL solution consists as follows:
   entries. This can be optimized further with some additional
   pipelining around the match logic, must this has not yet been
   implemented.
-
