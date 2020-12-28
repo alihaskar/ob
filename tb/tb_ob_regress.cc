@@ -50,7 +50,7 @@ TEST(Regress, Basic) {
 #ifdef OPT_TRACE_ENABLE
   opts.trace_enable = true;
 #endif
-#ifdef OPT_WAVE_ENABLE
+#ifdef OPT_VCD_ENABLE
   opts.wave_enable = true;
 #endif
   tb::TB tb{opts};

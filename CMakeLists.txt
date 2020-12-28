@@ -47,9 +47,9 @@ set(BID_TABLE_DEPTH_N 16 CACHE STRING "The number of entries in the Bid Table.")
 # The number of entries in the ask table.
 set(ASK_TABLE_DEPTH_N 16 CACHE STRING "The number of entries in the Ask Table.")
 
-set(MARKET_BUY_DEPTH_N 4 CACHE STRING "The number of entries in the Market Buy Table.")
+set(MARKET_BID_DEPTH_N 4 CACHE STRING "The number of entries in the Market Buy Table.")
 
-set(MARKET_SELL_DEPTH_N 4 CACHE STRING "The number of entries in the Market Sell Table.")
+set(MARKET_ASK_DEPTH_N 4 CACHE STRING "The number of entries in the Market Sell Table.")
 
 # RTL
 add_subdirectory(libv)

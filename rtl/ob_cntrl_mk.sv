@@ -42,20 +42,20 @@ module ob_cntrl_mk (
 
   // ======================================================================== //
   // Market Buy Interface
-  , input logic                                   mk_buy_head_vld_r
-  , input ob_pkg::table_t                         mk_buy_head_r
+  , input logic                                   mk_bid_head_vld_r
+  , input ob_pkg::table_t                         mk_bid_head_r
 
   // ======================================================================== //
   // Market Sell Interface
-  , input logic                                   mk_sell_head_vld_r
-  , input ob_pkg::table_t                         mk_sell_head_r
+  , input logic                                   mk_ask_head_vld_r
+  , input ob_pkg::table_t                         mk_ask_head_r
 
   // ======================================================================== //
   // Decision Interface
   , input                                         trade_qry
   //
   , output logic                                  trade_vld_r
-  , output ob_pkg::cntrl_mk_t                     trade_r
+  , output ob_pkg::search_result_t                trade_r
 
   // ======================================================================== //
   // Clk/Reset
@@ -80,7 +80,7 @@ module ob_cntrl_mk (
 
     // Compute excess Bid quantity.
     //
-    mk_ask_mk_bid_quantity_bid = (mk_buy_head_r.quantity - mk_sell_head_r.quantity);
+    mk_ask_mk_bid_quantity_bid = (mk_bid_head_r.quantity - mk_ask_head_r.quantity);
 
     // Flag indicating that the current head market buy order quantity exceeds
     // the corresponding head market sell order quantity.
@@ -89,7 +89,7 @@ module ob_cntrl_mk (
 
     // Compute excess Ask quantity.
     //
-    mk_ask_mk_bid_quantity_ask = (mk_sell_head_r.quantity - mk_buy_head_r.quantity);
+    mk_ask_mk_bid_quantity_ask = (mk_ask_head_r.quantity - mk_bid_head_r.quantity);
 
     // Flag indiciating that the Ask quantity exceeds the Bid quantity.
     //
@@ -98,7 +98,7 @@ module ob_cntrl_mk (
     // A trade can occur by default whenever the market buy/sell queues are
     // non-empty.
     //
-    mk_ask_mk_bid_do_trade     = (mk_buy_head_vld_r & mk_sell_head_vld_r);
+    mk_ask_mk_bid_do_trade     = (mk_bid_head_vld_r & mk_ask_head_vld_r);
 
     // In the Market <-> Market case, the price at which the trade occurs is not
     // necessarily relevant, as the trade takes place simply in the presence of
@@ -106,7 +106,7 @@ module ob_cntrl_mk (
     // at the current asking price, whatever that price is in relation to
     // the bidding price of the corresponding market bid order.
     //
-    mk_ask_mk_bid_price        = mk_sell_head_r.price;
+    mk_ask_mk_bid_price        = mk_ask_head_r.price;
 
     case ({// Quantity(Bid) > Quantity(Ask)
            mk_ask_mk_bid_excess_bid,
@@ -116,14 +116,14 @@ module ob_cntrl_mk (
         // Quantity(Bid) == Quantity(Ask)
         mk_ask_mk_bid_ask_consumed = 'b1;
         mk_ask_mk_bid_bid_consumed = 'b1;
-        mk_ask_mk_bid_quantity     = mk_buy_head_r.quantity;
+        mk_ask_mk_bid_quantity     = mk_bid_head_r.quantity;
         mk_ask_mk_bid_remainder    = '0; // N/A
       end
       2'b10: begin
         // Quantity(Bid) > Quantity(Ask)
         mk_ask_mk_bid_ask_consumed = 'b1;
         mk_ask_mk_bid_bid_consumed = 'b0;
-        mk_ask_mk_bid_quantity     = mk_sell_head_r.quantity;
+        mk_ask_mk_bid_quantity     = mk_ask_head_r.quantity;
         mk_ask_mk_bid_remainder    =
           ob_pkg::quantity_t'(mk_ask_mk_bid_excess_bid);
       end
@@ -131,7 +131,7 @@ module ob_cntrl_mk (
         // Quantity(Ask) > Quantity(Bid)
         mk_ask_mk_bid_ask_consumed = 'b0;
         mk_ask_mk_bid_bid_consumed = 'b1;
-        mk_ask_mk_bid_quantity     = mk_buy_head_r.quantity;
+        mk_ask_mk_bid_quantity     = mk_bid_head_r.quantity;
         mk_ask_mk_bid_remainder    =
           ob_pkg::quantity_t'(mk_ask_mk_bid_quantity_ask);
       end
@@ -162,7 +162,7 @@ module ob_cntrl_mk (
 
     // Compute relative delta between Limit Buy/Market Sell orders.
     //
-    mk_ask_lm_bid_cmp_quantity_lm = (lm_bid_r.quantity - mk_sell_head_r.quantity);
+    mk_ask_lm_bid_cmp_quantity_lm = (lm_bid_r.quantity - mk_ask_head_r.quantity);
 
     // For Limit Buy to Market trade, flag indicates that Limit quantity
     // exceeds Market quantity.
@@ -171,7 +171,7 @@ module ob_cntrl_mk (
 
     // Compute relative delta between Limit Buy/Market Sell orders.
     //
-    mk_ask_lm_bid_cmp_quantity_mk = (mk_sell_head_r.quantity - lm_bid_r.quantity);
+    mk_ask_lm_bid_cmp_quantity_mk = (mk_ask_head_r.quantity - lm_bid_r.quantity);
 
     // For Limit Buy to Market trade, flag indicates that Limit quantity
     // exceeds Market quantity.
@@ -181,7 +181,7 @@ module ob_cntrl_mk (
     // Limit Buy <-> Market Sell occurs whenever entries are present in both
     // tables (disregard relative prices).
     //
-    mk_ask_lm_bid_do_trade        = lm_bid_vld_r & mk_sell_head_vld_r;
+    mk_ask_lm_bid_do_trade        = lm_bid_vld_r & mk_ask_head_vld_r;
 
     // If a trade occurs, compute the update to the machine's state.
     //
@@ -201,7 +201,7 @@ module ob_cntrl_mk (
         // Quantity(LM) > Quantity(MK)
         mk_ask_lm_bid_ask_consumed = 'b1;
         mk_ask_lm_bid_bid_consumed = 'b0;
-        mk_ask_lm_bid_quantity     = mk_sell_head_r.quantity;
+        mk_ask_lm_bid_quantity     = mk_ask_head_r.quantity;
         mk_ask_lm_bid_remainder    =
           ob_pkg::quantity_t'(mk_ask_lm_bid_cmp_quantity_lm);
       end
@@ -240,7 +240,7 @@ module ob_cntrl_mk (
 
     // Compute relative delta between Limit Buy/Market Sell orders.
     //
-    mk_bid_lm_ask_cmp_quantity_lm = (lm_ask_r.quantity - mk_buy_head_r.quantity);
+    mk_bid_lm_ask_cmp_quantity_lm = (lm_ask_r.quantity - mk_bid_head_r.quantity);
 
     // For Limit Buy to Market trade, flag indicates that Limit quantity
     // exceeds Market quantity.
@@ -249,7 +249,7 @@ module ob_cntrl_mk (
 
     // Compute relative delta between Limit Buy/Market Sell orders.
     //
-    mk_bid_lm_ask_cmp_quantity_mk = (mk_buy_head_r.quantity - lm_ask_r.quantity);
+    mk_bid_lm_ask_cmp_quantity_mk = (mk_bid_head_r.quantity - lm_ask_r.quantity);
 
     // For Limit Buy to Market trade, flag indicates that Limit quantity
     // exceeds Market quantity.
@@ -259,7 +259,7 @@ module ob_cntrl_mk (
     // Limit Buy <-> Market Sell occurs whenever entries are present in both
     // tables (disregard relative prices).
     //
-    mk_bid_lm_ask_do_trade        = lm_ask_vld_r & mk_buy_head_vld_r;
+    mk_bid_lm_ask_do_trade        = lm_ask_vld_r & mk_bid_head_vld_r;
 
     // If a trade occurs, compute the update to the machine's state.
     //
@@ -279,7 +279,7 @@ module ob_cntrl_mk (
         // Quantity(LM) > Quantity(MK)
         mk_bid_lm_ask_ask_consumed = 'b1;
         mk_bid_lm_ask_bid_consumed = 'b0;
-        mk_bid_lm_ask_quantity     = mk_sell_head_r.quantity;
+        mk_bid_lm_ask_quantity     = mk_ask_head_r.quantity;
         mk_bid_lm_ask_remainder    =
           ob_pkg::quantity_t'(mk_bid_lm_ask_cmp_quantity_lm);
       end
@@ -305,7 +305,7 @@ module ob_cntrl_mk (
   // ------------------------------------------------------------------------ //
   //
   `LIBV_REG_RST_W(logic, trade_vld, 'b0);
-  `LIBV_REG_EN_W(ob_pkg::cntrl_mk_t, trade);
+  `LIBV_REG_EN_W(ob_pkg::search_result_t, trade);
 
   always_comb begin : decision_PROC
 
@@ -313,7 +313,7 @@ module ob_cntrl_mk (
     trade_vld_w = 'b0;
 
     // Retain prior by default.
-    trade_w     = trade_r;
+    trade_w     = '0;
 
     // From precomputed state, select the candidate trade that can take place in
     // the current cycle. Prefer Limit <-> Market, over Market <-> Market as
@@ -333,8 +333,8 @@ module ob_cntrl_mk (
         trade_vld_w           = 'b1;
         trade_w.mk_ask_lm_bid = 'b1;
         // Market:
-        trade_w.ask_uid       = mk_sell_head_r.uid;
-        trade_w.ask_price     = mk_sell_head_r.price;
+        trade_w.ask_uid       = mk_ask_head_r.uid;
+        trade_w.ask_price     = mk_ask_head_r.price;
         trade_w.ask_consumed  = mk_ask_lm_bid_ask_consumed;
         // Limit:
         trade_w.bid_uid       = lm_bid_r.uid;
@@ -353,8 +353,8 @@ module ob_cntrl_mk (
         trade_w.ask_price     = lm_ask_r.price;
         trade_w.ask_consumed  = mk_bid_lm_ask_ask_consumed;
         // Market:
-        trade_w.bid_uid       = mk_buy_head_r.uid;
-        trade_w.bid_price     = mk_buy_head_r.price;
+        trade_w.bid_uid       = mk_bid_head_r.uid;
+        trade_w.bid_price     = mk_bid_head_r.price;
         trade_w.bid_consumed  = mk_bid_lm_ask_bid_consumed;
         // Remainder:
         trade_w.quantity      = mk_bid_lm_ask_quantity;
@@ -365,11 +365,11 @@ module ob_cntrl_mk (
         trade_vld_w           = 'b1;
         trade_w.mk_ask_mk_bid = 'b1;
         // Market:
-        trade_w.ask_uid       = mk_sell_head_r.uid;
+        trade_w.ask_uid       = mk_ask_head_r.uid;
         trade_w.ask_price     = mk_ask_mk_bid_price;
         trade_w.ask_consumed  = '0;
         // Market:
-        trade_w.bid_uid       = mk_buy_head_r.uid;
+        trade_w.bid_uid       = mk_bid_head_r.uid;
         trade_w.bid_price     = mk_ask_mk_bid_price;
         trade_w.bid_consumed  = '0;
         // Remainder:

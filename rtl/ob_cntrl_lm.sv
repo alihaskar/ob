@@ -45,7 +45,7 @@ module ob_cntrl_lm (
   , input                                         trade_qry
   //
   , output logic                                  trade_vld_r
-  , output ob_pkg::cntrl_mk_t                     trade_r
+  , output ob_pkg::search_result_t                trade_r
 
   // ======================================================================== //
   // Clk/Reset
@@ -67,8 +67,8 @@ module ob_cntrl_lm (
     // A trade can take place if the current maximum bid exceeds (or
     // is equal to) the current minimum ask.
     //
-    case ({lm_bid_vld_r, lm_ask_vld_r})
-      2'b11:   lm_ask_lm_bid_do_trade = (lm_bid_r.price >= lm_ask_r.price);
+    case ({trade_qry, lm_bid_vld_r, lm_ask_vld_r})
+      3'b111:  lm_ask_lm_bid_do_trade = (lm_bid_r.price >= lm_ask_r.price);
       default: lm_ask_lm_bid_do_trade = 'b0;
     endcase
 
@@ -94,7 +94,7 @@ module ob_cntrl_lm (
   // ------------------------------------------------------------------------ //
   //
   `LIBV_REG_RST_W(logic, trade_vld, 'b0);
-  `LIBV_REG_EN_W(ob_pkg::cntrl_mk_t, trade);
+  `LIBV_REG_EN_W(ob_pkg::search_result_t, trade);
 
   always_comb begin : decision_PROC
 
@@ -102,7 +102,7 @@ module ob_cntrl_lm (
     trade_vld_w = 'b0;
 
     // Retain prior by default.
-    trade_w     = trade_r;
+    trade_w     = '0;
 
     // Bid:
     trade_w.bid_uid   = lm_bid_r.uid;
@@ -125,31 +125,34 @@ module ob_cntrl_lm (
                   }) inside
       4'b1_1??: begin
         // Trade occurs; Ask Quantity > Bid Quantity; Bid (Buy) executes.
+        trade_vld_w           = 'b1;
+        //
         trade_w.lm_ask_lm_bid = 'b1;
         //
         trade_w.bid_consumed  = 'b1;
-        //
         trade_w.quantity      = lm_bid_r.quantity;
         trade_w.remainder     =
           ob_pkg::quantity_t'(lm_ask_lm_bid_ask_excess);
       end
       4'b1_01?: begin
         // Trade occurs; Bid Quantity > Ask Quantity; Ask (Sell) executes.
+        trade_vld_w           = 'b1;
+        //
         trade_w.lm_ask_lm_bid = 'b1;
         //
         trade_w.ask_consumed  = 'b1;
-        //
         trade_w.quantity      = lm_ask_r.quantity;
         trade_w.remainder     =
           ob_pkg::quantity_t'(lm_ask_lm_bid_bid_excess);
       end
       4'b1_001: begin
         // Trade occurs; Bid-/Ask- Quantities match; Bid/Ask execute.
+        trade_vld_w           = 'b1;
+        //
         trade_w.lm_ask_lm_bid = 'b1;
         //
         trade_w.bid_consumed  = 'b1;
         trade_w.ask_consumed  = 'b1;
-        //
         trade_w.quantity      = lm_bid_r.quantity;
         trade_w.remainder     = '0;
       end

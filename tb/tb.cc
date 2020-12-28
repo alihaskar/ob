@@ -40,6 +40,8 @@
 #include <algorithm>
 #include <cstdio>
 
+//#define UID_AS_HEX
+
 namespace tb {
 
 void Random::init(unsigned seed) {
@@ -205,7 +207,11 @@ std::string Command::to_string() const {
   using std::to_string;
 
   utility::KVListRenderer r;
+#ifdef UID_AS_HEX
   r.add_field("uid", utility::hex(uid));
+#else
+  r.add_field("uid", to_string(uid));
+#endif
   r.add_field("opcode", to_opcode_string(opcode));
   switch (opcode) {
     case Opcode::BuyLimit: {
@@ -245,13 +251,22 @@ std::string Response::to_string(vluint8_t opcode) const {
   using std::to_string;
 
   utility::KVListRenderer r;
+#ifdef UID_AS_HEX
   r.add_field("uid", utility::hex(uid));
+#else
+  r.add_field("uid", to_string(uid));
+#endif
   r.add_field("status", to_status_string(status));
   if (uid == 0xFFFFFFFF) {
     // Trade
     r.add_field("op", "trade");
+#ifdef UID_AS_HEX
     r.add_field("bid_uid", utility::hex(result.trade.bid_uid));
     r.add_field("ask_uid", utility::hex(result.trade.ask_uid));
+#else
+    r.add_field("bid_uid", to_string(result.trade.bid_uid));
+    r.add_field("ask_uid", to_string(result.trade.ask_uid));
+#endif
     r.add_field("quantity", to_string(result.trade.quantity));
   } else {
     switch (opcode) {
@@ -270,7 +285,11 @@ std::string Response::to_string(vluint8_t opcode) const {
         const Bcd price = Bcd::from_packed(result.poptop.price);
         r.add_field("price", price.to_string());
         r.add_field("quantity", to_string(result.poptop.quantity));
+#ifdef UID_AS_HEX
         r.add_field("uid", utility::hex(uid));
+#else
+        r.add_field("uid", to_string(uid));
+#endif
       } break;
       case Opcode::QryTblAskLe:
       case Opcode::QryTblBidGe: {
@@ -503,7 +522,7 @@ void TB::run() {
 #ifdef OPT_TRACE_ENABLE
       if (opts_.trace_enable) {
         std::cout << "[TB] " << vs_.cycle()
-                  << " ; Response received: " << expected.to_string(opcode) << "\n";
+                  << " ; Response received: " << actual.to_string(opcode) << "\n";
       }
 #endif
       compare(opcode, actual, expected);

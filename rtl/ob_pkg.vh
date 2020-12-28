@@ -196,14 +196,13 @@ package ob_pkg;
 
   typedef struct packed {
     // Trade on Limit Ask (Sell) <-> Limit Bid (Buy)
-    logic        lm_ask_lm_bid;
+    logic                     lm_ask_lm_bid;
     // Trade on Limit Ask (Sell) <-> Market Bid (Buy)
-    logic        lm_ask_mk_bid;
+    logic                     lm_ask_mk_bid;
     // Trade on Market Ask (Sell) <-> Limit Bid (Buy)
-    logic        mk_ask_lm_bid;
+    logic                     mk_ask_lm_bid;
     // Trade on Market Ask (Sell) <-> Market Bid (Buy)
-    logic        mk_ask_mk_bid;
-
+    logic                     mk_ask_mk_bid;
     // Bid
     ob_pkg::uid_t             bid_uid;
     bcd_pkg::price_t          bid_price;
@@ -216,7 +215,7 @@ package ob_pkg;
     ob_pkg::quantity_t        quantity;
     // Quantity remaining
     ob_pkg::quantity_t        remainder;
-  } cntrl_mk_t;
+  } search_result_t;
 
   //
   localparam table_t TABLE_ASK_INIT  = '{ uid: '0,
