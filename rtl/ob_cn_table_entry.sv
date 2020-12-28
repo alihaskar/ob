@@ -65,9 +65,13 @@ module ob_cn_table_entry (
 
   always_comb begin : fsm_dp_PROC
 
-    dp_price_le  = (cmd_r.price <= lm_bid_table_r.price);
+    // Conditional price has fallen below the current bidding price.
+    //
+    dp_price_le  = (cmd_r.price1 <= lm_bid_table_r.price);
 
-    dp_price_ge  = (cmd_r.price >= lm_ask_table_r.price);
+    // Conditional price has attained or exceeded the current market asking
+    // price.
+    dp_price_ge  = (cmd_r.price1 >= lm_ask_table_r.price);
 
   end // block: fsm_dp_PROC
 
