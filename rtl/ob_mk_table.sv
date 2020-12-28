@@ -36,6 +36,9 @@ module ob_mk_table #(parameter int N = 16) (
     input                                         head_pop
   , input                                         head_push
   , input ob_pkg::table_t                         head_push_tbl
+  //
+  , input                                         head_upt
+  , input ob_pkg::table_t                         head_upt_tbl
 
   , output logic                                  head_vld_r
   , output logic                                  head_did_update_r
@@ -140,6 +143,7 @@ module ob_mk_table #(parameter int N = 16) (
   logic [N - 1:0]                       tbl_shift_dn;
   logic [N - 1:0]                       tbl_shift_up;
   logic [N - 1:0]                       tbl_ld;
+  logic [N - 1:0]                       tbl_set_head;
   `LIBV_REG_RST_R(logic, full, 'b0);
   `LIBV_REG_RST_W(logic, head_did_update, '0);
 
@@ -166,23 +170,37 @@ module ob_mk_table #(parameter int N = 16) (
     // table.
     tbl_ld       = full_r ? '0 : pri((~tbl_vld_r), .lsb('b1));
 
+    // Update head value.
+    tbl_set_head = head_upt ? ('b1  << (N - 1)) : '0;
+
     for (int i = 0; i < N - 1; i++) begin
 
-      case ({tbl_shift_dn [i], tbl_shift_up [i], tbl_ld [i]}) inside
-        3'b1??: begin
+      case ({// Shift slot down
+             tbl_shift_dn [i],
+             // Shift slot up
+             tbl_shift_up [i],
+             // Load current slot
+             tbl_ld [i],
+             // Set head entry (set only for the head slot)
+             tbl_set_head [i]}) inside
+        4'b1???: begin
           // Table MSB -> LSB (pushing item to head)
           tbl_vld_w [i] = (i == (N - 1)) ? head_push : tbl_vld_r [i + 1];
           tbl_w [i]     = (i == (N - 1)) ? head_push_tbl : tbl_r [i + 1];
         end
-        3'b01?: begin
+        4'b01??: begin
           // Table LSB -> MSB (popping item from head)
           tbl_vld_w [i] = (i == 0) ? 'b0 : tbl_vld_r [i - 1];
           tbl_w [i]     = (i == 0) ?  '0 : tbl_r [i - 1];
         end
-        3'b001: begin
+        4'b001?: begin
           // Table, append item to end.
           tbl_vld_w [i] = insert;
           tbl_w [i]     = insert_tbl;
+        end
+        4'b0001: begin
+          tbl_vld_w [i] = 'b1;
+          tbl_w [i]     = head_upt_tbl;
         end
         default: begin
           tbl_vld_w [i] = tbl_vld_r [i];
@@ -195,7 +213,8 @@ module ob_mk_table #(parameter int N = 16) (
     // Table enables
     for (int i = 0; i < N; i++) begin
       // Enable slot on update.
-      tbl_en [i] = (tbl_shift_dn [i] | tbl_shift_up [i] | tbl_ld [i]);
+      tbl_en [i] =
+        (tbl_shift_dn [i] | tbl_shift_up [i] | tbl_ld [i] | tbl_set_head [i]);
     end
 
     // Flag denoting that the head entry was modified in the prior cycle.

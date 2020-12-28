@@ -105,6 +105,8 @@ module ob (
   logic                                 mk_bid_head_pop;
   logic                                 mk_bid_head_push;
   ob_pkg::table_t                       mk_bid_head_push_tbl;
+  logic                                 mk_bid_head_upt;
+  ob_pkg::table_t                       mk_bid_head_upt_tbl;
   logic                                 mk_bid_head_vld_r;
   logic                                 mk_bid_head_did_update_r;
   ob_pkg::table_t                       mk_bid_head_r;
@@ -121,6 +123,8 @@ module ob (
   logic                                 mk_ask_head_pop;
   logic                                 mk_ask_head_push;
   ob_pkg::table_t                       mk_ask_head_push_tbl;
+  logic                                 mk_ask_head_upt;
+  ob_pkg::table_t                       mk_ask_head_upt_tbl;
   logic                                 mk_ask_head_vld_r;
   logic                                 mk_ask_head_did_update_r;
   ob_pkg::table_t                       mk_ask_head_r;
@@ -323,6 +327,8 @@ module ob (
     , .mk_bid_head_pop             (mk_bid_head_pop              )
     , .mk_bid_head_push            (mk_bid_head_push             )
     , .mk_bid_head_push_tbl        (mk_bid_head_push_tbl         )
+    , .mk_bid_head_upt             (mk_bid_head_upt              )
+    , .mk_bid_head_upt_tbl         (mk_bid_head_upt_tbl          )
     , .mk_bid_head_vld_r           (mk_bid_head_vld_r            )
     , .mk_bid_head_did_update_r    (mk_bid_head_did_update_r     )
     , .mk_bid_head_r               (mk_bid_head_r                )
@@ -339,6 +345,8 @@ module ob (
     , .mk_ask_head_pop             (mk_ask_head_pop              )
     , .mk_ask_head_push            (mk_ask_head_push             )
     , .mk_ask_head_push_tbl        (mk_ask_head_push_tbl         )
+    , .mk_ask_head_upt             (mk_ask_head_upt              )
+    , .mk_ask_head_upt_tbl         (mk_ask_head_upt_tbl          )
     , .mk_ask_head_vld_r           (mk_ask_head_vld_r            )
     , .mk_ask_head_did_update_r    (mk_ask_head_did_update_r     )
     , .mk_ask_head_r               (mk_ask_head_r                )
@@ -364,6 +372,9 @@ module ob (
     //
     , .head_push                   (mk_bid_head_push             )
     , .head_push_tbl               (mk_bid_head_push_tbl         )
+    //
+    , .head_upt                    (mk_bid_head_upt              )
+    , .head_upt_tbl                (mk_bid_head_upt_tbl          )
     //
     , .head_vld_r                  (mk_bid_head_vld_r            )
     , .head_did_update_r           (mk_bid_head_did_update_r     )
@@ -393,6 +404,9 @@ module ob (
     //
     , .head_push                   (mk_ask_head_push             )
     , .head_push_tbl               (mk_ask_head_push_tbl         )
+    //
+    , .head_upt                    (mk_ask_head_upt              )
+    , .head_upt_tbl                (mk_ask_head_upt_tbl          )
     //
     , .head_vld_r                  (mk_ask_head_vld_r            )
     , .head_did_update_r           (mk_ask_head_did_update_r     )
