@@ -206,34 +206,90 @@ module ob_cntrl (
   `LIBV_REG_RST_R(logic, mk_ask_full, 'b0);
   `LIBV_REG_RST_R(logic, mk_ask_empty, 'b1);
 
+  `LIBV_REG_RST_W(logic, cn_cmd_vld, 'b0);
+  `LIBV_REG_EN_W(ob_pkg::cmd_t, cn_cmd);
+
   // ------------------------------------------------------------------------ //
   //
-  `LIBV_REG_RST(logic, cmd_latch_vld, 'b0);
-  `LIBV_REG_EN(ob_pkg::cmd_t, cmd_latch);
+  `LIBV_REG_RST(logic, cmdl_vld, 'b0);
+  `LIBV_REG_EN(ob_pkg::cmd_t, cmdl);
+  logic                                      cmdl_adv;
+  logic                                      cmdl_consume;
+  logic                                      cmdl_cn_can_issue;
+  logic                                      cmdl_cn_is_valid;
 
-  logic         cmd_fetch;
-  logic         cmd_consume;
+  always_comb begin : cmdl_PROC
 
-  always_comb begin : cmd_latch_PROC
-
+    // Market orders are dependent upon the capacity of the market tables and
+    // therefore commands cannot be dequeued from CN unless there is space
+    // available in the tables for the command. Limit orders are always
+    // actionable however as they the limit tables always retain an unused
+    // reject slot.
     //
-    cmd_fetch       = cmd_in_vld & (cmd_consume | ~cmd_latch_vld_r);
+    // Market orders: A one cycle hazard occurs in the cycle where the CN
+    // command is injected into the command-latch and a command is already
+    // present in the cmd_latch. To avoid the case where the current command
+    // inserts an item in the market table, causing it to become full and
+    // subsequently causing the following CN command to be rejected, we
+    // specifically wait until no command is present, or, if a command is
+    // present, that it is assured not to touch the corresponding market table.
+    //
+    case (cn_cmd_r.opcode)
+      ob_pkg::Op_BuyStopLoss: begin
+        case ({cmdl_vld_r, mk_bid_full_r}) inside
+          2'b0_0:  cmdl_cn_can_issue = 'b1;
+          2'b1_0:  cmdl_cn_can_issue = (cmdl_r.opcode != ob_pkg::Op_BuyMarket);
+          default: cmdl_cn_can_issue = 'b0;
+        endcase // case ({cmdl_vld_r, mk_bid_full_r})
+      end
+      ob_pkg::Op_SellStopLoss: begin
+        case ({cmdl_vld_r, mk_ask_full_r}) inside
+          2'b0_0:  cmdl_cn_can_issue = 'b1;
+          2'b1_0:  cmdl_cn_can_issue = (cmdl_r.opcode != ob_pkg::Op_SellMarket);
+          default: cmdl_cn_can_issue = 'b0;
+        endcase // case ({cmdl_vld_r, mk_bid_full_r})
+      end
+      ob_pkg::Op_BuyStopLimit,
+      ob_pkg::Op_SellStopLimit: begin
+        cmdl_cn_can_issue = 'b1;
+      end
+      default: begin
+        // Otherwise, unknown command.
+        cmdl_cn_can_issue = 'b0;
+      end
+    endcase // case (cn_cmd_r.opcode)
+
+    // A conditional command has matured and is now ready to be issued.
+    cmdl_cn_is_valid = cn_cmd_vld_r & cmdl_cn_can_issue;
+
+    // The command latch advances whenever a command (at the latch) is consumed,
+    // or if it currently invalid (sampling new state).
+    cmdl_adv         = (~cmdl_vld_r) | cmdl_consume;
+
+    // Pop ingress command queue when commands are present. Defeat in the
+    // presence of a valid CN command.
+    cmd_in_pop       = cmd_in_vld & (~cmdl_cn_is_valid) & cmdl_adv;
+
+    // Accept matured CN command when present and when the command latch
+    // advances.
+    cn_mtr_accept    = cmdl_cn_is_valid & cmdl_adv;
 
     // Valid on fetch or Retain on not consume of prior.
-    casez ({cmd_fetch, cmd_consume})
-      2'b1?:   cmd_latch_vld_w = 'b1;
-      2'b01:   cmd_latch_vld_w = 'b0;
-      default: cmd_latch_vld_w = cmd_latch_vld_r;
+    case ({cmd_in_pop, cn_mtr_accept, cmdl_consume}) inside
+      3'b1??:  cmdl_vld_w = 'b1;
+      3'b01?:  cmdl_vld_w = 'b1;
+      3'b001:  cmdl_vld_w = 'b0;
+      default: cmdl_vld_w = cmdl_vld_r;
     endcase
 
-    //
-    cmd_latch_en    = cmd_fetch;
-    cmd_latch_w     = cmd_in;
+    // Latch command on advancement.
+    cmdl_en = cmdl_adv;
 
-    // Pop from ingress queue on fetch.
-    cmd_in_pop        = cmd_fetch;
+    // Next command originates from the CN unit if command is accepted,
+    // otherwise the ingress command queue.
+    cmdl_w  = cn_mtr_accept ? cn_cmd_r : cmd_in;
 
-  end // block: cmd_latch_PROC
+  end // block: cmdl_PROC
 
   // ------------------------------------------------------------------------ //
   //
@@ -271,9 +327,14 @@ module ob_cntrl (
   logic                                 lm_trade_vld_r;
   ob_pkg::search_result_t               lm_trade_r;
 
+  `LIBV_REG_RST_W(logic, evt_texe, 'b0);
+
   always_comb begin : cntrl_PROC
 
     // Defaults:
+
+    // Machine events:
+    evt_texe_w           = 'b0;
 
     // Command In:
     cmd_in_pop           = 'b0;
@@ -287,7 +348,7 @@ module ob_cntrl (
     fsm_state_en         = 'b0;
 
     // Command latch:
-    cmd_consume          = 'b0;
+    cmdl_consume         = 'b0;
 
     // Bid Table:
     lm_bid_insert        = 'b0;
@@ -355,6 +416,12 @@ module ob_cntrl (
     mk_ask_cancel        = 'b0;
     mk_ask_cancel_uid    = '0;
 
+    // Conditionl defaults
+    cn_cmd_vld_w         = 'b0;
+    cn_cmd_en            = 'b0;
+    cn_cmd_w             = cn_cmd_r;
+    cn_mtr_accept        = 'b0;
+
     // Compare query
     trade_qry            = 'b0;
 
@@ -363,19 +430,19 @@ module ob_cntrl (
       FSM_CNTRL_IDLE: begin
 
         // Command decode)
-        case ({cmd_latch_vld_r, cmd_latch_r.opcode})
+        case ({cmdl_vld_r, cmdl_r.opcode})
           {1'b1, ob_pkg::Op_Nop}: begin
             // No-Operation (NOP) generate Okay response for command.
             if (!rsp_out_full_r) begin
               cmd_in_pop     = 'b1;
 
               // Consume command
-              cmd_consume    = 'b1;
+              cmdl_consume   = 'b1;
 
               rsp_out_vld    = 'b1;
 
               rsp_out        = '0;
-              rsp_out.uid    = cmd_latch_r.uid;
+              rsp_out.uid    = cmdl_r.uid;
               rsp_out.status = ob_pkg::S_Okay;
             end
           end
@@ -385,18 +452,18 @@ module ob_cntrl (
               ob_pkg::result_qrybidask_t result;
 
               // Consume command
-              cmd_consume = 'b1;
+              cmdl_consume = 'b1;
 
               // Form result:
-              result      = '0;
-              result.ask  = lm_ask_table_r.price;
-              result.bid  = lm_bid_table_r.price;
+              result       = '0;
+              result.ask   = lm_ask_table_r.price;
+              result.bid   = lm_bid_table_r.price;
 
               // Emit out:
-              rsp_out_vld = 'b1;
+              rsp_out_vld  = 'b1;
 
-              rsp_out     = '0;
-              rsp_out.uid = cmd_latch_r.uid;
+              rsp_out      = '0;
+              rsp_out.uid  = cmdl_r.uid;
               casez ({lm_ask_table_vld_r, lm_bid_table_vld_r})
                 2'b11:   rsp_out.status = ob_pkg::S_Okay;
                 default: rsp_out.status = ob_pkg::S_Bad;
@@ -408,9 +475,9 @@ module ob_cntrl (
             ob_pkg::table_t lm_bid_table;
 
             lm_bid_table          = '0;
-            lm_bid_table.uid      = cmd_latch_r.uid;
-            lm_bid_table.quantity = cmd_latch_r.quantity;
-            lm_bid_table.price    = cmd_latch_r.price;
+            lm_bid_table.uid      = cmdl_r.uid;
+            lm_bid_table.quantity = cmdl_r.quantity;
+            lm_bid_table.price    = cmdl_r.price;
 
             // Insert in Bid Table.
             lm_bid_insert         = 'b1;
@@ -421,7 +488,7 @@ module ob_cntrl (
 
             // From response:
             rsp_out               = '0;
-            rsp_out.uid           = cmd_latch_r.uid;
+            rsp_out.uid           = cmdl_r.uid;
             rsp_out.status        = ob_pkg::S_Okay;
 
             // Next, query update table.
@@ -433,9 +500,9 @@ module ob_cntrl (
 
             // Await result of install operation.
             lm_ask_table          = '0;
-            lm_ask_table.uid      = cmd_latch_r.uid;
-            lm_ask_table.quantity = cmd_latch_r.quantity;
-            lm_ask_table.price    = cmd_latch_r.price;
+            lm_ask_table.uid      = cmdl_r.uid;
+            lm_ask_table.quantity = cmdl_r.quantity;
+            lm_ask_table.price    = cmdl_r.price;
 
             // Insert in Ask Table.
             lm_ask_insert         = 'b1;
@@ -446,7 +513,7 @@ module ob_cntrl (
 
             // From response:
             rsp_out               = '0;
-            rsp_out.uid           = cmd_latch_r.uid;
+            rsp_out.uid           = cmdl_r.uid;
             rsp_out.status        = ob_pkg::S_Okay;
 
             // Next, query update table.
@@ -457,7 +524,7 @@ module ob_cntrl (
             ob_pkg::result_poptop_t poptop;
 
             // Consume command
-            cmd_consume     = 'b1;
+            cmdl_consume    = 'b1;
 
             // Form result:
             poptop          = '0;
@@ -470,7 +537,7 @@ module ob_cntrl (
 
             // Emit out:
             rsp_out_vld     = 'b1;
-            rsp_out.uid     = cmd_latch_r.uid;
+            rsp_out.uid     = cmdl_r.uid;
             rsp_out.status  =
               lm_bid_table_vld_r ? ob_pkg::S_Okay : ob_pkg::S_BadPop;
             rsp_out.result        = '0;
@@ -480,7 +547,7 @@ module ob_cntrl (
             ob_pkg::result_poptop_t poptop;
 
             // Consume command
-            cmd_consume     = 'b1;
+            cmdl_consume    = 'b1;
 
             // Form result:
             poptop          = '0;
@@ -489,11 +556,11 @@ module ob_cntrl (
             poptop.uid      = lm_ask_table_r.uid;
 
             // Pop top valid item.
-            lm_ask_pop         = lm_ask_table_vld_r;
+            lm_ask_pop      = lm_ask_table_vld_r;
 
             // Emit out:
             rsp_out_vld     = 'b1;
-            rsp_out.uid     = cmd_latch_r.uid;
+            rsp_out.uid     = cmdl_r.uid;
             rsp_out.status  =
               lm_ask_table_vld_r ? ob_pkg::S_Okay : ob_pkg::S_BadPop;
             rsp_out.result        = '0;
@@ -502,11 +569,11 @@ module ob_cntrl (
           {1'b1, ob_pkg::Op_Cancel}: begin
             // Issue cancel op. to Bid table.
             lm_bid_cancel     = 'b1;
-            lm_bid_cancel_uid = cmd_latch_r.uid1;
+            lm_bid_cancel_uid = cmdl_r.uid1;
 
             // Issue cancel op. to Ask table.
             lm_ask_cancel     = 'b1;
-            lm_ask_cancel_uid = cmd_latch_r.uid1;
+            lm_ask_cancel_uid = cmdl_r.uid1;
 
             // Advance to next state when egress queue is non-full, as
             // next state does not support back-pressure.
@@ -515,22 +582,22 @@ module ob_cntrl (
           end // case: {1'b1, ob_pkg::Op_Cancel}
           {1'b1, ob_pkg::Op_BuyMarket}: begin
             // Market Buy command:
-            cmd_consume = 'b1;
+            cmdl_consume = 'b1;
 
             case ({mk_bid_full_r})
               1'b1: begin
                 // Market sell buffer is full, command is rejected
                 rsp_out_vld    = 'b1;
-                rsp_out.uid    = cmd_latch_r.uid;
+                rsp_out.uid    = cmdl_r.uid;
                 rsp_out.status = ob_pkg::S_Reject;
                 rsp_out.result = '0;
               end
               default: begin
                 mk_bid_insert              = 'b1;
                 mk_bid_insert_tbl          = '0;
-                mk_bid_insert_tbl.uid      = cmd_latch_r.uid;
-                mk_bid_insert_tbl.quantity = cmd_latch_r.quantity;
-                mk_bid_insert_tbl.price    = cmd_latch_r.price;
+                mk_bid_insert_tbl.uid      = cmdl_r.uid;
+                mk_bid_insert_tbl.quantity = cmdl_r.quantity;
+                mk_bid_insert_tbl.price    = cmdl_r.price;
 
                 // Advance to query state
                 fsm_state_en               = (~rsp_out_full_r);
@@ -540,22 +607,22 @@ module ob_cntrl (
           end
           {1'b1, ob_pkg::Op_SellMarket}: begin
             // Market Sell command:
-            cmd_consume = 'b1;
+            cmdl_consume = 'b1;
 
             case ({mk_ask_full_r})
               1'b1: begin
                 // Market sell buffer is full, command is rejected
                 rsp_out_vld    = 'b1;
-                rsp_out.uid    = cmd_latch_r.uid;
+                rsp_out.uid    = cmdl_r.uid;
                 rsp_out.status = ob_pkg::S_Reject;
                 rsp_out.result = '0;
               end
               default: begin
                 mk_ask_insert              = 'b1;
                 mk_ask_insert_tbl          = '0;
-                mk_ask_insert_tbl.uid      = cmd_latch_r.uid;
-                mk_ask_insert_tbl.quantity = cmd_latch_r.quantity;
-                mk_ask_insert_tbl.price    = cmd_latch_r.price;
+                mk_ask_insert_tbl.uid      = cmdl_r.uid;
+                mk_ask_insert_tbl.quantity = cmdl_r.quantity;
+                mk_ask_insert_tbl.price    = cmdl_r.price;
 
                 // Advance to query state.
                 fsm_state_en               = (~rsp_out_full_r);
@@ -566,8 +633,8 @@ module ob_cntrl (
           {1'b1, ob_pkg::Op_QryTblAskLe}: begin
             // Issue query command
             lm_ask_qry_vld      = 'b1;
-            lm_ask_qry_price    = cmd_latch_r.price;
-            lm_ask_qry_quantity = cmd_latch_r.quantity;
+            lm_ask_qry_price    = cmdl_r.price;
+            lm_ask_qry_quantity = cmdl_r.quantity;
 
             // Transition to await response state.
             fsm_state_en        = 'b1;
@@ -576,13 +643,39 @@ module ob_cntrl (
           {1'b1, ob_pkg::Op_QryTblBidGe}: begin
             // Issue query command
             lm_bid_qry_vld      = 'b1;
-            lm_bid_qry_price    = cmd_latch_r.price;
-            lm_bid_qry_quantity = cmd_latch_r.quantity;
+            lm_bid_qry_price    = cmdl_r.price;
+            lm_bid_qry_quantity = cmdl_r.quantity;
 
             // Transition to await response state.
             fsm_state_en        = 'b1;
             fsm_state_w         = FSM_CNTRL_QRY_TBL;
           end // case: {1'b1, ob_pkg::Op_QryTblBidGe}
+          {1'b1, ob_pkg::Op_BuyStopLoss},
+          {1'b1, ob_pkg::Op_SellStopLoss},
+          {1'b1, ob_pkg::Op_BuyStopLimit},
+          {1'b1, ob_pkg::Op_SellStopLimit}: begin
+            // Conditional command(s), issue to conditional engine if non-full
+            // otherwise reject on structural hazard.
+            case ({cn_full_r})
+              1'b1: begin
+                // Conditional table is current full, must reject current
+                // command.
+                rsp_out_vld    = 'b1;
+
+                rsp_out        = '0;
+                rsp_out.uid    = cmdl_r.uid;
+                rsp_out.status = ob_pkg::S_Reject;
+                rsp_out.result = '0;
+              end
+              default: begin
+                // Otherwise, we are free to issue command to conditional table.
+                cn_cmd_vld_w = 'b1;
+
+                cn_cmd_en    = 'b1;
+                cn_cmd_w     = cmdl_r;
+              end
+            endcase
+          end
           default: begin
             // Invalid op:
           end
@@ -597,11 +690,11 @@ module ob_cntrl (
         //
 
         // Consume command.
-        cmd_consume = 'b1;
+        cmdl_consume = 'b1;
 
-        rsp_out_vld = 'b1;
-        rsp_out     = '0;
-        rsp_out.uid = cmd_latch_r.uid;
+        rsp_out_vld  = 'b1;
+        rsp_out      = '0;
+        rsp_out.uid  = cmdl_r.uid;
 
         case ({// Bid limit table hits cancel
                lm_bid_cancel_hit_r,
@@ -680,7 +773,7 @@ module ob_cntrl (
           5'b01???, 5'b001??: begin
             ob_pkg::search_result_t sr;
             // Select matching controller, prefer limit.
-            sr = lm_trade_vld_r ? lm_trade_r : mk_trade_r;
+            sr         = lm_trade_vld_r ? lm_trade_r : mk_trade_r;
 
             case ({// LM/LM trade
                    sr.lm_ask_lm_bid,
@@ -692,6 +785,13 @@ module ob_cntrl (
                    sr.mk_ask_mk_bid}) inside
               4'b1???: begin
                 // Limit Ask <-> Limit Bid trade possible
+
+                // Raise "Trade-Execute" event indicating that the current
+                // bid/ask spread indicates the new market price. Note: we do
+                // not consider market trades in this condition as we do not
+                // consider market events to modify the market price, only limit
+                // trades.
+                evt_texe_w = 'b1;
 
                 case ({sr.bid_consumed, sr.ask_consumed})
                   2'b10: begin
@@ -873,7 +973,7 @@ module ob_cntrl (
           end
           default: begin
             // Consume command
-            cmd_consume  = 'b1;
+            cmdl_consume = 'b1;
 
             // Otherwise, no further work. Return to IDLE state.
             fsm_state_en = 'b1;
@@ -888,12 +988,12 @@ module ob_cntrl (
         casez ({lm_bid_qry_rsp_vld_r, lm_ask_qry_rsp_vld_r})
           2'b1?, 2'b01: begin
             // Consume command, now completed.
-            cmd_consume              = 'b1;
+            cmdl_consume             = 'b1;
 
             // Emit response
             rsp_out_vld              = 'b1;
             rsp_out                  = '0;
-            rsp_out.uid              = cmd_latch_r.uid;
+            rsp_out.uid              = cmdl_r.uid;
             rsp_out.status           = ob_pkg::S_Okay;
             rsp_out.result.qry.accum = qry_qty_combined;
 
