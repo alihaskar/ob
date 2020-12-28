@@ -133,6 +133,33 @@ module ob_cn_table_entry (
           end
         endcase // case (fsm_cmd_r.opcode)
 
+        // As the command matures, it permutes from the "Stop" order to the
+        // corresponding Market/Limit Order
+        case (cmd_r.opcode)
+          ob_pkg::Op_BuyStopLoss: begin
+            // Op_BuyStopLess -> Op_BuyMarket
+            cmd_w.opcode = ob_pkg::Op_BuyMarket;
+          end
+          ob_pkg::Op_SellStopLoss: begin
+            // Op_SellStopLess -> Op_SellMarket
+            cmd_w.opcode = ob_pkg::Op_SellMarket;
+          end
+          ob_pkg::Op_BuyStopLimit: begin
+            // Op_BuyStopLimit -> Op_BuyLimit
+            cmd_w.opcode = ob_pkg::Op_BuyLimit;
+          end
+          ob_pkg::Op_SellStopLimit: begin
+            // Op_SellStopLimit -> Op_SellLimit
+            cmd_w.opcode = ob_pkg::Op_SellLimit;
+          end
+          default: begin
+            // Otherwise, error: Unknown command is present in entry.
+          end
+        endcase
+
+        // Update command.
+        cmd_en      = fsm_state_en;
+
         // Transition to matured state.
         fsm_state_w = FSM_MATURED;
       end

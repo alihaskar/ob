@@ -223,8 +223,8 @@ module ob_cntrl (
     // Market orders are dependent upon the capacity of the market tables and
     // therefore commands cannot be dequeued from CN unless there is space
     // available in the tables for the command. Limit orders are always
-    // actionable however as they the limit tables always retain an unused
-    // reject slot.
+    // actionable however as the limit tables always retain an unused reject
+    // slot.
     //
     // Market orders: A one cycle hazard occurs in the cycle where the CN
     // command is injected into the command-latch and a command is already
@@ -234,23 +234,27 @@ module ob_cntrl (
     // specifically wait until no command is present, or, if a command is
     // present, that it is assured not to touch the corresponding market table.
     //
+    // Recall also that commands returning from CN are no longer the "stop"
+    // commands and have been permuted into their corresponding matured
+    // commands: Stop -> Market, StopLimit -> Limit.
+    //
     case (cn_cmd_r.opcode)
-      ob_pkg::Op_BuyStopLoss: begin
+      ob_pkg::Op_BuyMarket: begin
         case ({cmdl_vld_r, mk_bid_full_r}) inside
           2'b0_0:  cmdl_cn_can_issue = 'b1;
           2'b1_0:  cmdl_cn_can_issue = (cmdl_r.opcode != ob_pkg::Op_BuyMarket);
           default: cmdl_cn_can_issue = 'b0;
         endcase // case ({cmdl_vld_r, mk_bid_full_r})
       end
-      ob_pkg::Op_SellStopLoss: begin
+      ob_pkg::Op_SellMarket: begin
         case ({cmdl_vld_r, mk_ask_full_r}) inside
           2'b0_0:  cmdl_cn_can_issue = 'b1;
           2'b1_0:  cmdl_cn_can_issue = (cmdl_r.opcode != ob_pkg::Op_SellMarket);
           default: cmdl_cn_can_issue = 'b0;
         endcase // case ({cmdl_vld_r, mk_bid_full_r})
       end
-      ob_pkg::Op_BuyStopLimit,
-      ob_pkg::Op_SellStopLimit: begin
+      ob_pkg::Op_BuyLimit,
+      ob_pkg::Op_SellLimit: begin
         cmdl_cn_can_issue = 'b1;
       end
       default: begin
@@ -280,7 +284,7 @@ module ob_cntrl (
       3'b01?:  cmdl_vld_w = 'b1;
       3'b001:  cmdl_vld_w = 'b0;
       default: cmdl_vld_w = cmdl_vld_r;
-    endcase
+    endcase // case ({cmd_in_pop, cn_mtr_accept, cmdl_consume})
 
     // Latch command on advancement.
     cmdl_en = cmdl_adv;
