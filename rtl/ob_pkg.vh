@@ -57,32 +57,46 @@ package ob_pkg;
   typedef logic signed [16:0] quantity_arith_t;
 
   // Commands supported by the matching engine.
-  typedef enum logic [3:0] {// No operation; NOP.
-                            Op_Nop        = 4'b0000,
+  typedef enum logic [4:0] {// No operation; NOP.
+                            Op_Nop        = 5'b00000,
                             // Qry current bid-/ask- spread
-                            Op_QryBidAsk  = 4'b0001,
+                            Op_QryBidAsk  = 5'b00001,
                             // Buy transaction
-                            Op_BuyLimit   = 4'b0010,
+                            Op_BuyLimit   = 5'b00010,
                             // Sell transaction
-                            Op_SellLimit  = 4'b0011,
+                            Op_SellLimit  = 5'b00011,
                             // Remove winning bid from order book.
-                            Op_PopTopBid  = 4'b0100,
+                            Op_PopTopBid  = 5'b00100,
                             // Remove winning ask from order book.
-                            Op_PopTopAsk  = 4'b0101,
+                            Op_PopTopAsk  = 5'b00101,
 			                      // Cancel prior Bid/Ask
-			                      Op_Cancel     = 4'b0110,
-                            // TODO: Market Buy (low-priority).
-                            Op_BuyMarket  = 4'b1000,
-                            // TODO: Market Sell (low-priority).
-                            Op_SellMarket = 4'b1001,
+			                      Op_Cancel     = 5'b00110,
+                            // Issue Buy Market order.
+                            Op_BuyMarket  = 5'b01000,
+                            // Issue Sell Market order.
+                            Op_SellMarket = 5'b01001,
                             // Qry Ask table entries less-than oprand.
-                            Op_QryTblAskLe = 4'b1010,
+                            Op_QryTblAskLe = 5'b01010,
                             // Qry Bid table entries greater-than oprand; for
                             // example, for a given ask price (oprand), compute
                             // the number of shares that can be traded from the
                             // bid limit table that can be traded (the number of
                             // bidding orders that are greater than the oprand).
-                            Op_QryTblBidGe = 4'b1011
+                            Op_QryTblBidGe = 5'b01011,
+                            // Conditional buy once price1 value or below has
+                            // been reached. On maturity command becomes a
+                            // standard market buy order.
+                            Op_BuyStopLoss = 5'b01100,
+                            // Conditional sell once price1 value or above has
+                            // been reached. On maturity command becomes a
+                            // standard market sell order.
+                            Op_SellStopLoss = 5'b01101,
+                            // As Op_BuyStopLess command but becomes limit
+                            // order instead of market.
+                            Op_BuyStopLimit = 5'b01110,
+                            // As Op_Buy_SellStopLoss command but becomes limit
+                            // order instead of market.
+                            Op_SellStopLimit = 5'b01111
                             } opcode_t;
 
   // Time-In-Force (TIF) types
@@ -110,6 +124,8 @@ package ob_pkg;
     quantity_t           quantity;
     // Secondary UID (on cancel); where applicable
     uid_t                uid1;
+    // Secondary price for conditional commands (price on maturity).
+    bcd_pkg::price_t     price1;
   } cmd_t;
 
   //

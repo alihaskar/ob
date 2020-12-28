@@ -137,6 +137,15 @@ module ob (
   logic                                 mk_ask_full_w;
   logic                                 mk_ask_empty_w;
   ob_pkg::accum_quantity_t              mk_ask_quantity_r;
+  //
+  logic                                 cn_cmd_vld_r;
+  ob_pkg::cmd_t                         cn_cmd_r;
+  logic                                 cn_mtr_accept;
+  logic                                 cn_mtr_vld_r;
+  ob_pkg::cmd_t                         cn_mtr_r;
+  logic                                 cn_full_r;
+  //
+  logic                                 cntrl_evt_texe_r;
 
   // ------------------------------------------------------------------------ //
   //
@@ -282,6 +291,8 @@ module ob (
     , .rsp_out_vld                 (rsp_out_vld                  )
     , .rsp_out                     (rsp_out                      )
     //
+    , .evt_texe_r                  (cntrl_evt_texe_r             )
+    //
     , .lm_bid_table_vld_r          (lm_bid_table_vld_r           )
     , .lm_bid_table_r              (lm_bid_table_r               )
     , .lm_bid_reject_vld_r         (lm_bid_reject_vld_r          )
@@ -360,6 +371,13 @@ module ob (
     , .mk_ask_empty_w              (mk_ask_empty_w               )
     , .mk_ask_quantity_r           (mk_ask_quantity_r            )
     //
+    , .cn_cmd_vld_r                (cn_cmd_vld_r                 )
+    , .cn_cmd_r                    (cn_cmd_r                     )
+    , .cn_mtr_accept               (cn_mtr_accept                )
+    , .cn_mtr_vld_r                (cn_mtr_vld_r                 )
+    , .cn_mtr_r                    (cn_mtr_r                     )
+    , .cn_full_r                   (cn_full_r                    )
+    //
     , .clk                         (clk                          )
     , .rst                         (rst                          )
   );
@@ -423,6 +441,31 @@ module ob (
     , .full_w                      (mk_ask_full_w                )
     , .empty_w                     (mk_ask_empty_w               )
     , .quantity_r                  (mk_ask_quantity_r            )
+    //
+    , .clk                         (clk                          )
+    , .rst                         (rst                          )
+  );
+
+  // ------------------------------------------------------------------------ //
+  //
+  ob_cn_table #(.N(cfg_pkg::CN_DEPTH_N)) u_ob_cn_table (
+    //
+      .cmd_vld_r                   (cn_cmd_vld_r                 )
+    , .cmd_r                       (cn_cmd_r                     )
+    //
+    , .mtr_accept                  (cn_mtr_accept                )
+    , .mtr_vld_r                   (cn_mtr_vld_r                 )
+    , .mtr_r                       (cn_mtr_r                     )
+    //
+    , .cntrl_evt_texe_r            (cntrl_evt_texe_r             )
+    //
+    , .lm_bid_table_vld_r          (lm_bid_table_vld_r           )
+    , .lm_bid_table_r              (lm_bid_table_r               )
+    //
+    , .lm_ask_table_vld_r          (lm_ask_table_vld_r           )
+    , .lm_ask_table_r              (lm_ask_table_r               )
+    //
+    , .full_r                      (cn_full_r                    )
     //
     , .clk                         (clk                          )
     , .rst                         (rst                          )

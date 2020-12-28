@@ -45,6 +45,10 @@ module ob_cntrl (
   , output ob_pkg::rsp_t                          rsp_out
 
   // ======================================================================== //
+  // Event interface
+  , output logic                                  evt_texe_r
+
+  // ======================================================================== //
   // Bid Table Interface
   , input                                         lm_bid_table_vld_r
   , input ob_pkg::table_t                         lm_bid_table_r
@@ -159,6 +163,18 @@ module ob_cntrl (
   // Cancel UID Interface
   , output                                        mk_ask_cancel
   , output ob_pkg::uid_t                          mk_ask_cancel_uid
+
+  // ======================================================================== //
+  // Conditional command interface
+  , output logic                                  cn_cmd_vld_r
+  , output ob_pkg::cmd_t                          cn_cmd_r
+  //
+  , output logic                                  cn_mtr_accept
+  //
+  , input                                         cn_mtr_vld_r
+  , input ob_pkg::cmd_t                           cn_mtr_r
+  //
+  , input                                         cn_full_r
 
   // ======================================================================== //
   // Clk/Reset
