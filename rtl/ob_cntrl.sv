@@ -305,20 +305,6 @@ module ob_cntrl (
 
   // ------------------------------------------------------------------------ //
   //
-  ob_pkg::accum_quantity_t                   qry_qty_combined;
-
-  always_comb begin : qry_PROC
-
-    case ({lm_bid_qry_rsp_vld_r, lm_ask_qry_rsp_vld_r}) inside
-//      2'b1?:   qry_qty_combined = lm_bid_qry_rsp_qty_r + mk_bid_quantity_r;
-//      2'b01:   qry_qty_combined = lm_ask_qry_rsp_qty_r + mk_ask_quantity_r;
-      default: qry_qty_combined = '0;
-    endcase
-
-  end // block: qry_PROC
-
-  // ------------------------------------------------------------------------ //
-  //
   typedef enum logic [4:0] { // Default idle state
                              FSM_CNTRL_IDLE            = 5'b0_0000,
                              // Issue table query on current
