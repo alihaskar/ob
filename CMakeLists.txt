@@ -33,9 +33,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/ob.cmake)
 
 set(CMAKE_CXX_STANDARD 17)
 
-option(OPT_VCD_ENABLE "Enable VCD waveform dumping." ON)
+option(OPT_VCD_ENABLE "Enable VCD waveform dumping." OFF)
 
-option(OPT_TRACE_ENABLE "Enable log tracing." ON)
+option(OPT_TRACE_ENABLE "Enable log tracing." OFF)
 
 option(OPT_VERBOSE "Verbose logging." OFF)
 
