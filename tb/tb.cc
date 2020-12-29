@@ -214,13 +214,17 @@ std::string Command::to_string() const {
 #endif
   r.add_field("opcode", to_opcode_string(opcode));
   switch (opcode) {
-    case Opcode::BuyMarket:
+    case Opcode::BuyMarket: {
+      r.add_field("quantity", to_string(quantity));
+    } break;
     case Opcode::BuyLimit: {
       r.add_field("quantity", to_string(quantity));
       const Bcd bcd = Bcd::from_packed(price);
       r.add_field("price", bcd.to_string());
     } break;
-    case Opcode::SellMarket:
+    case Opcode::SellMarket: {
+      r.add_field("quantity", to_string(quantity));
+    } break;
     case Opcode::SellLimit: {
       r.add_field("quantity", to_string(quantity));
       const Bcd bcd = Bcd::from_packed(price);
@@ -449,6 +453,8 @@ TB::~TB() {
 }
 
 void TB::run() {
+  using std::to_string;
+
   cycle_ = 0;
   time_ = 0;
 
@@ -518,9 +524,21 @@ void TB::run() {
         uid_to_op.erase(it);
       } else if (actual.uid != 0xFFFFFFFF) {
 #ifdef OPT_TRACE_ENABLE
-        // Disregards controller materialized responses.
-        std::cout << "[TB] " << vs_.cycle()
-                  << " ; Unknown UID received: " << utility::hex(actual.uid) << "\n";
+        // Otherwise, we don't know what this UID belongs too. In the REJECT
+        // case, this may occur sometime after the initial Okay upon
+        // installation into the table. The success of this first operation
+        // causes the UID to be removed from the uid_to_op table. Sometime
+        // thereafter, we may subsequently receive a reject notification for
+        // this command which indicates that it has been displaced from the
+        // corresponding limit okay. This is okay and expected behaviour, but we
+        // do not wish the retain all UID mappings over the duration of the
+        // simulation so we simply drop it and everything is fine. We still
+        // check the validity of the rejection message.
+        if (opts_.trace_enable && (actual.status != Status::Reject)) {
+          // Disregards controller materialized responses.
+          std::cout << "[TB] " << vs_.cycle()
+                    << " ; Unknown UID received: " << to_string(actual.uid) << "\n";
+        }
 #endif
       }
 #ifdef OPT_TRACE_ENABLE
@@ -873,9 +891,10 @@ std::vector<Response> Model::apply(const Command& cmd) {
 }
 
 bool Model::attempt_trade(Response& rsp) {
-  if (attempt_trade_lm_lm(rsp)) return true;
-
-  if (attempt_trade_mk_mk(rsp)) return true;
+  if (attempt_trade_lm_lm(rsp)) { return true; }
+  if (attempt_trade_lm_mk(rsp)) { return true; }
+  if (attempt_trade_mk_lm(rsp)) { return true; }
+  if (attempt_trade_mk_mk(rsp)) { return true; }
 
   return false;
 }
@@ -932,6 +951,114 @@ bool Model::attempt_trade_lm_lm(Response& rsp) {
   if (consume_ask) {
     // Remove head.
     ask_table_.erase(ask_table_.begin());
+  }
+
+  return true;
+}
+
+bool Model::attempt_trade_lm_mk(Response& rsp) {
+  if (ask_table_.empty() || bid_table_mk_.empty()) {
+    return false;
+  }
+
+  Entry& ask = ask_table_.front();
+  Entry& bid = bid_table_mk_.front();
+
+  // Do not consider price as market trade
+
+  // Bid takes place.
+
+  bool consume_bid = false;
+  bool consume_ask = false;
+
+  rsp.valid = true;
+  rsp.status = Status::Okay;
+  rsp.uid = 0xFFFFFFFF;
+
+  rsp.result.trade.bid_uid = bid.uid;
+  rsp.result.trade.ask_uid = ask.uid;
+
+  if (bid.quantity < ask.quantity) {
+    // Bid consumed.
+    consume_bid = true;
+    rsp.result.trade.quantity = bid.quantity;
+    // Update ask.
+    ask.quantity = (ask.quantity - bid.quantity);
+  } else if (bid.quantity > ask.quantity) {
+    // Ask consumed
+    consume_ask = true;
+    rsp.result.trade.quantity = ask.quantity;
+    // Update bid
+    bid.quantity = (bid.quantity - ask.quantity);
+  } else {
+    // Bid/Ask consumed
+    consume_bid = true;
+    consume_ask = true;
+    rsp.result.trade.quantity = bid.quantity;
+  }
+
+  if (consume_bid) {
+    // Remove head.
+    bid_table_mk_.pop_front();
+  }
+
+  if (consume_ask) {
+    // Remove head.
+    ask_table_.erase(ask_table_.begin());
+  }
+
+  return true;
+}
+
+bool Model::attempt_trade_mk_lm(Response& rsp) {
+  if (ask_table_mk_.empty() || bid_table_.empty()) {
+    return false;
+  }
+
+  Entry& ask = ask_table_mk_.front();
+  Entry& bid = bid_table_.front();
+
+  // Do not consider price as market trade
+
+  // Bid takes place.
+
+  bool consume_bid = false;
+  bool consume_ask = false;
+
+  rsp.valid = true;
+  rsp.status = Status::Okay;
+  rsp.uid = 0xFFFFFFFF;
+
+  rsp.result.trade.bid_uid = bid.uid;
+  rsp.result.trade.ask_uid = ask.uid;
+
+  if (bid.quantity < ask.quantity) {
+    // Bid consumed.
+    consume_bid = true;
+    rsp.result.trade.quantity = bid.quantity;
+    // Update ask.
+    ask.quantity = (ask.quantity - bid.quantity);
+  } else if (bid.quantity > ask.quantity) {
+    // Ask consumed
+    consume_ask = true;
+    rsp.result.trade.quantity = ask.quantity;
+    // Update bid
+    bid.quantity = (bid.quantity - ask.quantity);
+  } else {
+    // Bid/Ask consumed
+    consume_bid = true;
+    consume_ask = true;
+    rsp.result.trade.quantity = bid.quantity;
+  }
+
+  if (consume_bid) {
+    // Remove head.
+    bid_table_.erase(bid_table_.begin());
+  }
+
+  if (consume_ask) {
+    // Remove head.
+    ask_table_mk_.pop_front();
   }
 
   return true;
@@ -1053,9 +1180,15 @@ void StimulusGenerator::generate(Command& cmd) {
     case Opcode::QryBidAsk: {
       // No oprands.
     } break;
+    case Opcode::BuyMarket: {
+      cmd.quantity = quantity;
+    } break;
     case Opcode::BuyLimit: {
       cmd.quantity = quantity;
       cmd.price = bcd.pack();
+    } break;
+    case Opcode::SellMarket: {
+      cmd.quantity = quantity;
     } break;
     case Opcode::SellLimit: {
       cmd.quantity = quantity;

@@ -194,7 +194,7 @@ module ob_cntrl_mk (
         // both are consumed
         mk_ask_lm_bid_ask_consumed = 'b1;
         mk_ask_lm_bid_bid_consumed = 'b1;
-        mk_ask_lm_bid_quantity     = '0;
+        mk_ask_lm_bid_quantity     = mk_ask_head_r.quantity;
         mk_ask_lm_bid_remainder    = '0; // N/A
       end
       2'b10: begin
@@ -272,22 +272,22 @@ module ob_cntrl_mk (
         // both are consumed
         mk_bid_lm_ask_ask_consumed = 'b1;
         mk_bid_lm_ask_bid_consumed = 'b1;
-        mk_bid_lm_ask_quantity     = '0;
+        mk_bid_lm_ask_quantity     = mk_bid_head_r.quantity;
         mk_bid_lm_ask_remainder    = '0; // N/A
       end
       2'b10: begin
         // Quantity(LM) > Quantity(MK)
-        mk_bid_lm_ask_ask_consumed = 'b1;
-        mk_bid_lm_ask_bid_consumed = 'b0;
-        mk_bid_lm_ask_quantity     = mk_ask_head_r.quantity;
+        mk_bid_lm_ask_ask_consumed = 'b0;
+        mk_bid_lm_ask_bid_consumed = 'b1;
+        mk_bid_lm_ask_quantity     = mk_bid_head_r.quantity;
         mk_bid_lm_ask_remainder    =
           ob_pkg::quantity_t'(mk_bid_lm_ask_cmp_quantity_lm);
       end
       2'b01: begin
         // Quantity(MK) > Quantity(LM)
-        mk_bid_lm_ask_ask_consumed = 'b0;
-        mk_bid_lm_ask_bid_consumed = 'b1;
-        mk_bid_lm_ask_quantity     = lm_bid_r.quantity;
+        mk_bid_lm_ask_ask_consumed = 'b1;
+        mk_bid_lm_ask_bid_consumed = 'b0;
+        mk_bid_lm_ask_quantity     = lm_ask_r.quantity;
         mk_bid_lm_ask_remainder    =
           ob_pkg::quantity_t'(mk_bid_lm_ask_cmp_quantity_mk);
       end

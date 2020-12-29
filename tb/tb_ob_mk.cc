@@ -27,7 +27,9 @@
 
 #include "gtest/gtest.h"
 #include "tb.h"
-/*
+
+const std::size_t LONG_N = (1 << 15);
+
 TEST(TbObMk, RejectBuy) {
   tb::Options opts;
   tb::TB tb{opts};
@@ -90,12 +92,9 @@ TEST(TbObMk, RejectSell) {
   // Run simulation
   tb.run();
 }
-*/
-TEST(TbObMk, MarketMarketTrades1) {
-  tb::Options opts;
-  opts.trace_enable = true;
-  opts.wave_enable = true;
 
+TEST(TbObMk, MarketMarketTradesMkMk1) {
+  tb::Options opts;
   tb::TB tb{opts};
   tb::Command cmd;
 
@@ -121,6 +120,118 @@ TEST(TbObMk, MarketMarketTrades1) {
     tb.push_back(cmd);
   }
 
+  // Run simulation
+  tb.run();
+}
+
+TEST(TbObMk, MarketMarketTradesMkMkN) {
+  // Initialization randomisation seed.
+  tb::Random::init(1);
+
+  tb::Bag<vluint8_t> bg;
+  bg.push_back(tb::Opcode::BuyMarket, 1);
+  bg.push_back(tb::Opcode::SellMarket, 1);
+  tb::StimulusGenerator gen(bg, 100.0, 10.0);
+
+  tb::Options opts;
+  tb::TB tb{opts};
+  for (const tb::Command& cmd : gen.generate(LONG_N)) {
+    tb.push_back(cmd);
+  }
+  // Run simulation
+  tb.run();
+}
+
+TEST(TbObMk, MarketMarketTradesMkLm1) {
+  tb::Options opts;
+  tb::TB tb{opts};
+  tb::Command cmd;
+
+  vluint32_t uid = 0;
+
+  const tb::Bcd bcd = tb::Bcd::from_string("200.00");
+
+  // Issue market trade buy
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::BuyMarket;
+  cmd.uid = uid++;
+  cmd.quantity = 100;
+  cmd.price = bcd.pack();
+  tb.push_back(cmd);
+
+  // Issue market trade sell
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::SellLimit;
+  cmd.uid = uid++;
+  cmd.quantity = 10;
+  cmd.price = bcd.pack();
+  tb.push_back(cmd);
+
+  // Run simulation
+  tb.run();
+}
+
+TEST(TbObMk, MarketMarketTradesMkLmN) {
+  // Initialization randomisation seed.
+  tb::Random::init(1);
+
+  tb::Bag<vluint8_t> bg;
+  bg.push_back(tb::Opcode::BuyMarket, 1);
+  bg.push_back(tb::Opcode::SellLimit, 1);
+  tb::StimulusGenerator gen(bg, 100.0, 10.0);
+
+  tb::Options opts;
+  tb::TB tb{opts};
+  for (const tb::Command& cmd : gen.generate(LONG_N)) {
+    tb.push_back(cmd);
+  }
+  // Run simulation
+  tb.run();
+}
+
+TEST(TbObMk, MarketMarketTradesLmMk1) {
+  tb::Options opts;
+  tb::TB tb{opts};
+  tb::Command cmd;
+
+  vluint32_t uid = 0;
+
+  const tb::Bcd bcd = tb::Bcd::from_string("200.00");
+
+  // Issue limit buy
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::BuyLimit;
+  cmd.uid = uid++;
+  cmd.quantity = 100;
+  cmd.price = bcd.pack();
+  tb.push_back(cmd);
+
+  // Issue market sell
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::SellMarket;
+  cmd.uid = uid++;
+  cmd.quantity = 10;
+  cmd.price = bcd.pack();
+  tb.push_back(cmd);
+
+  // Run simulation
+  tb.run();
+}
+
+TEST(TbObMk, MarketMarketTradesLmMkN) {
+  // Initialization randomisation seed.
+  tb::Random::init(1);
+
+  tb::Bag<vluint8_t> bg;
+  bg.push_back(tb::Opcode::BuyLimit, 1);
+  bg.push_back(tb::Opcode::SellMarket, 1);
+  tb::StimulusGenerator gen(bg, 100.0, 10.0);
+
+  tb::Options opts;
+  tb::TB tb{opts};
+  for (const tb::Command& cmd : gen.generate(LONG_N)) {
+    tb.push_back(cmd);
+  }
   // Run simulation
   tb.run();
 }

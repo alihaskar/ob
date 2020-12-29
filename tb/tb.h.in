@@ -440,10 +440,16 @@ class Model {
 
   bool attempt_trade(Response& rsp);
 
-  // Attempt trade Limit <-> Limit
+  // Attempt trade Limit Ask <-> Limit Bid
   bool attempt_trade_lm_lm(Response& rsp);
 
-  // Attempt trade Market <-> Market
+  // Attempt trade Limit Ask <-> Market Bid
+  bool attempt_trade_lm_mk(Response& rsp);
+
+  // Attempt trade Market Ask <-> Limit Bid
+  bool attempt_trade_mk_lm(Response& rsp);
+
+  // Attempt trade Market Ask <-> Market Bid
   bool attempt_trade_mk_mk(Response& rsp);
 #if defined(OPT_VERBOSE) && defined(OPT_TRACE_ENABLE)
 
