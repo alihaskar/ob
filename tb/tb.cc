@@ -231,7 +231,7 @@ std::string Command::to_string() const {
       r.add_field("price", bcd.to_string());
     } break;
     case Opcode::Cancel: {
-      r.add_field("cancel_uid", utility::hex(uid1));
+      r.add_field("cancelled uid", to_string(uid1));
     } break;
     case Opcode::QryTblAskLe:
     case Opcode::QryTblBidGe: {
@@ -836,8 +836,9 @@ std::vector<Response> Model::apply(const Command& cmd) {
       rsp.status = Status::Okay;
       rsp.result.qry.accum = 0;
       for (const Entry& e : bid_table_) {
-        if (cmd.price <= e.price)
+        if (cmd.price <= e.price) {
           rsp.result.qry.accum += e.quantity;
+        }
       }
       for (const Entry& e : bid_table_mk_) {
         rsp.result.qry.accum += e.quantity;

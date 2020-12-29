@@ -28,6 +28,8 @@
 #include "gtest/gtest.h"
 #include "tb.h"
 
+const std::size_t N = (1 << 18);
+
 TEST(Regress, Basic) {
   // Initialize random seed for reproducibility.
   tb::Random::init(1);
@@ -43,6 +45,8 @@ TEST(Regress, Basic) {
   bg.push_back(tb::Opcode::Cancel, 1);
   bg.push_back(tb::Opcode::QryTblAskLe, 1);
   bg.push_back(tb::Opcode::QryTblBidGe, 1);
+  bg.push_back(tb::Opcode::BuyMarket, 1);
+  bg.push_back(tb::Opcode::SellMarket, 1);
   tb::StimulusGenerator gen(bg, 100.0, 10.0);
 
   // Construct testbench environment.
@@ -54,7 +58,7 @@ TEST(Regress, Basic) {
   opts.wave_enable = true;
 #endif
   tb::TB tb{opts};
-  for (const tb::Command& cmd : gen.generate(200000)) {
+  for (const tb::Command& cmd : gen.generate(N)) {
     tb.push_back(cmd);
   }
 

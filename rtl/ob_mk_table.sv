@@ -162,7 +162,7 @@ module ob_mk_table #(parameter int N = 16) (
       2'b01:
         // On cancel hit, shift everything up from the cancel hit and
         // afterwards up (remove the cancelled item from the table).
-        tbl_shift_up = mask(cancel_hit, .inclusive('b1), .lsb('b0));
+        tbl_shift_up = mask(cancel_hit, .inclusive('b1), .lsb('b1));
       default:
         // Otherwise, do nothing.
         tbl_shift_up = '0;

@@ -28,7 +28,7 @@
 #include "gtest/gtest.h"
 #include "tb.h"
 
-const std::size_t LONG_N = (1 << 16);
+const std::size_t LONG_N = (1 << 18);
 
 TEST(TbObMk, RejectBuy) {
   tb::Options opts;
