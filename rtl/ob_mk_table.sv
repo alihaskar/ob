@@ -61,7 +61,13 @@ module ob_mk_table #(parameter int N = 16) (
   // Status
   , output logic                                  full_w
   , output logic                                  empty_w
-  , output ob_pkg::accum_quantity_t               quantity_r
+
+  // ======================================================================== //
+  // Query Interface
+  , input                                         qry_vld
+  //
+  , output logic                                  qry_rsp_vld_r
+  , output ob_pkg::accum_quantity_t               qry_rsp_qty_r
 
   // ======================================================================== //
   // Clk/Reset
@@ -258,37 +264,28 @@ module ob_mk_table #(parameter int N = 16) (
 
   // ------------------------------------------------------------------------ //
   //
-  `LIBV_REG_EN_RST_W(ob_pkg::accum_quantity_t, quantity, '0);
+  logic                                 cnt_cmd_vld;
+  ob_pkg::accum_quantity_t              cnt_rsp_quantity_w;
+  `LIBV_REG_RST(logic, cnt_busy, 'b0);
+  `LIBV_REG_RST_W(logic, qry_rsp_vld, 'b0);
+  `LIBV_REG_EN_W(ob_pkg::accum_quantity_t, qry_rsp_qty);
 
-  always_comb begin : quantity_PROC
+  always_comb begin : qry_PROC
 
-    // The interface definition does not disallow this but implicitly only
-    // one modification to the table may occur during a given clock cycle.
-    //
-    unique case ({insert, head_push, head_pop, cancel_hit_w}) inside
-      4'b1???: begin
-        // On insert (to tail), increment the quantity.
-        quantity_w = quantity_r + ob_pkg::accum_quantity_t'(insert_tbl.quantity);
-      end
-      4'b01??: begin
-        // On a push (to head), increment the quantity in the head entry.
-        quantity_w = quantity_r + ob_pkg::accum_quantity_t'(head_push_tbl.quantity);
-      end
-      4'b001?: begin
-        // On a pop, deduct the quantity from the head entry.
-        quantity_w = quantity_r - ob_pkg::accum_quantity_t'(head_r.quantity);
-      end
-      4'b0001: begin
-        // On cancel hit, deduct the quantity retained by the table entry.
-        quantity_w = quantity_r - ob_pkg::accum_quantity_t'(cancel_hit_tbl_w.quantity);
-      end
-      default: begin
-        quantity_w = quantity_r;
-      end
-    endcase // case ({insert, head_push, head_pop})
+    // Issue count search operation.
+    cnt_cmd_vld = qry_vld;
 
-    // Enable on update.
-    quantity_en = (insert | head_push | head_pop);
+    // Simple set/reset code. Clear flop on incoming query and set
+    // on the transition out of the busy state.
+    case ({qry_vld, cnt_busy_r, cnt_busy_w}) inside
+      3'b1_??: qry_rsp_vld_w = 'b0;
+      3'b0_10: qry_rsp_vld_w = 'b1;
+      default: qry_rsp_vld_w = qry_rsp_vld_r;
+    endcase // case ({qry_vld, cnt_busy_r, cnt_busy_w})
+
+    // Latch count on transition to valid state.
+    qry_rsp_qty_en = cnt_busy_r & (~cnt_busy_w);
+    qry_rsp_qty_w  = cnt_rsp_quantity_w;
 
   end // block: quantity_PROC
 
@@ -305,5 +302,27 @@ module ob_mk_table #(parameter int N = 16) (
 	    if (tbl_en [i])
 	      tbl_r [i] <= tbl_w [i];
   end // block: t_FLOP
+
+  // ======================================================================== //
+  //                                                                          //
+  // Instances                                                                //
+  //                                                                          //
+  // ======================================================================== //
+
+  // ------------------------------------------------------------------------ //
+  //
+  ob_mk_table_cnt #(.N(N)) u_ob_mk_table_cnt (
+    //
+      .cmd_vld                (cnt_cmd_vld             )
+    , .rsp_quantity_w         (cnt_rsp_quantity_w      )
+    //
+    , .tbl_r                  (tbl_r                   )
+    , .tbl_vld_r              (tbl_vld_r               )
+    //
+    , .busy_w                 (cnt_busy_w              )
+    //
+    , .clk                    (clk                     )
+    , .rst                    (rst                     )
+  );
 
 endmodule // ob_mk_table

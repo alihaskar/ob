@@ -57,8 +57,8 @@ module ob (
   logic                                 cmd_in_pop;
   //
   logic                                 rsp_out_full_r;
-  logic                                 rsp_out_vld;
-  ob_pkg::rsp_t                         rsp_out;
+  logic                                 rsp_out_vld_r;
+  ob_pkg::rsp_t                         rsp_out_r;
   //
   logic                                 lm_bid_table_vld_r;
   ob_pkg::table_t                       lm_bid_table_r;
@@ -118,7 +118,9 @@ module ob (
   ob_pkg::table_t                       mk_bid_cancel_hit_tbl_w;
   logic                                 mk_bid_full_w;
   logic                                 mk_bid_empty_w;
-  ob_pkg::accum_quantity_t              mk_bid_quantity_r;
+  logic                                 mk_bid_qry_vld;
+  logic                                 mk_bid_qry_rsp_vld_r;
+  ob_pkg::accum_quantity_t              mk_bid_qry_rsp_qty_r;
   //
   logic                                 mk_ask_head_pop;
   logic                                 mk_ask_head_push;
@@ -136,7 +138,9 @@ module ob (
   ob_pkg::table_t                       mk_ask_cancel_hit_tbl_w;
   logic                                 mk_ask_full_w;
   logic                                 mk_ask_empty_w;
-  ob_pkg::accum_quantity_t              mk_ask_quantity_r;
+  logic                                 mk_ask_qry_vld;
+  logic                                 mk_ask_qry_rsp_vld_r;
+  ob_pkg::accum_quantity_t              mk_ask_qry_rsp_qty_r;
   //
   logic                                 cn_cmd_vld_r;
   ob_pkg::cmd_t                         cn_cmd_r;
@@ -274,8 +278,8 @@ module ob (
     ingress_queue_pop      = cmd_in_pop;
 
     // Ob. Cntrl. -> Egress Queue
-    egress_queue_push      = rsp_out_vld;
-    egress_queue_push_data = rsp_out;
+    egress_queue_push      = rsp_out_vld_r;
+    egress_queue_push_data = rsp_out_r;
 
   end // block: ob_cntrl_PROC
 
@@ -288,8 +292,8 @@ module ob (
     , .cmd_in_pop                  (cmd_in_pop                   )
     //
     , .rsp_out_full_r              (rsp_out_full_r               )
-    , .rsp_out_vld                 (rsp_out_vld                  )
-    , .rsp_out                     (rsp_out                      )
+    , .rsp_out_vld_r               (rsp_out_vld_r                )
+    , .rsp_out_r                   (rsp_out_r                    )
     //
     , .evt_texe_r                  (cntrl_evt_texe_r             )
     //
@@ -351,7 +355,9 @@ module ob (
     , .mk_bid_cancel_hit_tbl_w     (mk_bid_cancel_hit_tbl_w      )
     , .mk_bid_full_w               (mk_bid_full_w                )
     , .mk_bid_empty_w              (mk_bid_empty_w               )
-    , .mk_bid_quantity_r           (mk_bid_quantity_r            )
+    , .mk_bid_qry_vld              (mk_bid_qry_vld               )
+    , .mk_bid_qry_rsp_vld_r        (mk_bid_qry_rsp_vld_r         )
+    , .mk_bid_qry_rsp_qty_r        (mk_bid_qry_rsp_qty_r         )
     //
     , .mk_ask_head_pop             (mk_ask_head_pop              )
     , .mk_ask_head_push            (mk_ask_head_push             )
@@ -369,7 +375,9 @@ module ob (
     , .mk_ask_cancel_hit_tbl_w     (mk_ask_cancel_hit_tbl_w      )
     , .mk_ask_full_w               (mk_ask_full_w                )
     , .mk_ask_empty_w              (mk_ask_empty_w               )
-    , .mk_ask_quantity_r           (mk_ask_quantity_r            )
+    , .mk_ask_qry_vld              (mk_ask_qry_vld               )
+    , .mk_ask_qry_rsp_vld_r        (mk_ask_qry_rsp_vld_r         )
+    , .mk_ask_qry_rsp_qty_r        (mk_ask_qry_rsp_qty_r         )
     //
     , .cn_cmd_vld_r                (cn_cmd_vld_r                 )
     , .cn_cmd_r                    (cn_cmd_r                     )
@@ -408,7 +416,10 @@ module ob (
     //
     , .full_w                      (mk_bid_full_w                )
     , .empty_w                     (mk_bid_empty_w               )
-    , .quantity_r                  (mk_bid_quantity_r            )
+    //
+    , .qry_vld                     (mk_bid_qry_vld               )
+    , .qry_rsp_vld_r               (mk_bid_qry_rsp_vld_r         )
+    , .qry_rsp_qty_r               (mk_bid_qry_rsp_qty_r         )
     //
     , .clk                         (clk                          )
     , .rst                         (rst                          )
@@ -440,7 +451,10 @@ module ob (
     //
     , .full_w                      (mk_ask_full_w                )
     , .empty_w                     (mk_ask_empty_w               )
-    , .quantity_r                  (mk_ask_quantity_r            )
+    //
+    , .qry_vld                     (mk_ask_qry_vld               )
+    , .qry_rsp_vld_r               (mk_ask_qry_rsp_vld_r         )
+    , .qry_rsp_qty_r               (mk_ask_qry_rsp_qty_r         )
     //
     , .clk                         (clk                          )
     , .rst                         (rst                          )

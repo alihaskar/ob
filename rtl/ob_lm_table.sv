@@ -430,6 +430,7 @@ module ob_lm_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
   ob_pkg::quantity_t                    cnt_cmd_quantity;
   logic                                 cnt_rsp_attained_w;
   ob_pkg::accum_quantity_t              cnt_rsp_quantity_w;
+  logic                                 cnt_rsp_en;
   `LIBV_REG_RST(logic, cnt_cmd_busy, 'b0);
   `LIBV_REG_RST_W(logic, qry_rsp_vld, 'b0);
   `LIBV_REG_EN_W(logic, qry_rsp_is_ge);
@@ -437,17 +438,24 @@ module ob_lm_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
 
   always_comb begin : qry_PROC
 
+    // Issue command to counter controller.
     cnt_cmd_vld      = qry_vld;
     cnt_cmd_price    = qry_price;
     cnt_cmd_quantity = qry_quantity;
 
+    // Latch response from counter controller.
+    case ({qry_vld, cnt_cmd_busy_r, cnt_cmd_busy_w}) inside
+      3'b1_??: qry_rsp_vld_w = 'b0;
+      3'b0_10: qry_rsp_vld_w = 'b1;
+      default: qry_rsp_vld_w = qry_rsp_vld_r;
+    endcase // case ({qry_vld, cnt_cmd_busy_r, cnt_cmd_busy_w})
 
-    // Latch response on the transiton of the controller ('cnt') back to the
-    // idle state.
-    qry_rsp_vld_w    = cnt_cmd_busy_r & (~cnt_cmd_busy_w);
-    qry_rsp_is_ge_en = qry_rsp_vld_w;
+    // Latch response on the output of the busy state.
+    cnt_rsp_en       = cnt_cmd_busy_r & (~cnt_cmd_busy_w);
+
+    qry_rsp_is_ge_en = cnt_rsp_en;
     qry_rsp_is_ge_w  = cnt_rsp_attained_w;
-    qry_rsp_qty_en   = qry_rsp_vld_w;
+    qry_rsp_qty_en   = cnt_rsp_en;
     qry_rsp_qty_w    = cnt_rsp_quantity_w;
 
   end // block: qry_PROC

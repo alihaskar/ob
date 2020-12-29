@@ -825,6 +825,9 @@ std::vector<Response> Model::apply(const Command& cmd) {
           rsp.result.qry.accum += e.quantity;
         }
       }
+      for (const Entry& e : ask_table_mk_) {
+        rsp.result.qry.accum += e.quantity;
+      }
       rsps.push_back(rsp);
     } break;
     case Opcode::QryTblBidGe: {
@@ -835,6 +838,9 @@ std::vector<Response> Model::apply(const Command& cmd) {
       for (const Entry& e : bid_table_) {
         if (cmd.price <= e.price)
           rsp.result.qry.accum += e.quantity;
+      }
+      for (const Entry& e : bid_table_mk_) {
+        rsp.result.qry.accum += e.quantity;
       }
       rsps.push_back(rsp);
     } break;
