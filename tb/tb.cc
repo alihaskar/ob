@@ -196,7 +196,7 @@ const char* to_opcode_string(vluint8_t opcode) {
     case Opcode::PopTopAsk: return "PopTopAsk";
     case Opcode::Cancel: return "Cancel";
     case Opcode::BuyMarket: return "BuyMarket";
-    case Opcode::SellMarket: return "BuyMarket";
+    case Opcode::SellMarket: return "SellMarket";
     case Opcode::QryTblAskLe: return "QryTblAskLe";
     case Opcode::QryTblBidGe: return "QryTblBidGe";
     default: return "Invalid";
@@ -214,11 +214,13 @@ std::string Command::to_string() const {
 #endif
   r.add_field("opcode", to_opcode_string(opcode));
   switch (opcode) {
+    case Opcode::BuyMarket:
     case Opcode::BuyLimit: {
       r.add_field("quantity", to_string(quantity));
       const Bcd bcd = Bcd::from_packed(price);
       r.add_field("price", bcd.to_string());
     } break;
+    case Opcode::SellMarket:
     case Opcode::SellLimit: {
       r.add_field("quantity", to_string(quantity));
       const Bcd bcd = Bcd::from_packed(price);
@@ -362,10 +364,12 @@ void VSignals::set(const Command& cmd) {
     } break;
     case Opcode::QryBidAsk: {
     } break;
+    case Opcode::BuyMarket:
     case Opcode::BuyLimit: {
       vsupport::set(cmd_quantity_r, cmd.quantity);
       vsupport::set(cmd_price_r, cmd.price);
     } break;
+    case Opcode::SellMarket:
     case Opcode::SellLimit: {
       vsupport::set(cmd_quantity_r, cmd.quantity);
       vsupport::set(cmd_price_r, cmd.price);
@@ -756,6 +760,7 @@ std::vector<Response> Model::apply(const Command& cmd) {
     case Opcode::Cancel: {
       bool did_cancel = false;
       const vluint32_t uid_to_cancel = cmd.uid1;
+      // Search bid table limit:
       if (auto it = std::find_if(bid_table_.begin(), bid_table_.end(),
                                  UidFinder{uid_to_cancel});
           !did_cancel && (it != bid_table_.end())) {
@@ -763,6 +768,15 @@ std::vector<Response> Model::apply(const Command& cmd) {
         did_cancel = true;
         bid_table_.erase(it);
       }
+      // Search bid table market:
+      if (auto it = std::find_if(bid_table_mk_.begin(), bid_table_mk_.end(),
+                                 UidFinder{uid_to_cancel});
+          !did_cancel && (it != bid_table_mk_.end())) {
+        // Cancel occurs
+        did_cancel = true;
+        bid_table_mk_.erase(it);
+      }
+      // Search ask table limit:
       if (auto it = std::find_if(ask_table_.begin(), ask_table_.end(),
                                  UidFinder{uid_to_cancel});
           !did_cancel && (it != ask_table_.end())) {
@@ -770,7 +784,14 @@ std::vector<Response> Model::apply(const Command& cmd) {
         did_cancel = true;
         ask_table_.erase(it);
       }
-
+      // Search ask table market:
+      if (auto it = std::find_if(ask_table_mk_.begin(), ask_table_mk_.end(),
+                                 UidFinder{uid_to_cancel});
+          !did_cancel && (it != ask_table_mk_.end())) {
+        // Cancel occurs
+        did_cancel = true;
+        ask_table_mk_.erase(it);
+      }
       rsp.valid = true;
       rsp.uid = cmd.uid;
       rsp.status = did_cancel ? Status::CancelHit : Status::CancelMiss;
@@ -799,6 +820,50 @@ std::vector<Response> Model::apply(const Command& cmd) {
       }
       rsps.push_back(rsp);
     } break;
+    case Opcode::BuyMarket: {
+      rsp.valid = true;
+      rsp.uid = cmd.uid;
+      if (bid_table_mk_.size() == MARKET_BID_DEPTH_N) {
+        // Table has reached capacity, reject
+        rsp.status = Status::Reject;
+        rsps.push_back(rsp);
+      } else {
+        // Okay push to the back of the deque.
+        Entry e;
+        e.uid = cmd.uid;
+        e.quantity = cmd.quantity;
+        e.price = cmd.price;
+        bid_table_mk_.push_back(e);
+        rsp.status = Status::Okay;
+        rsps.push_back(rsp);
+        while (attempt_trade(rsp)) {
+          rsps.push_back(rsp);
+        }
+      }
+    } break;
+    case Opcode::SellMarket: {
+      rsp.valid = true;
+      rsp.uid = cmd.uid;
+      rsp.status = Status::Okay;
+      if (ask_table_mk_.size() == MARKET_ASK_DEPTH_N) {
+        // Table has reached capacity, reject
+        rsp.status = Status::Reject;
+        rsps.push_back(rsp);
+      } else {
+        // Okay push to the back of the deque.
+        Entry e;
+        e.uid = cmd.uid;
+        e.quantity = cmd.quantity;
+        e.price = cmd.price;
+        ask_table_mk_.push_back(e);
+        rsp.status = Status::Okay;
+        rsps.push_back(rsp);
+
+        while (attempt_trade(rsp)) {
+          rsps.push_back(rsp);
+        }
+      }
+    } break;
   }
 
 #if defined(OPT_VERBOSE) && defined(OPT_TRACE_ENABLE)
@@ -808,6 +873,14 @@ std::vector<Response> Model::apply(const Command& cmd) {
 }
 
 bool Model::attempt_trade(Response& rsp) {
+  if (attempt_trade_lm_lm(rsp)) return true;
+
+  if (attempt_trade_mk_mk(rsp)) return true;
+
+  return false;
+}
+
+bool Model::attempt_trade_lm_lm(Response& rsp) {
   if (ask_table_.empty() || bid_table_.empty()) {
     return false;
   }
@@ -859,6 +932,58 @@ bool Model::attempt_trade(Response& rsp) {
   if (consume_ask) {
     // Remove head.
     ask_table_.erase(ask_table_.begin());
+  }
+
+  return true;
+}
+
+bool Model::attempt_trade_mk_mk(Response& rsp) {
+  if (ask_table_mk_.empty() || bid_table_mk_.empty()) {
+    return false;
+  }
+  // Trade can therefore occur has market entries exist.
+
+  bool consume_bid = false;
+  bool consume_ask = false;
+
+  Entry& bid = bid_table_mk_.front();
+  Entry& ask = ask_table_mk_.front();
+
+  rsp.valid = true;
+  rsp.status = Status::Okay;
+  rsp.uid = 0xFFFFFFFF;
+
+  rsp.result.trade.bid_uid = bid.uid;
+  rsp.result.trade.ask_uid = ask.uid;
+
+  if (bid.quantity < ask.quantity) {
+    consume_bid = true;
+
+    rsp.result.trade.quantity = bid.quantity;
+    // Update ask.
+    ask.quantity = (ask.quantity - bid.quantity);
+  } else if (bid.quantity > ask.quantity) {
+    consume_ask = true;
+
+    rsp.result.trade.quantity = ask.quantity;
+    // Update bid
+    bid.quantity = (bid.quantity - ask.quantity);
+  } else {
+    // bid.quantity == ask.quantity
+    consume_bid = true;
+    consume_ask = true;
+
+    rsp.result.trade.quantity = bid.quantity;
+  }
+
+  if (consume_bid) {
+    // Remove head.
+    bid_table_mk_.pop_front();
+  }
+
+  if (consume_ask) {
+    // Remove head.
+    ask_table_mk_.pop_front();
   }
 
   return true;

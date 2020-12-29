@@ -85,7 +85,7 @@ module ob_cntrl_mk (
     // Flag indicating that the current head market buy order quantity exceeds
     // the corresponding head market sell order quantity.
     //
-    mk_ask_mk_bid_excess_bid   = (mk_ask_mk_bid_quantity_bid > '0);
+    mk_ask_mk_bid_excess_bid   = (mk_ask_mk_bid_quantity_bid > 0);
 
     // Compute excess Ask quantity.
     //
@@ -93,7 +93,7 @@ module ob_cntrl_mk (
 
     // Flag indiciating that the Ask quantity exceeds the Bid quantity.
     //
-    mk_ask_mk_bid_excess_ask   = (mk_ask_mk_bid_quantity_ask > '0);
+    mk_ask_mk_bid_excess_ask   = (mk_ask_mk_bid_quantity_ask > 0);
 
     // A trade can occur by default whenever the market buy/sell queues are
     // non-empty.
@@ -125,7 +125,7 @@ module ob_cntrl_mk (
         mk_ask_mk_bid_bid_consumed = 'b0;
         mk_ask_mk_bid_quantity     = mk_ask_head_r.quantity;
         mk_ask_mk_bid_remainder    =
-          ob_pkg::quantity_t'(mk_ask_mk_bid_excess_bid);
+          ob_pkg::quantity_t'(mk_ask_mk_bid_quantity_bid);
       end
       2'b01: begin
         // Quantity(Ask) > Quantity(Bid)
@@ -167,7 +167,7 @@ module ob_cntrl_mk (
     // For Limit Buy to Market trade, flag indicates that Limit quantity
     // exceeds Market quantity.
     //
-    mk_ask_lm_bid_excess_lm       = (mk_ask_lm_bid_cmp_quantity_lm > '0);
+    mk_ask_lm_bid_excess_lm       = (mk_ask_lm_bid_cmp_quantity_lm > 0);
 
     // Compute relative delta between Limit Buy/Market Sell orders.
     //
@@ -176,7 +176,7 @@ module ob_cntrl_mk (
     // For Limit Buy to Market trade, flag indicates that Limit quantity
     // exceeds Market quantity.
     //
-    mk_ask_lm_bid_excess_mk       = (mk_ask_lm_bid_cmp_quantity_mk > '0);
+    mk_ask_lm_bid_excess_mk       = (mk_ask_lm_bid_cmp_quantity_mk > 0);
 
     // Limit Buy <-> Market Sell occurs whenever entries are present in both
     // tables (disregard relative prices).
@@ -245,7 +245,7 @@ module ob_cntrl_mk (
     // For Limit Buy to Market trade, flag indicates that Limit quantity
     // exceeds Market quantity.
     //
-    mk_bid_lm_ask_excess_lm       = (mk_bid_lm_ask_cmp_quantity_lm > '0);
+    mk_bid_lm_ask_excess_lm       = (mk_bid_lm_ask_cmp_quantity_lm > 0);
 
     // Compute relative delta between Limit Buy/Market Sell orders.
     //
@@ -254,7 +254,7 @@ module ob_cntrl_mk (
     // For Limit Buy to Market trade, flag indicates that Limit quantity
     // exceeds Market quantity.
     //
-    mk_bid_lm_ask_excess_mk       = (mk_bid_lm_ask_cmp_quantity_mk > '0);
+    mk_bid_lm_ask_excess_mk       = (mk_bid_lm_ask_cmp_quantity_mk > 0);
 
     // Limit Buy <-> Market Sell occurs whenever entries are present in both
     // tables (disregard relative prices).
@@ -367,14 +367,14 @@ module ob_cntrl_mk (
         // Market:
         trade_w.ask_uid       = mk_ask_head_r.uid;
         trade_w.ask_price     = mk_ask_mk_bid_price;
-        trade_w.ask_consumed  = '0;
+        trade_w.ask_consumed  = mk_ask_mk_bid_ask_consumed;
         // Market:
         trade_w.bid_uid       = mk_bid_head_r.uid;
         trade_w.bid_price     = mk_ask_mk_bid_price;
-        trade_w.bid_consumed  = '0;
+        trade_w.bid_consumed  = mk_ask_mk_bid_bid_consumed;
         // Remainder:
-        trade_w.quantity      = '0;
-        trade_w.remainder     = '0;
+        trade_w.quantity      = mk_ask_mk_bid_quantity;
+        trade_w.remainder     = mk_ask_mk_bid_remainder;
       end
       default: begin
         // Otherwise, no trade occurs. Drive to quiescent state.

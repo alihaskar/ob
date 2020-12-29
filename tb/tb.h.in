@@ -55,6 +55,12 @@ constexpr std::size_t BID_TABLE_DEPTH_N = ${BID_TABLE_DEPTH_N};
 // RTL parameterizations: Ask table size
 constexpr std::size_t ASK_TABLE_DEPTH_N = ${ASK_TABLE_DEPTH_N};
 
+// RTL parameterizations: Bid table size (market)
+constexpr std::size_t MARKET_BID_DEPTH_N = ${MARKET_BID_DEPTH_N};
+
+// RTL parameterizations: Ask table size (market)
+constexpr std::size_t MARKET_ASK_DEPTH_N = ${MARKET_ASK_DEPTH_N};
+
 // Randomization support
 //
 struct Random {
@@ -227,14 +233,22 @@ enum Opcode : vluint8_t {
   PopTopAsk = 5,
   // Cancel specified UID.
   Cancel = 6,
-  //
+  // Buy Market command
   BuyMarket = 8,
-  //
+  // Sell Market command
   SellMarket = 9,
   // Query Ask Table
   QryTblAskLe = 10,
   // Query Bid Table
-  QryTblBidGe = 11
+  QryTblBidGe = 11,
+  // Buy Stop Loss command
+  BuyStopLoss = 12,
+  // Sell Stop Loss command
+  SellStopLoss = 13,
+  // Buy Stop Loss command
+  BuyStopLimit = 14,
+  // Sell Stop Limit Command
+  SellStopLimit = 15
 };
 
 enum Status : vluint8_t {
@@ -425,6 +439,12 @@ class Model {
  private:
 
   bool attempt_trade(Response& rsp);
+
+  // Attempt trade Limit <-> Limit
+  bool attempt_trade_lm_lm(Response& rsp);
+
+  // Attempt trade Market <-> Market
+  bool attempt_trade_mk_mk(Response& rsp);
 #if defined(OPT_VERBOSE) && defined(OPT_TRACE_ENABLE)
 
   void verbose() const;
@@ -435,6 +455,12 @@ class Model {
 
   // Predicted ask model.
   std::vector<Entry> ask_table_;
+
+  // Predicted market bid table
+  std::deque<Entry> bid_table_mk_;
+
+  // Predicted market ask table
+  std::deque<Entry> ask_table_mk_;
 
   // Bid table size.
   std::size_t bid_n_;

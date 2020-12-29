@@ -173,7 +173,7 @@ module ob_mk_table #(parameter int N = 16) (
     // Update head value.
     tbl_set_head = head_upt ? ('b1  << (N - 1)) : '0;
 
-    for (int i = 0; i < N - 1; i++) begin
+    for (int i = 0; i < N; i++) begin
 
       case ({// Shift slot down
              tbl_shift_dn [i],
@@ -221,10 +221,16 @@ module ob_mk_table #(parameter int N = 16) (
     head_did_update_w = tbl_en [N - 1];
 
     // Table becomes full when all slots are becoming occupied.
-    full_w            = (tbl_vld_w == 'b1);
+    full_w            = (tbl_vld_w == '1);
 
     // Table becomes empty when all slots are unoccupied.
     empty_w           = (tbl_vld_w == '0);
+
+    // Table head value is valid.
+    head_vld_r        = tbl_vld_r [N - 1];
+
+    // Emit head value.
+    head_r            = tbl_r [N - 1];
 
   end // block: tbl_update_PROC
 

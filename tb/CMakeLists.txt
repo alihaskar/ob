@@ -74,7 +74,7 @@ macro (verilate target top_sv library)
   add_custom_target(${target}
     COMMAND ${Verilator_EXE} ${verilator_opts} ${vinclude_path}
                   -cc -Mdir vobj ${top_sv_nosuf}
-    COMMAND make -C${CMAKE_CURRENT_BINARY_DIR}/vobj -f V${top_sv_nosuf}.mk
+    COMMAND make -s -C${CMAKE_CURRENT_BINARY_DIR}/vobj -f V${top_sv_nosuf}.mk
     COMMENT "Verilating (C++): ${sv}"
     )
   set(${library} ${CMAKE_CURRENT_BINARY_DIR}/vobj/V${top_sv_nosuf}__ALL.a)
@@ -116,3 +116,4 @@ endmacro ()
 create_test(tb_ob_smoke tb_ob_smoke.cc)
 create_test(tb_ob_qry tb_ob_qry.cc)
 create_test(tb_ob_regress tb_ob_regress.cc)
+create_test(tb_ob_mk tb_ob_mk.cc)

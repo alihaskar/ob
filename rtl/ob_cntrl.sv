@@ -478,6 +478,8 @@ module ob_cntrl (
           {1'b1, ob_pkg::Op_BuyLimit}: begin
             ob_pkg::table_t lm_bid_table;
 
+            cmdl_consume          = 'b1;
+
             lm_bid_table          = '0;
             lm_bid_table.uid      = cmdl_r.uid;
             lm_bid_table.quantity = cmdl_r.quantity;
@@ -501,6 +503,8 @@ module ob_cntrl (
           end
           {1'b1, ob_pkg::Op_SellLimit}: begin
             ob_pkg::table_t lm_ask_table;
+
+            cmdl_consume          = 'b1;
 
             // Await result of install operation.
             lm_ask_table          = '0;
@@ -575,9 +579,17 @@ module ob_cntrl (
             lm_bid_cancel     = 'b1;
             lm_bid_cancel_uid = cmdl_r.uid1;
 
+            // Issue cancel op. to Bid table (market).
+            mk_bid_cancel     = 'b1;
+            mk_bid_cancel_uid = cmdl_r.uid1;
+
             // Issue cancel op. to Ask table.
             lm_ask_cancel     = 'b1;
             lm_ask_cancel_uid = cmdl_r.uid1;
+
+            // Issue cancel op. to Ask table (market).
+            mk_ask_cancel     = 'b1;
+            mk_ask_cancel_uid = cmdl_r.uid1;
 
             // Advance to next state when egress queue is non-full, as
             // next state does not support back-pressure.
@@ -597,11 +609,18 @@ module ob_cntrl (
                 rsp_out.result = '0;
               end
               default: begin
+                // Insert into table.
                 mk_bid_insert              = 'b1;
                 mk_bid_insert_tbl          = '0;
                 mk_bid_insert_tbl.uid      = cmdl_r.uid;
                 mk_bid_insert_tbl.quantity = cmdl_r.quantity;
                 mk_bid_insert_tbl.price    = cmdl_r.price;
+
+                // Emit response
+                rsp_out_vld                = 'b1;
+                rsp_out                    = '0;
+                rsp_out.uid                = cmdl_r.uid;
+                rsp_out.status             = ob_pkg::S_Okay;
 
                 // Advance to query state
                 fsm_state_en               = (~rsp_out_full_r);
@@ -622,11 +641,18 @@ module ob_cntrl (
                 rsp_out.result = '0;
               end
               default: begin
+                // Insert into table.
                 mk_ask_insert              = 'b1;
                 mk_ask_insert_tbl          = '0;
                 mk_ask_insert_tbl.uid      = cmdl_r.uid;
                 mk_ask_insert_tbl.quantity = cmdl_r.quantity;
                 mk_ask_insert_tbl.price    = cmdl_r.price;
+
+                // Emit response
+                rsp_out_vld                = 'b1;
+                rsp_out                    = '0;
+                rsp_out.uid                = cmdl_r.uid;
+                rsp_out.status             = ob_pkg::S_Okay;
 
                 // Advance to query state.
                 fsm_state_en               = (~rsp_out_full_r);
@@ -635,6 +661,8 @@ module ob_cntrl (
             endcase
           end // case: {1'b1, ob_pkg::Op_SellMarket}
           {1'b1, ob_pkg::Op_QryTblAskLe}: begin
+            // Retain command at cmdl.
+
             // Issue query command
             lm_ask_qry_vld      = 'b1;
             lm_ask_qry_price    = cmdl_r.price;
@@ -645,6 +673,8 @@ module ob_cntrl (
             fsm_state_w         = FSM_CNTRL_QRY_TBL;
           end // case: {1'b1, ob_pkg::Op_QryTblAskLe}
           {1'b1, ob_pkg::Op_QryTblBidGe}: begin
+            // Retain command at cmdl.
+
             // Issue query command
             lm_bid_qry_vld      = 'b1;
             lm_bid_qry_price    = cmdl_r.price;
@@ -977,7 +1007,6 @@ module ob_cntrl (
           end
           default: begin
             // Consume command
-            cmdl_consume = 'b1;
 
             // Otherwise, no further work. Return to IDLE state.
             fsm_state_en = 'b1;
