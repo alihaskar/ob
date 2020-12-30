@@ -47,6 +47,8 @@ module ob_cntrl (
   // ======================================================================== //
   // Event interface
   , output logic                                  evt_texe_r
+  , output bcd_pkg::price_t                       evt_texe_ask_r
+  , output bcd_pkg::price_t                       evt_texe_bid_r
 
   // ======================================================================== //
   // Bid Table Interface
@@ -250,6 +252,12 @@ module ob_cntrl (
     // commands and have been permuted into their corresponding matured
     // commands: Stop -> Market, StopLimit -> Limit.
     //
+    // Pleanty of opportunity for optimization here. Entirely possible for each
+    // CN engine to emit some pre-decoded signals to avoid the decode logic here
+    // at the cost of some additional flop overhead. This logic should not
+    // however be on the critical path, therefore we're probably unconcerned
+    // about it at the moment.
+    //
     case (cn_mtr_r.opcode)
       ob_pkg::Op_BuyMarket: begin
         case ({cmdl_vld_r, mk_bid_full_r}) inside
@@ -330,6 +338,8 @@ module ob_cntrl (
   ob_pkg::search_result_t               lm_trade_r;
 
   `LIBV_REG_RST_W(logic, evt_texe, 'b0);
+  `LIBV_REG_EN_W(bcd_pkg::price_t, evt_texe_ask);
+  `LIBV_REG_EN_W(bcd_pkg::price_t, evt_texe_bid);
   `LIBV_REG_RST_W(logic, rsp_out_vld, 'b0);
   `LIBV_REG_EN_W(ob_pkg::rsp_t, rsp_out);
 
@@ -339,6 +349,10 @@ module ob_cntrl (
 
     // Machine events:
     evt_texe_w           = 'b0;
+    evt_texe_ask_en      = '0;
+    evt_texe_ask_w       = '0;
+    evt_texe_ask_en      = '0;
+    evt_texe_ask_w       = '0;
 
     // Command In:
     cmd_in_pop           = 'b0;
@@ -856,7 +870,15 @@ module ob_cntrl (
                 // not consider market trades in this condition as we do not
                 // consider market events to modify the market price, only limit
                 // trades.
-                evt_texe_w = 'b1;
+                evt_texe_w      = 'b1;
+
+                // Emit traded asking price
+                evt_texe_ask_en = 'b1;
+                evt_texe_ask_w  = lm_ask_table_r.price;
+
+                // Emit traded bidding price.
+                evt_texe_bid_en = 'b1;
+                evt_texe_bid_w  = lm_bid_table_r.price;
 
                 case ({sr.bid_consumed, sr.ask_consumed})
                   2'b10: begin

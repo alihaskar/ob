@@ -37,6 +37,7 @@ module tb_ob (
   , input ob_pkg::quantity_t                      cmd_quantity_r
   , input bcd_pkg::price_t                        cmd_price_r
   , input ob_pkg::uid_t                           cmd_uid1_r
+  , input bcd_pkg::price_t                        cmd_price1_r
   //
   , output logic                                  cmd_full_r
 
@@ -94,6 +95,7 @@ module tb_ob (
     cmd_r.quantity = cmd_quantity_r;
     cmd_r.price    = cmd_price_r;
     cmd_r.uid1     = cmd_uid1_r;
+    cmd_r.price1   = cmd_price1_r;
 
   end // block: cmd_PROC
 

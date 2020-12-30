@@ -45,12 +45,8 @@ module ob_cn_table_entry (
   // Machine state
   //
   , input                                         cntrl_evt_texe_r
-  //
-  , input                                         lm_bid_table_vld_r
-  , input ob_pkg::table_t                         lm_bid_table_r
-  //
-  , input                                         lm_ask_table_vld_r
-  , input ob_pkg::table_t                         lm_ask_table_r
+  , input bcd_pkg::price_t                        cntrl_evt_texe_ask_r
+  , input bcd_pkg::price_t                        cntrl_evt_texe_bid_r
 
   // ======================================================================== //
   // Cancel Interface
@@ -67,18 +63,17 @@ module ob_cn_table_entry (
 
   // ------------------------------------------------------------------------ //
   //
-  logic                                 dp_price_le;
-  logic                                 dp_price_ge;
+  logic                                 dp_ask_le;
+  logic                                 dp_bid_ge;
 
   always_comb begin : fsm_dp_PROC
 
-    // Conditional price has fallen below the current bidding price.
+    // Conditional price has fallen below the current asking price.
     //
-    dp_price_le  = (cmd_r.price1 <= lm_bid_table_r.price);
+    dp_ask_le  = (cmd_r.price1 >= cntrl_evt_texe_ask_r);
 
-    // Conditional price has attained or exceeded the current market asking
-    // price.
-    dp_price_ge  = (cmd_r.price1 >= lm_ask_table_r.price);
+    // Conditional price has risen above the current bidding price.
+    dp_bid_ge  = (cmd_r.price1 <= cntrl_evt_texe_bid_r);
 
   end // block: fsm_dp_PROC
 
@@ -135,18 +130,17 @@ module ob_cn_table_entry (
             case (cmd_r.opcode)
               ob_pkg::Op_BuyStopLoss,
               ob_pkg::Op_BuyStopLimit: begin
-                // Buy Stop Loss/Limit matures whenever the market price for
-                // the current security becomes lower than the current watching
-                // price.
-                fsm_state_en = cntrl_evt_texe_r & lm_bid_table_vld_r & dp_price_le;
+                // BuyStop{Loss,Limit} Matures whenever the asking price falls below
+                // the watch value.
+                fsm_state_en = cntrl_evt_texe_r & dp_ask_le;
               end
               ob_pkg::Op_SellStopLoss,
-                ob_pkg::Op_SellStopLimit: begin
-                  // Sell Stop Loss/Limit matures whenever the market price for the
-                  // current security becomes greater than the current watching price
-                  // (should probably check whether these definitions are indeed accurate).
-                  fsm_state_en = cntrl_evt_texe_r & lm_ask_table_vld_r & dp_price_ge;
-                end
+              ob_pkg::Op_SellStopLimit: begin
+                // Sell Stop Loss/Limit matures whenever the market price for the
+                // current security becomes greater than the current watching price
+                // (should probably check whether these definitions are indeed accurate).
+                fsm_state_en = cntrl_evt_texe_r & dp_bid_ge;
+              end
               default: begin
                 // Otherwise, error: invalid command and should not have been
                 // dispatched the this conditional entry machine.
@@ -180,9 +174,8 @@ module ob_cn_table_entry (
 
             // Update command.
             cmd_en      = fsm_state_en;
-
+            fsm_state_w = fsm_state_en ? FSM_MATURED : fsm_state_r;
             // Transition to matured state.
-            fsm_state_w = FSM_MATURED;
           end
           FSM_MATURED: begin
             if (dl_vld) begin

@@ -79,8 +79,6 @@ TEST(TbObCn, ConditionalCancel) {
 
 TEST(TbObCn, ConditionalReject) {
   tb::Options opts;
-  opts.trace_enable = true;
-  opts.wave_enable = true;
   tb::TB tb{opts};
 
   tb::Command cmd;
@@ -102,13 +100,57 @@ TEST(TbObCn, ConditionalReject) {
   // Run simulation
   tb.run();
 }
-
-/*
 TEST(TbObCn, ConditionalBuyStopLoss1) {
   tb::Options opts;
   tb::TB tb{opts};
 
+  vluint32_t uid = 0;
+
   tb::Command cmd;
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::BuyStopLoss;
+  cmd.uid = uid++;
+  cmd.quantity = 100;
+  // The price at which to mature once the 'ask' has reached this value.
+  cmd.price = tb::Bcd::from_string("100.00").pack();
+  // The price at which to buy once matured.
+  cmd.price1 = tb::Bcd::from_string("90.00").pack();
+  tb.push_back(cmd);
+
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::BuyLimit;
+  cmd.uid = uid++;
+  // Buying at 95.
+  cmd.price = tb::Bcd::from_string("95.00").pack();
+  cmd.quantity = 100;
+  tb.push_back(cmd);
+
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::SellLimit;
+  cmd.uid = uid++;
+  // Selling for 85.
+  cmd.price = tb::Bcd::from_string("85.00").pack();
+  cmd.quantity = 100;
+  tb.push_back(cmd);
+
+  // UID = 0 should now mature into a market buy for: 100 @ $100.00
+
+  // Issue limit order to set market rate.
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::SellLimit;
+  cmd.uid = uid++;
+  // Now, selling at 99, which should now take place as the CN
+  // is buying at 100.
+  cmd.price = tb::Bcd::from_string("99.00").pack();
+  cmd.quantity = 100;
+  tb.push_back(cmd);
+
+  // Insert NOP to flush final trades (required by the testbench).
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::Nop;
+  cmd.uid = uid++;
+  tb.push_back(cmd);
+
   // Run simulation
   tb.run();
 }
@@ -117,7 +159,53 @@ TEST(TbObCn, ConditionalSellStopLoss1) {
   tb::Options opts;
   tb::TB tb{opts};
 
+  vluint32_t uid = 0;
+
   tb::Command cmd;
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::SellStopLoss;
+  cmd.uid = uid++;
+  cmd.quantity = 100;
+  // The price at which to mature once the 'ask' has reached this value.
+  cmd.price = tb::Bcd::from_string("100.00").pack();
+  // The price at which to buy once matured.
+  cmd.price1 = tb::Bcd::from_string("90.00").pack();
+  tb.push_back(cmd);
+
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::BuyLimit;
+  cmd.uid = uid++;
+  // Buying at 95.
+  cmd.price = tb::Bcd::from_string("95.00").pack();
+  cmd.quantity = 100;
+  tb.push_back(cmd);
+
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::SellLimit;
+  cmd.uid = uid++;
+  // Selling for 85.
+  cmd.price = tb::Bcd::from_string("85.00").pack();
+  cmd.quantity = 100;
+  tb.push_back(cmd);
+
+  // UID = 0 should now mature into a market buy for: 100 @ $100.00
+
+  // Issue limit order to set market rate.
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::BuyLimit;
+  cmd.uid = uid++;
+  // Now, selling at 99, which should now take place as the CN
+  // is buying at 100.
+  cmd.price = tb::Bcd::from_string("99.00").pack();
+  cmd.quantity = 100;
+  tb.push_back(cmd);
+
+  // Insert NOP to flush final trades (required by the testbench).
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::Nop;
+  cmd.uid = uid++;
+  tb.push_back(cmd);
+
   // Run simulation
   tb.run();
 }
@@ -126,7 +214,53 @@ TEST(TbObCn, ConditionalBuyStopLimit1) {
   tb::Options opts;
   tb::TB tb{opts};
 
+  vluint32_t uid = 0;
+
   tb::Command cmd;
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::BuyStopLimit;
+  cmd.uid = uid++;
+  cmd.quantity = 100;
+  // The price at which to mature once the 'ask' has reached this value.
+  cmd.price = tb::Bcd::from_string("100.00").pack();
+  // The price at which to buy once matured.
+  cmd.price1 = tb::Bcd::from_string("90.00").pack();
+  tb.push_back(cmd);
+
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::BuyLimit;
+  cmd.uid = uid++;
+  // Buying at 95.
+  cmd.price = tb::Bcd::from_string("95.00").pack();
+  cmd.quantity = 100;
+  tb.push_back(cmd);
+
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::SellLimit;
+  cmd.uid = uid++;
+  // Selling for 85.
+  cmd.price = tb::Bcd::from_string("85.00").pack();
+  cmd.quantity = 100;
+  tb.push_back(cmd);
+
+  // UID = 0 should now mature into a market buy for: 100 @ $100.00
+
+  // Issue limit order to set market rate.
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::SellLimit;
+  cmd.uid = uid++;
+  // Now, selling at 99, which should now take place as the CN
+  // is buying at 100.
+  cmd.price = tb::Bcd::from_string("99.00").pack();
+  cmd.quantity = 100;
+  tb.push_back(cmd);
+
+  // Insert NOP to flush final trades (required by the testbench).
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::Nop;
+  cmd.uid = uid++;
+  tb.push_back(cmd);
+
   // Run simulation
   tb.run();
 }
@@ -135,11 +269,57 @@ TEST(TbObCn, ConditionalSellStopLimit1) {
   tb::Options opts;
   tb::TB tb{opts};
 
+  vluint32_t uid = 0;
+
   tb::Command cmd;
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::SellStopLimit;
+  cmd.uid = uid++;
+  cmd.quantity = 100;
+  // The price at which to mature once the 'ask' has reached this value.
+  cmd.price = tb::Bcd::from_string("100.00").pack();
+  // The price at which to buy once matured.
+  cmd.price1 = tb::Bcd::from_string("90.00").pack();
+  tb.push_back(cmd);
+
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::BuyLimit;
+  cmd.uid = uid++;
+  // Buying at 95.
+  cmd.price = tb::Bcd::from_string("95.00").pack();
+  cmd.quantity = 100;
+  tb.push_back(cmd);
+
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::SellLimit;
+  cmd.uid = uid++;
+  // Selling for 85.
+  cmd.price = tb::Bcd::from_string("85.00").pack();
+  cmd.quantity = 100;
+  tb.push_back(cmd);
+
+  // UID = 0 should now mature into a market buy for: 100 @ $100.00
+
+  // Issue limit order to set market rate.
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::BuyLimit;
+  cmd.uid = uid++;
+  // Now, selling at 99, which should now take place as the CN
+  // is buying at 100.
+  cmd.price = tb::Bcd::from_string("99.00").pack();
+  cmd.quantity = 100;
+  tb.push_back(cmd);
+
+  // Insert NOP to flush final trades (required by the testbench).
+  cmd.valid = true;
+  cmd.opcode = tb::Opcode::Nop;
+  cmd.uid = uid++;
+  tb.push_back(cmd);
+
   // Run simulation
   tb.run();
 }
-*/
+
 int main (int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

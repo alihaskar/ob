@@ -153,6 +153,8 @@ module ob (
   logic                                 cn_full_r;
   //
   logic                                 cntrl_evt_texe_r;
+  bcd_pkg::price_t                      cntrl_evt_texe_ask_r;
+  bcd_pkg::price_t                      cntrl_evt_texe_bid_r;
 
   // ------------------------------------------------------------------------ //
   //
@@ -299,6 +301,8 @@ module ob (
     , .rsp_out_r                   (rsp_out_r                    )
     //
     , .evt_texe_r                  (cntrl_evt_texe_r             )
+    , .evt_texe_ask_r              (cntrl_evt_texe_ask_r         )
+    , .evt_texe_bid_r              (cntrl_evt_texe_bid_r         )
     //
     , .lm_bid_table_vld_r          (lm_bid_table_vld_r           )
     , .lm_bid_table_r              (lm_bid_table_r               )
@@ -478,12 +482,8 @@ module ob (
     , .mtr_r                       (cn_mtr_r                     )
     //
     , .cntrl_evt_texe_r            (cntrl_evt_texe_r             )
-    //
-    , .lm_bid_table_vld_r          (lm_bid_table_vld_r           )
-    , .lm_bid_table_r              (lm_bid_table_r               )
-    //
-    , .lm_ask_table_vld_r          (lm_ask_table_vld_r           )
-    , .lm_ask_table_r              (lm_ask_table_r               )
+    , .cntrl_evt_texe_ask_r        (cntrl_evt_texe_ask_r         )
+    , .cntrl_evt_texe_bid_r        (cntrl_evt_texe_bid_r         )
     //
     , .cancel_hit_w                (cn_cancel_hit_w              )
     , .cancel                      (cn_cancel                    )

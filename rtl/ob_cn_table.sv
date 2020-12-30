@@ -46,12 +46,8 @@ module ob_cn_table #(parameter int N = 4) (
   // Machine state
   //
   , input                                         cntrl_evt_texe_r
-  //
-  , input                                         lm_bid_table_vld_r
-  , input ob_pkg::table_t                         lm_bid_table_r
-  //
-  , input                                         lm_ask_table_vld_r
-  , input ob_pkg::table_t                         lm_ask_table_r
+  , input bcd_pkg::price_t                        cntrl_evt_texe_ask_r
+  , input bcd_pkg::price_t                        cntrl_evt_texe_bid_r
 
   // ======================================================================== //
   // Canel Interface
@@ -69,6 +65,20 @@ module ob_cn_table #(parameter int N = 4) (
   , input                                         clk
   , input                                         rst
 );
+
+  ob_pkg::uid_t debug_uid;
+  ob_pkg::opcode_t debug_opcode;
+  bcd_pkg::price_t debug_price;
+  ob_pkg::quantity_t debug_quantity;
+
+  always_comb begin : debug_PROC
+
+    debug_uid      = mtr_r.uid;
+    debug_opcode   = mtr_r.opcode;
+    debug_price    = mtr_r.price;
+    debug_quantity = mtr_r.quantity;
+
+  end
 
   // ------------------------------------------------------------------------ //
   //
@@ -102,10 +112,8 @@ module ob_cn_table #(parameter int N = 4) (
       , .cmd_r                     (entry_cmd_r [g]         )
       //
       , .cntrl_evt_texe_r          (cntrl_evt_texe_r        )
-      , .lm_bid_table_vld_r        (lm_bid_table_vld_r      )
-      , .lm_bid_table_r            (lm_bid_table_r          )
-      , .lm_ask_table_vld_r        (lm_ask_table_vld_r      )
-      , .lm_ask_table_r            (lm_ask_table_r          )
+      , .cntrl_evt_texe_ask_r      (cntrl_evt_texe_ask_r    )
+      , .cntrl_evt_texe_bid_r      (cntrl_evt_texe_bid_r    )
       //
       , .cancel                    (cancel                  )
       , .cancel_uid                (cancel_uid              )

@@ -241,6 +241,14 @@ std::string Command::to_string() const {
     case Opcode::QryTblBidGe: {
       r.add_field("price", Bcd::from_packed(price).to_string());
     } break;
+    case Opcode::BuyStopLoss:
+    case Opcode::SellStopLoss:
+    case Opcode::BuyStopLimit:
+    case Opcode::SellStopLimit: {
+      r.add_field("quantity", to_string(quantity));
+      r.add_field("price", Bcd::from_packed(price).to_string());
+      r.add_field("price1", Bcd::from_packed(price1).to_string());
+    } break;
   }
   return r.to_string();
 }
@@ -261,15 +269,8 @@ std::string Response::to_string(vluint8_t opcode) const {
   using std::to_string;
 
   utility::KVListRenderer r;
-#ifdef UID_AS_HEX
-  r.add_field("uid", utility::hex(uid));
-#else
-  r.add_field("uid", to_string(uid));
-#endif
-  r.add_field("status", to_status_string(status));
   if (uid == 0xFFFFFFFF) {
     // Trade
-    r.add_field("op", "trade");
 #ifdef UID_AS_HEX
     r.add_field("bid_uid", utility::hex(result.trade.bid_uid));
     r.add_field("ask_uid", utility::hex(result.trade.ask_uid));
@@ -279,6 +280,12 @@ std::string Response::to_string(vluint8_t opcode) const {
 #endif
     r.add_field("quantity", to_string(result.trade.quantity));
   } else {
+#ifdef UID_AS_HEX
+    r.add_field("uid", utility::hex(uid));
+#else
+    r.add_field("uid", to_string(uid));
+#endif
+    r.add_field("status", to_status_string(status));
     switch (opcode) {
       case Opcode::QryBidAsk: {
         r.add_field("op", to_opcode_string(opcode));
@@ -317,7 +324,8 @@ bool operator==(const Response& lhs, const Response& rhs) {
   return true;
 }
 
-bool compare(vluint8_t opcode, const Response& actual, const Response& expected) {
+bool compare(const Command& cmd, const Response& actual,
+             const Response& expected) {
   EXPECT_EQ(actual.uid, expected.uid);
   EXPECT_EQ(actual.status, expected.status) <<
       " Expected: " << to_status_string(expected.status) <<
@@ -329,7 +337,7 @@ bool compare(vluint8_t opcode, const Response& actual, const Response& expected)
     EXPECT_EQ(actual.result.trade.quantity, expected.result.trade.quantity);
   } else {
     // Some operation
-    switch (opcode) {
+    switch (cmd.opcode) {
       case Opcode::QryBidAsk: {
       } break;
       case Opcode::PopTopBid:
@@ -389,6 +397,14 @@ void VSignals::set(const Command& cmd) {
     case Opcode::QryTblBidGe: {
       vsupport::set(cmd_quantity_r, cmd.quantity);
       vsupport::set(cmd_price_r, cmd.price);
+    } break;
+    case Opcode::BuyStopLoss:
+    case Opcode::SellStopLoss:
+    case Opcode::BuyStopLimit:
+    case Opcode::SellStopLimit: {
+      vsupport::set(cmd_quantity_r, cmd.quantity);
+      vsupport::set(cmd_price_r, cmd.price);
+      vsupport::set(cmd_price1_r, cmd.price1);
     } break;
     default: {
       // Unknown opcode.
@@ -472,7 +488,8 @@ void TB::run() {
   // Response accept
   vs_.set_rsp_accept(true);
 
-  std::map<vluint32_t, vluint8_t> uid_to_op;
+  std::map<vluint32_t, Command> uid_to_op;
+  std::map<vluint32_t, Command> uid_to_mtr;
   bool stopped = false;
   while (!stopped) {
     const bool cmd_full_r = vs_.get_cmd_full_r();
@@ -489,11 +506,11 @@ void TB::run() {
         rsps_.push_back(rsp);
       }
 
-      uid_to_op.insert(std::make_pair(cmd.uid, cmd.opcode));
+      uid_to_op.insert(std::make_pair(cmd.uid, cmd));
 #ifdef OPT_TRACE_ENABLE
       if (opts_.trace_enable) {
         std::cout << "[TB] " << vs_.cycle()
-                  << " ;Issue command: " << cmd.to_string() << "\n";
+                  << ": Issue command: " << cmd.to_string() << "\n";
 #ifdef OPT_VERBOSE
         switch (cmd.opcode) {
           case Opcode::QryTblBidGe: {
@@ -518,14 +535,67 @@ void TB::run() {
       // Must be expected a response.
       ASSERT_FALSE(rsps_.empty());
 
-      const Response expected{rsps_.front()};
-      rsps_.pop_front();
+      Response expected{rsps_.front()};
+      //      rsps_.pop_front();
 
-      vluint8_t opcode = 0;
+      Command cmd;
       if (auto it = uid_to_op.find(actual.uid); it != uid_to_op.end()) {
         // Got opcode, now able to render.
-        opcode = it->second;
+        cmd = it->second;
+        switch (cmd.opcode) {
+          case Opcode::BuyStopLoss:
+          case Opcode::SellStopLoss:
+          case Opcode::BuyStopLimit:
+          case Opcode::SellStopLimit: {
+            if (actual.status != Status::Reject) {
+              // If conditional instruction was not rejected, retain
+              // state for the eventual maturity of the command.
+              uid_to_mtr.insert(std::make_pair(cmd.uid, cmd));
+            }
+          } break;
+          default: {
+          } break;
+        }
         uid_to_op.erase(it);
+#ifdef OPT_TRACE_ENABLE
+        if (opts_.trace_enable) {
+          std::cout << "[TB] " << vs_.cycle() << ": Response received:: "
+                    << actual.to_string(cmd.opcode) << "\n";
+        }
+#endif
+      } else if (auto it = uid_to_mtr.find(actual.uid); it != uid_to_mtr.end()) {
+        // A prior committed conditional command has matured. Compute the
+        // set of machine updates expected after this command.
+        const Command& mtr_cmd = it->second;
+#ifdef OPT_TRACE_ENABLE
+        if (opts_.trace_enable) {
+          std::cout << "[TB] " << vs_.cycle()
+                    << ": Prior conditional command has matured: "
+                    << mtr_cmd.to_string() << "\n";
+        }
+#endif
+
+        std::vector<Response> mtr_rsps = model_.apply_mtr(mtr_cmd);
+        std::reverse(mtr_rsps.begin(), mtr_rsps.end());
+        for (const Response& rsp: mtr_rsps) {
+          rsps_.push_front(rsp);
+        }
+#ifdef OPT_TRACE_ENABLE
+        if (opts_.trace_enable) {
+          std::cout << "[TB] " << vs_.cycle() << ": Response received:: "
+                    << actual.to_string(cmd.opcode) << "\n";
+        }
+#endif
+        expected = rsps_.front();
+
+        uid_to_mtr.erase(it);
+      } else if (actual.uid == 0xFFFFFFFF) {
+#ifdef OPT_TRACE_ENABLE
+        if (opts_.trace_enable) {
+          std::cout << "[TB] " << vs_.cycle() << ": Trade emitted: "
+                    << expected.to_string(cmd.opcode) << "\n";
+        }
+#endif
       } else if (actual.uid != 0xFFFFFFFF) {
 #ifdef OPT_TRACE_ENABLE
         // Otherwise, we don't know what this UID belongs too. In the REJECT
@@ -541,17 +611,13 @@ void TB::run() {
         if (opts_.trace_enable && (actual.status != Status::Reject)) {
           // Disregards controller materialized responses.
           std::cout << "[TB] " << vs_.cycle()
-                    << " ; Unknown UID received: " << to_string(actual.uid) << "\n";
+                    << ": Unknown UID received: " << to_string(actual.uid) << "\n";
         }
 #endif
       }
-#ifdef OPT_TRACE_ENABLE
-      if (opts_.trace_enable) {
-        std::cout << "[TB] " << vs_.cycle()
-                  << " ; Response received: " << actual.to_string(opcode) << "\n";
-      }
-#endif
-      compare(opcode, actual, expected);
+
+      rsps_.pop_front();
+      compare(cmd, actual, expected);
     }
     step();
 
@@ -675,7 +741,27 @@ bool CNModel::insert(const Command& cmd) {
   return true;
 }
 
-void CNModel::update(vluint32_t ask, vluint32_t bid) {
+// Convert a conditional command to its equivalent 'matured' command.
+Command to_mtr_command(const Command& cmd) {
+  Command out{cmd};
+  switch (cmd.opcode) {
+    case Opcode::BuyStopLoss: {
+      out.opcode = Opcode::BuyMarket;
+    } break;
+    case Opcode::SellStopLoss: {
+      out.opcode = Opcode::SellMarket;
+    } break;
+    case Opcode::BuyStopLimit: {
+      out.opcode = Opcode::BuyLimit;
+    } break;
+    case Opcode::SellStopLimit: {
+      out.opcode = Opcode::SellLimit;
+    } break;
+    default: {
+      // Otherwise, unexpected command
+    } break;
+  }
+  return out;
 }
 
 Model::Model(std::size_t bid_n, std::size_t ask_n)
@@ -938,6 +1024,15 @@ std::vector<Response> Model::apply(const Command& cmd) {
   verbose();
 #endif
   return rsps;
+}
+
+std::vector<Response> Model::apply_mtr(const Command& cmd) {
+  // Cancel pending command in table. Expect this command to be
+  // already present in the table.
+  EXPECT_TRUE(cn_model_.cancel(cmd.uid));
+
+  const Command permuted_command = to_mtr_command(cmd);
+  return apply(permuted_command);
 }
 
 bool Model::attempt_trade(Response& rsp) {

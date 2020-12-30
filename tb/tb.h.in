@@ -268,11 +268,12 @@ struct Command {
   std::string to_string() const;
 
   bool valid = false;
-  vluint8_t opcode;
-  vluint32_t uid;
-  vluint16_t quantity;
-  vluint32_t price;
-  vluint32_t uid1;
+  vluint8_t opcode = 0;
+  vluint32_t uid = 0;
+  vluint16_t quantity = 0;
+  vluint32_t price = 0;
+  vluint32_t uid1 = 0;
+  vluint32_t price1 = 0;
 };
 
 struct Response {
@@ -322,6 +323,7 @@ struct VSignals {
     v.cmd_quantity_r = std::addressof(u->cmd_quantity_r);
     v.cmd_price_r = std::addressof(u->cmd_price_r);
     v.cmd_uid1_r = std::addressof(u->cmd_uid1_r);
+    v.cmd_price1_r = std::addressof(u->cmd_price1_r);
     v.cmd_full_r = std::addressof(u->cmd_full_r);
     // Response:
     v.rsp_accept = std::addressof(u->rsp_accept);
@@ -380,6 +382,7 @@ struct VSignals {
   vluint16_t* cmd_quantity_r;
   vluint32_t* cmd_price_r;
   vluint32_t* cmd_uid1_r;
+  vluint32_t* cmd_price1_r;
   //
   vluint8_t* cmd_full_r;
 
@@ -434,8 +437,6 @@ class CNModel {
   // Insert new command in table; false if already full
   bool insert(const Command& cmd);
 
-  void update(vluint32_t ask, vluint32_t bid);
-
  private:
   // Map of UID -> commands present in the CN model.
   std::map<vluint32_t, Command> cmds_;
@@ -458,6 +459,10 @@ class Model {
   // Apply command to the machine state to derive a set of
   // responses.
   std::vector<Response> apply(const Command& cmd);
+
+  // Apply command to the machine state to derive a set of
+  // responses.
+  std::vector<Response> apply_mtr(const Command& cmd);
 
  private:
 
