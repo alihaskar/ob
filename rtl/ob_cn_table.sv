@@ -32,7 +32,7 @@ module ob_cn_table #(parameter int N = 4) (
 
   // ======================================================================== //
   // Issue interface
-    input                                         cmd_vld_r
+    input                                         cmd_vld
   , input ob_pkg::cmd_t                           cmd_r
 
   // ======================================================================== //
@@ -54,6 +54,13 @@ module ob_cn_table #(parameter int N = 4) (
   , input ob_pkg::table_t                         lm_ask_table_r
 
   // ======================================================================== //
+  // Canel Interface
+  , input                                         cancel
+  , input ob_pkg::uid_t                           cancel_uid
+  //
+  , output logic                                  cancel_hit_w
+
+  // ======================================================================== //
   // Status Interface
   , output logic                                  full_r
 
@@ -65,19 +72,29 @@ module ob_cn_table #(parameter int N = 4) (
 
   // ------------------------------------------------------------------------ //
   //
-  logic [N - 1:0]                       entry_busy_w;
-  logic [N - 1:0]                       entry_mtr_vld_w;
+  logic [N - 1:0]                       rr_req;
+  logic                                 rr_ack;
+  logic [N - 1:0]                       rr_gnt;
+  logic [N - 1:0]                       cancel_hit_d;
+  logic [N - 1:0]                       al_vld;
+  logic [N - 1:0]                       dl_vld;
+  `LIBV_REG_RST(logic [N - 1:0], entry_busy, 'b0);
+  `LIBV_REG_RST(logic [N - 1:0], entry_mtr_vld, 'b0);
   ob_pkg::cmd_t [N - 1:0]               entry_cmd_r;
   ob_pkg::cmd_t                         entry_cmd_sel;
+  `LIBV_REG_RST_W(logic, full, 'b0);
+  `LIBV_REG_RST_W(logic, mtr_vld, 'b0);
+  `LIBV_REG_EN_W(ob_pkg::cmd_t, mtr);
+  logic                                 cntrl_has_matured;
 
   for (genvar g = 0; g < N; g++) begin
 
     ob_cn_table_entry u_ob_cn_table_entry (
       //
-        .al_vld                    ()
+        .al_vld                    (al_vld [g]              )
       , .al_cmd_r                  (cmd_r                   )
       //
-      , .dl_vld                    ()
+      , .dl_vld                    (dl_vld [g]              )
       //
       , .busy_w                    (entry_busy_w [g]        )
       , .mtr_vld_w                 (entry_mtr_vld_w [g]     )
@@ -90,27 +107,15 @@ module ob_cn_table #(parameter int N = 4) (
       , .lm_ask_table_vld_r        (lm_ask_table_vld_r      )
       , .lm_ask_table_r            (lm_ask_table_r          )
       //
+      , .cancel                    (cancel                  )
+      , .cancel_uid                (cancel_uid              )
+      , .cancel_hit                (cancel_hit_d [g]        )
+      //
       , .clk                       (clk                     )
       , .rst                       (rst                     )
     );
 
   end
-
-  // ------------------------------------------------------------------------ //
-  //
-  logic [N - 1:0]                       rr_req;
-  logic                                 rr_ack;
-  logic [N - 1:0]                       rr_gnt;
-
-  always_comb begin : rr_PROC
-
-    // From set of matured entries:
-    rr_req = entry_mtr_vld_w;
-
-    // Advance arbiter state when currently nominated entry advances.
-    rr_ack = mtr_vld_r & mtr_accept;
-
-  end // block: rr_PROC
 
   // ------------------------------------------------------------------------ //
   //
@@ -127,39 +132,57 @@ module ob_cn_table #(parameter int N = 4) (
 
   // ------------------------------------------------------------------------ //
   //
-  `LIBV_REG_RST_W(logic, full, 'b0);
-  `LIBV_REG_EN_RST_W(logic, mtr_vld, 'b0);
-  `LIBV_REG_EN_W(ob_pkg::cmd_t, mtr);
+  function automatic logic [N - 1:0] pri(logic [N - 1:0] x); begin
+    pri        = '0;
+    for (int i = 0; i < N; i++)
+      if (x [i] == 'b1)
+        pri = ('b1 << i);
+  end endfunction
+
+  function automatic ob_pkg::cmd_t mux(
+    ob_pkg::cmd_t [N - 1:0] x, logic [N - 1:0] sel); begin
+    mux        = '0;
+    for (int i = 0; i < N; i++)
+      if (sel [i])
+        mux |= x [i];
+  end endfunction
 
   always_comb begin : cntrl_PROC
 
+    // Allocate to first non-busy entry.
+    al_vld            = cmd_vld ? pri(~entry_busy_r) : '0;
+
+    // Set on hit.
+    cancel_hit_w       = cancel & (cancel_hit_d != '0);
+
     // All slots/entries in the conditional table are occupied.
-    full_w     = (entry_busy_w == '1);
+    full_w            = (entry_busy_w == '1);
 
-    // Maturity becomes full whenever one of the subordinate threads indicate
-    // that they have matured.
-    mtr_vld_w  = (entry_mtr_vld_w != '0);
+    // Matured engines are available.
+    cntrl_has_matured = (entry_mtr_vld_r != '0);
 
-    // Retention circuit for maturity validity. Sample validity for the machines
-    // otherwise retain current validity until accepted.
-    mtr_vld_en = (~mtr_vld_r) | mtr_accept;
+    // From set of matured entries:
+    rr_req            = entry_mtr_vld_r;
+
+    // Advance arbiter state when currently nominated entry advances.
+    rr_ack            = cntrl_has_matured & ((~mtr_vld_r) | mtr_accept);
+
+    // Deallocate nominated matured entry on its transition to the 'mtr_' latch.
+    dl_vld            = rr_ack ? rr_gnt : '0;
+
+    // mtr vld set/reset.
+    case ({rr_ack, mtr_accept}) inside
+      2'b1_?:  mtr_vld_w = 'b1;
+      2'b0_1:  mtr_vld_w = 'b0;
+      default: mtr_vld_w = mtr_vld_r;
+    endcase
 
     // Latch new matured command on new valid.
-    mtr_en     = mtr_vld_en;
+    mtr_en             = rr_ack;
 
     // Latch nominated command from matured engine.
-    mtr_w      = entry_cmd_sel;
+    mtr_w              = mux(entry_cmd_r, rr_gnt);
 
   end // block: cntrl_PROC
-
-  // ------------------------------------------------------------------------ //
-  //
-  libv_mux #(.N(N), .W($bits(ob_pkg::cmd_t))) u_libv_mux (
-    //
-      .in                     (entry_cmd_r             )
-    , .sel                    (rr_gnt                  )
-    //
-    , .out                    (entry_cmd_sel           )
-  );
 
 endmodule // ob_cn_table

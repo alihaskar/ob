@@ -51,6 +51,8 @@ set(MARKET_BID_DEPTH_N 4 CACHE STRING "The number of entries in the Market Buy T
 
 set(MARKET_ASK_DEPTH_N 4 CACHE STRING "The number of entries in the Market Sell Table.")
 
+set(CN_DEPTH_N 4 CACHE STRING "The number of entries in the conditional trade table.")
+
 # RTL
 add_subdirectory(libv)
 add_subdirectory(rtl)

@@ -142,9 +142,12 @@ module ob (
   logic                                 mk_ask_qry_rsp_vld_r;
   ob_pkg::accum_quantity_t              mk_ask_qry_rsp_qty_r;
   //
-  logic                                 cn_cmd_vld_r;
+  logic                                 cn_cmd_vld;
   ob_pkg::cmd_t                         cn_cmd_r;
   logic                                 cn_mtr_accept;
+  logic                                 cn_cancel_hit_w;
+  logic                                 cn_cancel;
+  ob_pkg::uid_t                         cn_cancel_uid;
   logic                                 cn_mtr_vld_r;
   ob_pkg::cmd_t                         cn_mtr_r;
   logic                                 cn_full_r;
@@ -379,9 +382,12 @@ module ob (
     , .mk_ask_qry_rsp_vld_r        (mk_ask_qry_rsp_vld_r         )
     , .mk_ask_qry_rsp_qty_r        (mk_ask_qry_rsp_qty_r         )
     //
-    , .cn_cmd_vld_r                (cn_cmd_vld_r                 )
+    , .cn_cmd_vld                  (cn_cmd_vld                   )
     , .cn_cmd_r                    (cn_cmd_r                     )
     , .cn_mtr_accept               (cn_mtr_accept                )
+    , .cn_cancel_hit_w             (cn_cancel_hit_w              )
+    , .cn_cancel                   (cn_cancel                    )
+    , .cn_cancel_uid               (cn_cancel_uid                )
     , .cn_mtr_vld_r                (cn_mtr_vld_r                 )
     , .cn_mtr_r                    (cn_mtr_r                     )
     , .cn_full_r                   (cn_full_r                    )
@@ -464,7 +470,7 @@ module ob (
   //
   ob_cn_table #(.N(cfg_pkg::CN_DEPTH_N)) u_ob_cn_table (
     //
-      .cmd_vld_r                   (cn_cmd_vld_r                 )
+      .cmd_vld                     (cn_cmd_vld                   )
     , .cmd_r                       (cn_cmd_r                     )
     //
     , .mtr_accept                  (cn_mtr_accept                )
@@ -478,6 +484,10 @@ module ob (
     //
     , .lm_ask_table_vld_r          (lm_ask_table_vld_r           )
     , .lm_ask_table_r              (lm_ask_table_r               )
+    //
+    , .cancel_hit_w                (cn_cancel_hit_w              )
+    , .cancel                      (cn_cancel                    )
+    , .cancel_uid                  (cn_cancel_uid                )
     //
     , .full_r                      (cn_full_r                    )
     //

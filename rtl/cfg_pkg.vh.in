@@ -38,7 +38,7 @@ package cfg_pkg;
 
   localparam int MARKET_ASK_DEPTH_N = ${MARKET_ASK_DEPTH_N};
 
-  localparam int CN_DEPTH_N = 4;
+  localparam int CN_DEPTH_N = ${CN_DEPTH_N};
 
 endpackage // cfg_pkg
 

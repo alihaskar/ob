@@ -174,10 +174,15 @@ module ob_cntrl (
 
   // ======================================================================== //
   // Conditional command interface
-  , output logic                                  cn_cmd_vld_r
+  , output logic                                  cn_cmd_vld
   , output ob_pkg::cmd_t                          cn_cmd_r
   //
   , output logic                                  cn_mtr_accept
+  //
+  , input                                         cn_cancel_hit_w
+  //
+  , output logic                                  cn_cancel
+  , output ob_pkg::uid_t                          cn_cancel_uid
   //
   , input                                         cn_mtr_vld_r
   , input ob_pkg::cmd_t                           cn_mtr_r
@@ -208,14 +213,13 @@ module ob_cntrl (
   `LIBV_REG_RST_R(logic, mk_ask_cancel_hit, 'b0);
   `LIBV_REG_EN_R(ob_pkg::table_t, mk_ask_cancel_hit_tbl);
 
+  `LIBV_REG_RST_R(logic, cn_cancel_hit, 'b0);
+
   `LIBV_REG_RST_R(logic, mk_bid_full, 'b0);
   `LIBV_REG_RST_R(logic, mk_bid_empty, 'b1);
 
   `LIBV_REG_RST_R(logic, mk_ask_full, 'b0);
   `LIBV_REG_RST_R(logic, mk_ask_empty, 'b1);
-
-  `LIBV_REG_RST_W(logic, cn_cmd_vld, 'b0);
-  `LIBV_REG_EN_W(ob_pkg::cmd_t, cn_cmd);
 
   // ------------------------------------------------------------------------ //
   //
@@ -246,7 +250,7 @@ module ob_cntrl (
     // commands and have been permuted into their corresponding matured
     // commands: Stop -> Market, StopLimit -> Limit.
     //
-    case (cn_cmd_r.opcode)
+    case (cn_mtr_r.opcode)
       ob_pkg::Op_BuyMarket: begin
         case ({cmdl_vld_r, mk_bid_full_r}) inside
           2'b0_0:  cmdl_cn_can_issue = 'b1;
@@ -269,10 +273,10 @@ module ob_cntrl (
         // Otherwise, unknown command.
         cmdl_cn_can_issue = 'b0;
       end
-    endcase // case (cn_cmd_r.opcode)
+    endcase // case (cn_mtr_r.opcode)
 
     // A conditional command has matured and is now ready to be issued.
-    cmdl_cn_is_valid = cn_cmd_vld_r & cmdl_cn_can_issue;
+    cmdl_cn_is_valid = cn_mtr_vld_r & cmdl_cn_can_issue;
 
     // The command latch advances whenever a command (at the latch) is consumed,
     // or if it currently invalid (sampling new state).
@@ -299,7 +303,7 @@ module ob_cntrl (
 
     // Next command originates from the CN unit if command is accepted,
     // otherwise the ingress command queue.
-    cmdl_w  = cn_mtr_accept ? cn_cmd_r : cmd_in;
+    cmdl_w  = cn_mtr_accept ? cn_mtr_r : cmd_in;
 
   end // block: cmdl_PROC
 
@@ -421,9 +425,10 @@ module ob_cntrl (
     mk_ask_qry_vld       = 'b0;
 
     // Conditionl defaults
-    cn_cmd_vld_w         = 'b0;
-    cn_cmd_en            = 'b0;
-    cn_cmd_w             = cn_cmd_r;
+    cn_cmd_vld           = 'b0;
+    cn_cmd_r             = cmdl_r;
+    cn_cancel            = 'b0;
+    cn_cancel_uid        = '0;
     cn_mtr_accept        = 'b0;
 
     // Compare query
@@ -591,6 +596,10 @@ module ob_cntrl (
             mk_ask_cancel     = 'b1;
             mk_ask_cancel_uid = cmdl_r.uid1;
 
+            // Issue cancel op. to CN table
+            cn_cancel         = 'b1;
+            cn_cancel_uid     = cmdl_r.uid1;
+
             // Advance to next state when egress queue is non-full, as
             // next state does not support back-pressure.
             fsm_state_en      = (~rsp_out_full_r);
@@ -696,23 +705,33 @@ module ob_cntrl (
           {1'b1, ob_pkg::Op_SellStopLimit}: begin
             // Conditional command(s), issue to conditional engine if non-full
             // otherwise reject on structural hazard.
-            case ({cn_full_r})
-              1'b1: begin
-                // Conditional table is current full, must reject current
-                // command.
-                rsp_out_vld_w    = 'b1;
 
-                rsp_out_w        = '0;
-                rsp_out_w.uid    = cmdl_r.uid;
+            rsp_out_w     = '0;
+            rsp_out_w.uid = cmdl_r.uid;
+
+            case ({rsp_out_full_r, cn_full_r}) inside
+              2'b0_0: begin
+
+                // Consume command: is issued to CN unit.
+                cmdl_consume     = 'b1;
+
+                // Otherwise, we are free to issue command to conditional table.
+                cn_cmd_vld       = 'b1;
+
+                // Emit response
+                rsp_out_vld_w    = 'b1;
+                rsp_out_w.status = ob_pkg::S_Okay;
+              end
+              2'b0_1: begin
+                // Consume command: is rejected.
+                cmdl_consume     = 'b1;
+
+                // Reject command.
+                rsp_out_vld_w    = 'b1;
                 rsp_out_w.status = ob_pkg::S_Reject;
-                rsp_out_w.result = '0;
               end
               default: begin
-                // Otherwise, we are free to issue command to conditional table.
-                cn_cmd_vld_w = 'b1;
-
-                cn_cmd_en    = 'b1;
-                cn_cmd_w     = cmdl_r;
+                // Stall current command awaiting output buffer entry.
               end
             endcase
           end
@@ -743,22 +762,28 @@ module ob_cntrl (
                // Bid market table hits cancel
                mk_bid_cancel_hit_r,
                // Ask market table table cancel
-               mk_ask_cancel_hit_r
+               mk_ask_cancel_hit_r,
+               // CN table cancel
+               cn_cancel_hit_r
                }) inside
-          4'b1???: begin
+          5'b1????: begin
             // Hit on bid table.
             rsp_out_w.status = ob_pkg::S_CancelHit;
           end
-          4'b01??: begin
+          5'b01???: begin
             // Hit on ask table.
             rsp_out_w.status = ob_pkg::S_CancelHit;
           end
-          4'b001?: begin
+          5'b001??: begin
             // Hit on bid market table.
             rsp_out_w.status = ob_pkg::S_CancelHit;
           end
-          4'b0001: begin
+          5'b0001?: begin
             // Hit on ask market table.
+            rsp_out_w.status = ob_pkg::S_CancelHit;
+          end
+          5'b00001: begin
+            // Hit on conditional table.
             rsp_out_w.status = ob_pkg::S_CancelHit;
           end
           default: begin

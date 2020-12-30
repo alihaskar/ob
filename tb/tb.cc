@@ -199,6 +199,10 @@ const char* to_opcode_string(vluint8_t opcode) {
     case Opcode::SellMarket: return "SellMarket";
     case Opcode::QryTblAskLe: return "QryTblAskLe";
     case Opcode::QryTblBidGe: return "QryTblBidGe";
+    case Opcode::BuyStopLoss: return "BuyStopLoss";
+    case Opcode::SellStopLoss: return "SellStopLoss";
+    case Opcode::BuyStopLimit: return "BuyStopLimit";
+    case Opcode::SellStopLimit: return "SellStopLimit";
     default: return "Invalid";
   }
 }
@@ -655,6 +659,24 @@ std::string Entry::to_string() const {
   return r.to_string();
 }
 
+bool CNModel::cancel(vluint32_t uid) {
+  if (auto it = cmds_.find(uid); it != cmds_.end()) {
+    // Hit matching UID in table. Command is cancelled.
+    cmds_.erase(it);
+    return true;
+  }
+  return false;
+}
+
+bool CNModel::insert(const Command& cmd) {
+  if (cmds_.size() == CN_DEPTH_N) { return false; }
+
+  cmds_.insert(std::make_pair(cmd.uid, cmd));
+  return true;
+}
+
+void CNModel::update(vluint32_t ask, vluint32_t bid) {
+}
 
 Model::Model(std::size_t bid_n, std::size_t ask_n)
     : bid_n_(bid_n), ask_n_(ask_n)
@@ -810,6 +832,11 @@ std::vector<Response> Model::apply(const Command& cmd) {
         did_cancel = true;
         ask_table_mk_.erase(it);
       }
+      if (!did_cancel && cn_model_.cancel(uid_to_cancel)) {
+        // Did cancel in conditional model table.
+        did_cancel = true;
+      }
+
       rsp.valid = true;
       rsp.uid = cmd.uid;
       rsp.status = did_cancel ? Status::CancelHit : Status::CancelMiss;
@@ -888,6 +915,22 @@ std::vector<Response> Model::apply(const Command& cmd) {
           rsps.push_back(rsp);
         }
       }
+    } break;
+    case Opcode::BuyStopLoss:
+    case Opcode::SellStopLoss:
+    case Opcode::BuyStopLimit:
+    case Opcode::SellStopLimit: {
+      const bool success = cn_model_.insert(cmd);
+      rsp.valid = true;
+      rsp.uid = cmd.uid;
+      rsp.status = success ? Status::Okay : Status::Reject;
+      rsps.push_back(rsp);
+    } break;
+    default: {
+#ifdef OPT_TRACE_ENABLE
+      std::cout << "[TB] Unknown opcode encountered: " << utility::hex(cmd.opcode) << "\n";
+      ADD_FAILURE();
+#endif
     } break;
   }
 

@@ -53,6 +53,13 @@ module ob_cn_table_entry (
   , input ob_pkg::table_t                         lm_ask_table_r
 
   // ======================================================================== //
+  // Cancel Interface
+  , input                                         cancel
+  , input ob_pkg::uid_t                           cancel_uid
+  //
+  , output logic                                  cancel_hit
+
+  // ======================================================================== //
   // Clk/Reset
   , input                                         clk
   , input                                         rst
@@ -90,6 +97,7 @@ module ob_cn_table_entry (
                                } fsm_state_t;
 
   `LIBV_REG_EN_W(ob_pkg::cmd_t, cmd);
+  fsm_state_enc_t                       fsm_state_upt;
   `LIBV_REG_EN_RST(fsm_state_enc_t, fsm_state, FSM_IDLE);
 
   always_comb begin : fsm_PROC
@@ -101,82 +109,93 @@ module ob_cn_table_entry (
     fsm_state_en = 'b0;
     fsm_state_w  = fsm_state_r;
 
-    case (fsm_state_r)
-      FSM_IDLE: begin
-        if (al_vld) begin
-          // Allocation valid, transition to ACTIVE state and latch command.
-          cmd_en       = 'b1;
-          cmd_w        = al_cmd_r;
-
-          // Machine becomes active.
-          fsm_state_en = 'b1;
-          fsm_state_w  = FSM_ACTIVE;
-        end
-      end
-      FSM_ACTIVE: begin
-
-        case (cmd_r.opcode)
-          ob_pkg::Op_BuyStopLoss,
-          ob_pkg::Op_BuyStopLimit: begin
-            // Buy Stop Loss/Limit matures whenever the market price for
-            // the current security becomes lower than the current watching
-            // price.
-            fsm_state_en = cntrl_evt_texe_r & lm_bid_table_vld_r & dp_price_le;
-          end
-          ob_pkg::Op_SellStopLoss,
-          ob_pkg::Op_SellStopLimit: begin
-            // Sell Stop Loss/Limit matures whenever the market price for the
-            // current security becomes greater than the current watching price
-            // (should probably check whether these definitions are indeed accurate).
-            fsm_state_en = cntrl_evt_texe_r & lm_ask_table_vld_r & dp_price_ge;
-          end
-          default: begin
-            // Otherwise, error: invalid command and should not have been
-            // dispatched the this conditional entry machine.
-            fsm_state_en = 'b0;
-          end
-        endcase // case (fsm_cmd_r.opcode)
-
-        // As the command matures, it permutes from the "Stop" order to the
-        // corresponding Market/Limit Order
-        case (cmd_r.opcode)
-          ob_pkg::Op_BuyStopLoss: begin
-            // Op_BuyStopLess -> Op_BuyMarket
-            cmd_w.opcode = ob_pkg::Op_BuyMarket;
-          end
-          ob_pkg::Op_SellStopLoss: begin
-            // Op_SellStopLess -> Op_SellMarket
-            cmd_w.opcode = ob_pkg::Op_SellMarket;
-          end
-          ob_pkg::Op_BuyStopLimit: begin
-            // Op_BuyStopLimit -> Op_BuyLimit
-            cmd_w.opcode = ob_pkg::Op_BuyLimit;
-          end
-          ob_pkg::Op_SellStopLimit: begin
-            // Op_SellStopLimit -> Op_SellLimit
-            cmd_w.opcode = ob_pkg::Op_SellLimit;
-          end
-          default: begin
-            // Otherwise, error: Unknown command is present in entry.
-          end
-        endcase
-
-        // Update command.
-        cmd_en      = fsm_state_en;
-
-        // Transition to matured state.
-        fsm_state_w = FSM_MATURED;
-      end
-      FSM_MATURED: begin
-        if (dl_vld) begin
-          // Deallocation valid, return to IDLE state.
-          fsm_state_en = 'b1;
-          fsm_state_w  = FSM_IDLE;
-        end
+    case (cancel_hit) inside
+      1'b1: begin
+        // On cancel operation, transition back to the IDLE state.
+        fsm_state_en = 'b1;
+        fsm_state_w  = FSM_IDLE;
       end
       default: begin
-      end
-    endcase // case (fsm_state_r)
+        // Otherwise, proceed with normal FSM operation.
+
+        case (fsm_state_r)
+          FSM_IDLE: begin
+            if (al_vld) begin
+              // Allocation valid, transition to ACTIVE state and latch command.
+              cmd_en       = 'b1;
+              cmd_w        = al_cmd_r;
+
+              // Machine becomes active.
+              fsm_state_en = 'b1;
+              fsm_state_w  = FSM_ACTIVE;
+            end
+          end
+          FSM_ACTIVE: begin
+
+            case (cmd_r.opcode)
+              ob_pkg::Op_BuyStopLoss,
+              ob_pkg::Op_BuyStopLimit: begin
+                // Buy Stop Loss/Limit matures whenever the market price for
+                // the current security becomes lower than the current watching
+                // price.
+                fsm_state_en = cntrl_evt_texe_r & lm_bid_table_vld_r & dp_price_le;
+              end
+              ob_pkg::Op_SellStopLoss,
+                ob_pkg::Op_SellStopLimit: begin
+                  // Sell Stop Loss/Limit matures whenever the market price for the
+                  // current security becomes greater than the current watching price
+                  // (should probably check whether these definitions are indeed accurate).
+                  fsm_state_en = cntrl_evt_texe_r & lm_ask_table_vld_r & dp_price_ge;
+                end
+              default: begin
+                // Otherwise, error: invalid command and should not have been
+                // dispatched the this conditional entry machine.
+                fsm_state_en = 'b0;
+              end
+            endcase // case (fsm_cmd_r.opcode)
+
+            // As the command matures, it permutes from the "Stop" order to the
+            // corresponding Market/Limit Order
+            case (cmd_r.opcode)
+              ob_pkg::Op_BuyStopLoss: begin
+                // Op_BuyStopLess -> Op_BuyMarket
+                cmd_w.opcode = ob_pkg::Op_BuyMarket;
+              end
+              ob_pkg::Op_SellStopLoss: begin
+                // Op_SellStopLess -> Op_SellMarket
+                cmd_w.opcode = ob_pkg::Op_SellMarket;
+              end
+              ob_pkg::Op_BuyStopLimit: begin
+                // Op_BuyStopLimit -> Op_BuyLimit
+                cmd_w.opcode = ob_pkg::Op_BuyLimit;
+              end
+              ob_pkg::Op_SellStopLimit: begin
+                // Op_SellStopLimit -> Op_SellLimit
+                cmd_w.opcode = ob_pkg::Op_SellLimit;
+              end
+              default: begin
+                // Otherwise, error: Unknown command is present in entry.
+              end
+            endcase
+
+            // Update command.
+            cmd_en      = fsm_state_en;
+
+            // Transition to matured state.
+            fsm_state_w = FSM_MATURED;
+          end
+          FSM_MATURED: begin
+            if (dl_vld) begin
+              // Deallocation valid, return to IDLE state.
+              fsm_state_en = 'b1;
+              fsm_state_w  = FSM_IDLE;
+            end
+          end
+          default: begin
+          end
+        endcase // case (fsm_state_r)
+      end // case: default
+    endcase // case (cancel_hit)
 
     // FSM is busy
     busy_w    = fsm_state_w.busy;
@@ -185,5 +204,24 @@ module ob_cn_table_entry (
     mtr_vld_w = fsm_state_w.matured;
 
   end // block: fsm_PROC
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_comb begin : cancel_PROC
+
+    case (fsm_state_r)
+      FSM_IDLE: begin
+        cancel_hit = cancel & al_vld & (al_cmd_r.uid == cancel_uid);
+      end
+      FSM_ACTIVE,
+      FSM_MATURED: begin
+        cancel_hit = cancel & (cmd_r.uid == cancel_uid);
+      end
+      default: begin
+        cancel_hit = 'b0;
+      end
+    endcase // case (fsm_state_r)
+
+  end // block: cancel_PROC
 
 endmodule // ob_cn_table_entry
