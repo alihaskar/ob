@@ -70,6 +70,11 @@ module tb_ob (
   // TB support
   , output logic [63:0]                           tb_cycle
 
+  , output logic                                  tb_cmdl_commit
+  , output ob_pkg::uid_t                          tb_cmdl_uid
+  , output logic                                  tb_cn_mtr_vld
+  , output ob_pkg::uid_t                          tb_cn_mtr_uid
+
   // ======================================================================== //
   // Clk/Reset
   , input                                         clk
@@ -143,5 +148,19 @@ module tb_ob (
     , .clk                    (clk                     )
     , .rst                    (rst                     )
   );
+
+  // ------------------------------------------------------------------------ //
+  //
+  always_comb begin : tb_PROC
+
+    // Command committal interface.
+    tb_cmdl_commit = u_ob.u_ob_cntrl.cmdl_consume;
+    tb_cmdl_uid    = u_ob.u_ob_cntrl.cmdl_r.uid;
+
+    // CN maturity probes
+    tb_cn_mtr_vld  = u_ob.u_ob_cn_table.mtr_en;
+    tb_cn_mtr_uid  = u_ob.u_ob_cn_table.mtr_w.uid;
+
+  end // block: tb_PROC
 
 endmodule // ob

@@ -28,7 +28,9 @@
 #include "gtest/gtest.h"
 #include "tb.h"
 
-const std::size_t N = (1 << 18);
+//const std::size_t N = (1 << 18);
+const std::size_t N = 1800;
+//const std::size_t N = 1811;
 
 TEST(Regress, Basic) {
   // Initialize random seed for reproducibility.
@@ -47,16 +49,16 @@ TEST(Regress, Basic) {
   bg.push_back(tb::Opcode::QryTblBidGe, 1);
   bg.push_back(tb::Opcode::BuyMarket, 1);
   bg.push_back(tb::Opcode::SellMarket, 1);
+  bg.push_back(tb::Opcode::BuyStopLoss, 1);
+  bg.push_back(tb::Opcode::SellStopLoss, 1);
+  bg.push_back(tb::Opcode::BuyStopLimit, 1);
+  bg.push_back(tb::Opcode::SellStopLimit, 1);
   tb::StimulusGenerator gen(bg, 100.0, 10.0);
 
   // Construct testbench environment.
   tb::Options opts;
-#ifdef OPT_TRACE_ENABLE
   opts.trace_enable = true;
-#endif
-#ifdef OPT_VCD_ENABLE
   opts.wave_enable = true;
-#endif
   tb::TB tb{opts};
   for (const tb::Command& cmd : gen.generate(N)) {
     tb.push_back(cmd);

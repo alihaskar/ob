@@ -304,6 +304,16 @@ struct Response {
   } result;
 };
 
+struct TbSupport {
+  // Committal interface
+  bool commit;
+  vluint32_t uid;
+
+  // Maturity interface
+  bool mtr;
+  vluint32_t mtr_uid;
+};
+
 // Compare reponses operator
 bool operator==(const Response& lhs, const Response& rhs);
 
@@ -316,6 +326,10 @@ struct VSignals {
   static VSignals bind(U* u) {
     VSignals v;
     v.tb_cycle = std::addressof(u->tb_cycle);
+    v.tb_cmdl_commit = std::addressof(u->tb_cmdl_commit);
+    v.tb_cmdl_uid = std::addressof(u->tb_cmdl_uid);
+    v.tb_cn_mtr_vld = std::addressof(u->tb_cn_mtr_vld);
+    v.tb_cn_mtr_uid = std::addressof(u->tb_cn_mtr_uid);
     // Command:
     v.cmd_vld_r = std::addressof(u->cmd_vld_r);
     v.cmd_opcode_r = std::addressof(u->cmd_opcode_r);
@@ -368,11 +382,18 @@ struct VSignals {
   bool get_rst() const;
 
   //
-  void get(Response& rsp);
+  void get(TbSupport& tb) const;
+
+  //
+  void get(Response& rsp) const;
 
  private:
   // TB utilitie
   vluint64_t* tb_cycle;
+  vluint8_t* tb_cmdl_commit;
+  vluint32_t* tb_cmdl_uid;
+  vluint8_t* tb_cn_mtr_vld;
+  vluint32_t *tb_cn_mtr_uid;
 
   // Command interface
   vluint8_t* cmd_vld_r;
@@ -463,6 +484,11 @@ class Model {
   // Apply command to the machine state to derive a set of
   // responses.
   std::vector<Response> apply_mtr(const Command& cmd);
+
+  bool delete_uid_from_cn(vluint32_t uid);
+
+  // Dump current predicted machine state to os.
+  void dump(std::ostream& os) const;
 
  private:
 
@@ -576,6 +602,7 @@ class TB {
   void run();
 
  private:
+
   // Reset model.
   void reset();
 

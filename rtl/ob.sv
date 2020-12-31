@@ -499,10 +499,15 @@ module ob (
   //
   always_comb begin : out_PROC
 
-    rsp_vld          = (~egress_queue_empty_r);
-    rsp              = egress_queue_pop_data;
+    rsp_vld             = (~egress_queue_empty_r);
+    rsp                 = egress_queue_pop_data;
 
-    egress_queue_pop = rsp_vld & rsp_accept;
+    egress_queue_pop    = (rsp_vld & rsp_accept);
+    egress_queue_commit = egress_queue_pop;
+    egress_queue_flush  = 'b0;
+    egress_queue_replay = 'b0;
+
+    rsp_out_full_r      = egress_queue_full_r;
 
   end // block: out_PROC
 

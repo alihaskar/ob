@@ -66,20 +66,6 @@ module ob_cn_table #(parameter int N = 4) (
   , input                                         rst
 );
 
-  ob_pkg::uid_t debug_uid;
-  ob_pkg::opcode_t debug_opcode;
-  bcd_pkg::price_t debug_price;
-  ob_pkg::quantity_t debug_quantity;
-
-  always_comb begin : debug_PROC
-
-    debug_uid      = mtr_r.uid;
-    debug_opcode   = mtr_r.opcode;
-    debug_price    = mtr_r.price;
-    debug_quantity = mtr_r.quantity;
-
-  end
-
   // ------------------------------------------------------------------------ //
   //
   logic [N - 1:0]                       rr_req;
@@ -186,10 +172,10 @@ module ob_cn_table #(parameter int N = 4) (
     endcase
 
     // Latch new matured command on new valid.
-    mtr_en             = rr_ack;
+    mtr_en      = rr_ack;
 
     // Latch nominated command from matured engine.
-    mtr_w              = mux(entry_cmd_r, rr_gnt);
+    mtr_w       = mux(entry_cmd_r, rr_gnt);
 
   end // block: cntrl_PROC
 

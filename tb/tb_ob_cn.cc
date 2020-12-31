@@ -28,6 +28,8 @@
 #include "gtest/gtest.h"
 #include "tb.h"
 
+ const std::size_t LONG_N = (1 << 15);
+
 TEST(TbObCn, ConditionalCancel) {
   tb::Options opts;
   tb::TB tb{opts};
@@ -316,6 +318,74 @@ TEST(TbObCn, ConditionalSellStopLimit1) {
   cmd.uid = uid++;
   tb.push_back(cmd);
 
+  // Run simulation
+  tb.run();
+}
+
+TEST(TbObCn, ConditionalRegressLmN) {
+  // Initialization randomisation seed.
+  tb::Random::init(1);
+
+  tb::Bag<vluint8_t> bg;
+  bg.push_back(tb::Opcode::BuyLimit, 100);
+  bg.push_back(tb::Opcode::SellLimit, 100);
+  bg.push_back(tb::Opcode::BuyStopLoss, 1);
+  bg.push_back(tb::Opcode::SellStopLoss, 1);
+  bg.push_back(tb::Opcode::BuyStopLimit, 1);
+  bg.push_back(tb::Opcode::SellStopLimit, 1);
+  tb::StimulusGenerator gen(bg, 100.0, 10.0);
+
+  tb::Options opts;
+  tb::TB tb{opts};
+  for (const tb::Command& cmd : gen.generate(LONG_N)) {
+    tb.push_back(cmd);
+  }
+  // Run simulation
+  tb.run();
+}
+
+TEST(TbObCn, ConditionalRegressMkN) {
+  // Initialization randomisation seed.
+  tb::Random::init(1);
+
+  tb::Bag<vluint8_t> bg;
+  bg.push_back(tb::Opcode::BuyMarket, 10);
+  bg.push_back(tb::Opcode::SellMarket, 10);
+  bg.push_back(tb::Opcode::BuyStopLoss, 1);
+  bg.push_back(tb::Opcode::SellStopLoss, 1);
+  bg.push_back(tb::Opcode::BuyStopLimit, 1);
+  bg.push_back(tb::Opcode::SellStopLimit, 1);
+  tb::StimulusGenerator gen(bg, 100.0, 10.0);
+
+  tb::Options opts;
+  tb::TB tb{opts};
+  for (const tb::Command& cmd : gen.generate(LONG_N)) {
+    tb.push_back(cmd);
+  }
+  // Run simulation
+  tb.run();
+}
+
+TEST(TbObCn, ConditionalRegressLmMkN) {
+  // Initialization randomisation seed.
+  tb::Random::init(1);
+
+  tb::Bag<vluint8_t> bg;
+  bg.push_back(tb::Opcode::BuyLimit, 100);
+  bg.push_back(tb::Opcode::SellLimit, 100);
+  bg.push_back(tb::Opcode::BuyMarket, 10);
+  bg.push_back(tb::Opcode::SellMarket, 10);
+  bg.push_back(tb::Opcode::BuyStopLoss, 1);
+  bg.push_back(tb::Opcode::SellStopLoss, 1);
+  bg.push_back(tb::Opcode::BuyStopLimit, 1);
+  bg.push_back(tb::Opcode::SellStopLimit, 1);
+  tb::StimulusGenerator gen(bg, 100.0, 10.0);
+
+  tb::Options opts;
+  tb::TB tb{opts};
+  for (const tb::Command& cmd : gen.generate(LONG_N)) {
+    tb.push_back(cmd);
+  }
   // Run simulation
   tb.run();
 }
