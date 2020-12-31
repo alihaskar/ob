@@ -28,9 +28,7 @@
 #include "gtest/gtest.h"
 #include "tb.h"
 
-//const std::size_t N = (1 << 18);
-const std::size_t N = 1800;
-//const std::size_t N = 1811;
+const std::size_t N = (1 << 16);
 
 TEST(Regress, Basic) {
   // Initialize random seed for reproducibility.
@@ -57,8 +55,6 @@ TEST(Regress, Basic) {
 
   // Construct testbench environment.
   tb::Options opts;
-  opts.trace_enable = true;
-  opts.wave_enable = true;
   tb::TB tb{opts};
   for (const tb::Command& cmd : gen.generate(N)) {
     tb.push_back(cmd);

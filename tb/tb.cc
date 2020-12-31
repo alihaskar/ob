@@ -503,7 +503,7 @@ void TB::run() {
   bool stopped = false;
   while (!stopped) {
 
-    model_.dump(std::cout);
+    //    model_.dump(std::cout);
 
     const bool cmd_full_r = vs_.get_cmd_full_r();
     if (!cmd_full_r && !cmds_.empty()) {
@@ -540,17 +540,17 @@ void TB::run() {
 #endif
 
       // Lookup command which we expect to find the the CN table.
-      //      auto it = uid_to_cmd_mtr_pend.find(tb_support.mtr_uid);
-      //      ASSERT_NE(it, uid_to_cmd_mtr_pend.end());
+      auto it = uid_to_cmd_mtr_pend.find(tb_support.mtr_uid);
+      ASSERT_NE(it, uid_to_cmd_mtr_pend.end());
 
       // Move to matured pool.
-      //      uid_to_cmd_mtr.insert(*it);
+      uid_to_cmd_mtr.insert(*it);
 
       // Cancel UID in CNModel (expect to find it), to free up the slot for
       // use. There is hazard between the mtr latch in ob_cn_entry.sv and the
       // machine which means that the model can think that the table is full when
       // it is actually not, and entry is actually sitting at the output slot.
-      //      EXPECT_TRUE(model_.delete_uid_from_cn(tb_support.mtr_uid));
+      EXPECT_TRUE(model_.delete_uid_from_cn(tb_support.mtr_uid));
     }
     if (tb_support.commit) {
       bool found_uid = false;
@@ -576,15 +576,15 @@ void TB::run() {
           default: {
           } break;
         }
-        std::cout << "Commit uid: " << tb_support.uid << "\n";
-        std::cout << "Predicted responses: \n";
+        //        std::cout << "Commit uid: " << tb_support.uid << "\n";
+        //        std::cout << "Predicted responses: \n";
         for (const Response& rsp : predicted_rsps) {
-          std::cout << rsp.to_string(cmd.opcode) << "\n";
+          //          std::cout << rsp.to_string(cmd.opcode) << "\n";
           rsps_.push_back(rsp);
         }
         found_uid = true;
-      } else if (auto it = uid_to_cmd_mtr_pend.find(tb_support.uid);
-                 it != uid_to_cmd_mtr_pend.end()) {
+      } else if (auto it = uid_to_cmd_mtr.find(tb_support.uid);
+                 it != uid_to_cmd_mtr.end()) {
         // Otherwise, expect to find a UID from the matured UID pool.
         const Command& cmd = it->second;
 #ifdef OPT_TRACE_ENABLE
@@ -601,7 +601,7 @@ void TB::run() {
         // Reissue command as we now expect to see this at the output.
         uid_to_cmd.insert(std::make_pair(cmd.uid, cmd));
         // Remove UID mapping.
-        uid_to_cmd_mtr_pend.erase(it);
+        uid_to_cmd_mtr.erase(it);
         found_uid = true;
 #ifdef OPT_TRACE_ENABLE
       } else if (opts_.trace_enable) {
@@ -648,7 +648,7 @@ void TB::run() {
 #endif
       } else if (actual.uid != 0xFFFFFFFF) {
 #ifdef OPT_TRACE_ENABLE
-        // Otherwise, we don't know what this UID belongs too. In the REJECT
+        // Otherwise, we don't know what this UID belongs to. In the REJECT
         // case, this may occur sometime after the initial Okay upon
         // installation into the table. The success of this first operation
         // causes the UID to be removed from the uid_to_op table. Sometime
@@ -658,7 +658,7 @@ void TB::run() {
         // do not wish the retain all UID mappings over the duration of the
         // simulation so we simply drop it and everything is fine. We still
         // check the validity of the rejection message.
-        if (opts_.trace_enable && (actual.status != Status::Reject)) {
+        if (opts_.trace_enable) {
           // Disregards controller materialized responses.
           std::cout << "[TB] " << vs_.cycle()
                     << ": Unknown UID received: " << to_string(actual.uid) << "\n";
@@ -1081,7 +1081,7 @@ std::vector<Response> Model::apply(const Command& cmd) {
 std::vector<Response> Model::apply_mtr(const Command& cmd) {
   // Cancel pending command in table. Expect this command to be
   // already present in the table.
-  EXPECT_TRUE(cn_model_.cancel(cmd.uid));
+  //  EXPECT_TRUE(cn_model_.cancel(cmd.uid));
 
   const Command permuted_command = to_mtr_command(cmd);
   return apply(permuted_command);
