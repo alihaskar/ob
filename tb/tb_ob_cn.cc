@@ -28,7 +28,8 @@
 #include "gtest/gtest.h"
 #include "tb.h"
 
- const std::size_t LONG_N = (1 << 15);
+
+const std::size_t LONG_N = (1 << 15);
 
 TEST(TbObCn, ConditionalCancel) {
   tb::Options opts;

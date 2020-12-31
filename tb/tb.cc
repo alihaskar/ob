@@ -207,6 +207,29 @@ const char* to_opcode_string(vluint8_t opcode) {
   }
 }
 
+// Convert a conditional command to its equivalent 'matured' command.
+Command to_mtr_command(const Command& cmd) {
+  Command out{cmd};
+  switch (cmd.opcode) {
+    case Opcode::BuyStopLoss: {
+      out.opcode = Opcode::BuyMarket;
+    } break;
+    case Opcode::SellStopLoss: {
+      out.opcode = Opcode::SellMarket;
+    } break;
+    case Opcode::BuyStopLimit: {
+      out.opcode = Opcode::BuyLimit;
+    } break;
+    case Opcode::SellStopLimit: {
+      out.opcode = Opcode::SellLimit;
+    } break;
+    default: {
+      // Otherwise, unexpected command
+    } break;
+  }
+  return out;
+}
+
 std::string Command::to_string() const {
   using std::to_string;
 
@@ -315,6 +338,10 @@ std::string Response::to_string(vluint8_t opcode) const {
     }
   }
   return r.to_string();
+}
+
+bool Response::is_trade() const {
+  return (uid == 0xFFFFFFFF);
 }
 
 bool operator==(const Response& lhs, const Response& rhs) {
@@ -449,8 +476,7 @@ void VSignals::get(Response& rsp) const {
   rsp.result.qry.accum = vsupport::get(rsp_qry_accum);
 }
 
-TB::TB(const Options& opts)
-    : opts_(opts), model_(BID_TABLE_DEPTH_N, ASK_TABLE_DEPTH_N) {
+TB::TB(const Options& opts) : opts_(opts) {
 #ifdef OPT_VCD_ENABLE
   if (opts.wave_enable) {
     Verilated::traceEverOn(true);
@@ -481,8 +507,8 @@ TB::~TB() {
 }
 
 void TB::run() {
-  using std::to_string;
 
+  // Initialize state
   cycle_ = 0;
   time_ = 0;
 
@@ -497,21 +523,18 @@ void TB::run() {
   vs_.set_rsp_accept(true);
 
   std::map<vluint32_t, Command> uid_to_cmd;
-  std::map<vluint32_t, Command> uid_to_cmd_mtr;
-  std::map<vluint32_t, Command> uid_to_cmd_mtr_pend;
+  std::deque<std::pair<Command, Response> > rsps;
+
+  // Prediction model
+  Model model(BID_TABLE_DEPTH_N, ASK_TABLE_DEPTH_N);
 
   bool stopped = false;
   while (!stopped) {
-
-    //    model_.dump(std::cout);
-
-    const bool cmd_full_r = vs_.get_cmd_full_r();
-    if (!cmd_full_r && !cmds_.empty()) {
+    // Issue command:
+    cmd.valid = false;
+    if (!vs_.get_cmd_full_r() && !cmds_.empty()) {
       // Apply input command.
       cmd = cmds_.front();
-#ifdef OPT_VERBOSE
-      std::cout << "[TB] Apply: " << cmd.to_string() << "\n";
-#endif
       uid_to_cmd.insert(std::make_pair(cmd.uid, cmd));
 #ifdef OPT_TRACE_ENABLE
       if (opts_.trace_enable) {
@@ -520,162 +543,123 @@ void TB::run() {
       }
 #endif
       cmds_.pop_front();
-    } else {
-      // Idle
-      cmd.valid = false;
     }
     // Issue command to RTL
     vs_.set(cmd);
 
-    TbSupport tb_support;
-    vs_.get(tb_support);
-    if (tb_support.mtr) {
-      // An item has matured from the CN table.
 
+    // Process Response:
+    //
+    Response actual;
+    vs_.get(actual);
+    if (actual.valid) {
+      bool resolved_uid = false;
+      if (actual.is_trade()) {
+        // A trade has been received.
+        EXPECT_FALSE(rsps.empty());
+        const std::pair<Command, Response>& cr = rsps.front();
 #ifdef OPT_TRACE_ENABLE
-      if (opts_.trace_enable) {
-        std::cout << "[TB] " << vs_.cycle()
-                  << ": Command UID has matured: " << tb_support.mtr_uid << "\n";
-      }
+        if (opts_.trace_enable) {
+          std::cout << "[TB] " << vs_.cycle() << ": Trade emitted: "
+                    << actual.to_string(cr.first.opcode) << "\n";
+        }
 #endif
-
-      // Lookup command which we expect to find the the CN table.
-      auto it = uid_to_cmd_mtr_pend.find(tb_support.mtr_uid);
-      ASSERT_NE(it, uid_to_cmd_mtr_pend.end());
-
-      // Move to matured pool.
-      uid_to_cmd_mtr.insert(*it);
-
-      // Cancel UID in CNModel (expect to find it), to free up the slot for
-      // use. There is hazard between the mtr latch in ob_cn_entry.sv and the
-      // machine which means that the model can think that the table is full when
-      // it is actually not, and entry is actually sitting at the output slot.
-      EXPECT_TRUE(model_.delete_uid_from_cn(tb_support.mtr_uid));
-    }
-    if (tb_support.commit) {
-      bool found_uid = false;
-      // Recover currently executing command at the controller.
-      if (auto it = uid_to_cmd.find(tb_support.uid); it != uid_to_cmd.end()) {
-        // Command committed
+        compare(cr.first, actual, cr.second);
+        rsps.pop_front();
+      } else if (!rsps.empty()) {
+        // A pre-computed response has been received.
+        const std::pair<Command, Response>& cr = rsps.front();
+#ifdef OPT_TRACE_ENABLE
+        if (opts_.trace_enable) {
+          std::cout << "[TB] " << vs_.cycle() << ": Response received: "
+                    << cr.second.to_string(cr.first.opcode) << "\n";
+        }
+#endif
+        compare(cr.first, actual, cr.second);
+        rsps.pop_front();
+      } else if (auto it = uid_to_cmd.find(actual.uid); it != uid_to_cmd.end()) {
+        // Command response.
         const Command& cmd = it->second;
-        std::vector<Response> predicted_rsps = model_.apply(cmd);
+        // Compute set of expected responses.
+        std::deque<Response> expected_rsps = model.apply(cmd);
+        if (cmd.was_cn) {
+          // If the current command originated from the CN table; care must
+          // be delete to delete the entry from this table so that we do not
+          // see it again (on a cancel operation, for example).
+          model.delete_uid_from_cn(cmd.uid);
+        }
+#ifdef OPT_TRACE_ENABLE
+        if (opts_.trace_enable) {
+          std::cout << "[TB] " << vs_.cycle() << ": Response received: "
+                    << actual.to_string(cmd.opcode) << "\n";
+        }
+#endif
+        bool delete_uid = true;
         switch (cmd.opcode) {
           case Opcode::BuyStopLoss:
           case Opcode::SellStopLoss:
           case Opcode::BuyStopLimit:
           case Opcode::SellStopLimit: {
-            const Response& status_rsp = predicted_rsps.front();
-            if (status_rsp.status != Status::Reject) {
-              // If conditional instruction was not rejected, retain
-              // state for the eventual maturity of the command.
-              uid_to_cmd_mtr_pend.insert(std::make_pair(cmd.uid, cmd));
-              // Remove UID mapping.
-              uid_to_cmd.erase(it);
+            // Difficult to predict the occupancy of the CN table here because
+            // of pipelining. Instead, we accept the status from the RTL as
+            // truth, otherwise if incorrect, the models would soon diverge
+            // anyway.
+            if (actual.status != Status::Reject) {
+              // Command was not rejected, therefore permute command.
+              Command permuted_cmd = to_mtr_command(cmd);
+              permuted_cmd.was_cn = true;
+#ifdef OPT_TRACE_ENABLE
+              if (opts_.trace_enable) {
+                std::cout << "[TB] " << vs_.cycle()
+                          << ": Conditional command issued, becomes (on maturity): "
+                          << permuted_cmd.to_string()
+                          << "\n";
+              }
+#endif
+              uid_to_cmd[actual.uid] = permuted_cmd;
+              delete_uid = false;
+            } else {
+              // Command has been rejected.
+              model.delete_uid_from_cn(actual.uid);
+#ifdef OPT_TRACE_ENABLE
+              if (opts_.trace_enable) {
+                std::cout << "[TB] " << vs_.cycle()
+                          << ": Conditional command is rejected\n";
+              }
+#endif
             }
           } break;
           default: {
+            // Otherwise, just a standard command.
+            compare(cmd, actual, expected_rsps.front());
+            expected_rsps.pop_front();
+
+            // Predicted tail commands:
+            for (const Response& rsp : expected_rsps) {
+              rsps.push_back(std::make_pair(cmd, rsp));
+            }
           } break;
         }
-        //        std::cout << "Commit uid: " << tb_support.uid << "\n";
-        //        std::cout << "Predicted responses: \n";
-        for (const Response& rsp : predicted_rsps) {
-          //          std::cout << rsp.to_string(cmd.opcode) << "\n";
-          rsps_.push_back(rsp);
+        if (delete_uid) {
+          // Finished with current UID.
+          uid_to_cmd.erase(it);
         }
-        found_uid = true;
-      } else if (auto it = uid_to_cmd_mtr.find(tb_support.uid);
-                 it != uid_to_cmd_mtr.end()) {
-        // Otherwise, expect to find a UID from the matured UID pool.
-        const Command& cmd = it->second;
-#ifdef OPT_TRACE_ENABLE
-        if (opts_.trace_enable) {
-          std::cout << "[TB] " << vs_.cycle()
-                    << ": Prior conditional command has matured: "
-                    << cmd.to_string() << "\n";
-        }
-#endif
-        std::vector<Response> mtr_rsps = model_.apply_mtr(cmd);
-        for (const Response& rsp: mtr_rsps) {
-          rsps_.push_back(rsp);
-        }
-        // Reissue command as we now expect to see this at the output.
-        uid_to_cmd.insert(std::make_pair(cmd.uid, cmd));
-        // Remove UID mapping.
-        uid_to_cmd_mtr.erase(it);
-        found_uid = true;
-#ifdef OPT_TRACE_ENABLE
       } else if (opts_.trace_enable) {
-        // Otherwise, unknown command id;
-        std::cout << "[TB] " << vs_.cycle() << ": Unknown UID committed: "
-                  << tb_support.uid << "\n";
+#ifdef OPT_TRACE_ENABLE
+        // Unknown UID has been received.
+        std::cout << "[TB] " << vs_.cycle() << ": Unexpected response: "
+                  << actual.to_string(0) << "\n";
 #endif
       }
-      EXPECT_TRUE(found_uid);
     }
-
-
-    // Sample response interface. If response is present, compare RTL versus
-    // predicted.
-    //
-    Response actual;
-    vs_.get(actual);
-    if (actual.valid) {
-      ASSERT_FALSE(rsps_.empty());
-
-      Response expected{rsps_.front()};
-      rsps_.pop_front();
-
-      Command cmd;
-      if (auto it = uid_to_cmd.find(actual.uid); it != uid_to_cmd.end()) {
-        // A trade has occured.
-
-        cmd = it->second;
-        uid_to_cmd.erase(it);
-#ifdef OPT_TRACE_ENABLE
-        if (opts_.trace_enable) {
-          std::cout << "[TB] " << vs_.cycle() << ": Response received:: "
-                    << actual.to_string(cmd.opcode) << "\n";
-        }
-#endif
-      } else if (actual.uid == 0xFFFFFFFF) {
-        // Trade has been emitted.
-
-#ifdef OPT_TRACE_ENABLE
-        if (opts_.trace_enable) {
-          std::cout << "[TB] " << vs_.cycle() << ": Trade emitted: "
-                    << expected.to_string(cmd.opcode) << "\n";
-        }
-#endif
-      } else if (actual.uid != 0xFFFFFFFF) {
-#ifdef OPT_TRACE_ENABLE
-        // Otherwise, we don't know what this UID belongs to. In the REJECT
-        // case, this may occur sometime after the initial Okay upon
-        // installation into the table. The success of this first operation
-        // causes the UID to be removed from the uid_to_op table. Sometime
-        // thereafter, we may subsequently receive a reject notification for
-        // this command which indicates that it has been displaced from the
-        // corresponding limit okay. This is okay and expected behaviour, but we
-        // do not wish the retain all UID mappings over the duration of the
-        // simulation so we simply drop it and everything is fine. We still
-        // check the validity of the rejection message.
-        if (opts_.trace_enable) {
-          // Disregards controller materialized responses.
-          std::cout << "[TB] " << vs_.cycle()
-                    << ": Unknown UID received: " << to_string(actual.uid) << "\n";
-        }
-#endif
-      }
-
-      compare(cmd, actual, expected);
-    }
-
 
     // Advance RTL by one cycle.
     step();
 
     // Stopped when we've received all data.
-    stopped = (cmds_.empty() && rsps_.empty());
+    stopped = cmds_.empty();
   }
+
 
   // Set interfaces to idle.
   cmd.valid = false;
@@ -787,33 +771,8 @@ bool CNModel::cancel(vluint32_t uid) {
 }
 
 bool CNModel::insert(const Command& cmd) {
-  if (cmds_.size() == CN_DEPTH_N) { return false; }
-
   cmds_.insert(std::make_pair(cmd.uid, cmd));
   return true;
-}
-
-// Convert a conditional command to its equivalent 'matured' command.
-Command to_mtr_command(const Command& cmd) {
-  Command out{cmd};
-  switch (cmd.opcode) {
-    case Opcode::BuyStopLoss: {
-      out.opcode = Opcode::BuyMarket;
-    } break;
-    case Opcode::SellStopLoss: {
-      out.opcode = Opcode::SellMarket;
-    } break;
-    case Opcode::BuyStopLimit: {
-      out.opcode = Opcode::BuyLimit;
-    } break;
-    case Opcode::SellStopLimit: {
-      out.opcode = Opcode::SellLimit;
-    } break;
-    default: {
-      // Otherwise, unexpected command
-    } break;
-  }
-  return out;
 }
 
 Model::Model(std::size_t bid_n, std::size_t ask_n)
@@ -825,9 +784,9 @@ bool Model::can_execute(const Command& cmd) const {
   return true;
 }
 
-std::vector<Response> Model::apply(const Command& cmd) {
+std::deque<Response> Model::apply(const Command& cmd) {
 
-  std::vector<Response> rsps;
+  std::deque<Response> rsps;
   if (!cmd.valid) {
     // No command, return
     return {};
@@ -1078,7 +1037,7 @@ std::vector<Response> Model::apply(const Command& cmd) {
   return rsps;
 }
 
-std::vector<Response> Model::apply_mtr(const Command& cmd) {
+std::deque<Response> Model::apply_mtr(const Command& cmd) {
   // Cancel pending command in table. Expect this command to be
   // already present in the table.
   //  EXPECT_TRUE(cn_model_.cancel(cmd.uid));
@@ -1236,7 +1195,6 @@ bool Model::attempt_trade_mk_lm(Response& rsp) {
   if (ask_table_mk_.empty() || bid_table_.empty()) {
     return false;
   }
-
   Entry& ask = ask_table_mk_.front();
   Entry& bid = bid_table_.front();
 
@@ -1359,11 +1317,11 @@ StimulusGenerator::StimulusGenerator(const Bag<vluint8_t>& opcodes,
       mean_(mean), stddev_(stddev) {
 }
 
-std::vector<Command> StimulusGenerator::generate(std::size_t n) {
-  std::vector<Command> cmds;
+std::deque<Command> StimulusGenerator::generate(std::size_t n) {
+  std::deque<Command> cmds;
 
   Command cmd;
-  std::vector<Response> rsps;
+  std::deque<Response> rsps;
   while (n != 0) {
     // Generate a new command.
     generate(cmd);

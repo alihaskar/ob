@@ -110,7 +110,7 @@ TEST(TbObMk, MarketMarketTradesMkMk1) {
   cmd.price = bcd.pack();
   tb.push_back(cmd);
 
-  for (int i = 0; i < 11; i++) {
+  for (int i = 0; i < 7; i++) {
     // Issue market trade sell
     cmd.valid = true;
     cmd.opcode = tb::Opcode::SellMarket;

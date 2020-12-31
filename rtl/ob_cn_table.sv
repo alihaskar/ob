@@ -66,6 +66,9 @@ module ob_cn_table #(parameter int N = 4) (
   , input                                         rst
 );
 
+  ob_pkg::uid_t debug_uid;
+  always_comb debug_uid = mtr_r.uid;
+
   // ------------------------------------------------------------------------ //
   //
   logic [N - 1:0]                       rr_req;
@@ -82,6 +85,7 @@ module ob_cn_table #(parameter int N = 4) (
   `LIBV_REG_RST_W(logic, mtr_vld, 'b0);
   `LIBV_REG_EN_W(ob_pkg::cmd_t, mtr);
   logic                                 cntrl_has_matured;
+  logic                                 cancel_hit_mtr;
 
   for (genvar g = 0; g < N; g++) begin
 
@@ -146,8 +150,11 @@ module ob_cn_table #(parameter int N = 4) (
     // Allocate to first non-busy entry.
     al_vld            = cmd_vld ? pri(~entry_busy_r) : '0;
 
+    // Cancel hits command sitting at the MTR latch.
+    cancel_hit_mtr    = cancel & mtr_vld_r & (mtr_r.uid == cancel_uid);
+
     // Set on hit.
-    cancel_hit_w       = cancel & (cancel_hit_d != '0);
+    cancel_hit_w      = cancel & ((cancel_hit_d != '0) | cancel_hit_mtr);
 
     // All slots/entries in the conditional table are occupied.
     full_w            = (entry_busy_w == '1);
@@ -164,18 +171,19 @@ module ob_cn_table #(parameter int N = 4) (
     // Deallocate nominated matured entry on its transition to the 'mtr_' latch.
     dl_vld            = rr_ack ? rr_gnt : '0;
 
-    // mtr vld set/reset.
-    case ({rr_ack, mtr_accept}) inside
-      2'b1_?:  mtr_vld_w = 'b1;
-      2'b0_1:  mtr_vld_w = 'b0;
-      default: mtr_vld_w = mtr_vld_r;
-    endcase
-
     // Latch new matured command on new valid.
-    mtr_en      = rr_ack;
+    mtr_en            = rr_ack;
 
     // Latch nominated command from matured engine.
-    mtr_w       = mux(entry_cmd_r, rr_gnt);
+    mtr_w             = mux(entry_cmd_r, rr_gnt);
+
+    // mtr vld set/reset.
+    case ({rr_ack, mtr_accept, cancel_hit_mtr}) inside
+      3'b1??:  mtr_vld_w = 'b1;
+      3'b01?:  mtr_vld_w = 'b0;
+      3'b001:  mtr_vld_w = 'b0;
+      default: mtr_vld_w = mtr_vld_r;
+    endcase
 
   end // block: cntrl_PROC
 

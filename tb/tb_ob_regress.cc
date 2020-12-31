@@ -28,7 +28,7 @@
 #include "gtest/gtest.h"
 #include "tb.h"
 
-const std::size_t N = (1 << 16);
+const std::size_t N = (1 << 20);
 
 TEST(Regress, Basic) {
   // Initialize random seed for reproducibility.

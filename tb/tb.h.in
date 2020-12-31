@@ -274,10 +274,14 @@ struct Command {
   vluint32_t price = 0;
   vluint32_t uid1 = 0;
   vluint32_t price1 = 0;
+
+  bool was_cn = false;
 };
 
 struct Response {
   std::string to_string(vluint8_t opcode) const;
+
+  bool is_trade() const;
 
   bool valid = false;
   vluint32_t uid;
@@ -479,11 +483,11 @@ class Model {
 
   // Apply command to the machine state to derive a set of
   // responses.
-  std::vector<Response> apply(const Command& cmd);
+  std::deque<Response> apply(const Command& cmd);
 
   // Apply command to the machine state to derive a set of
   // responses.
-  std::vector<Response> apply_mtr(const Command& cmd);
+  std::deque<Response> apply_mtr(const Command& cmd);
 
   bool delete_uid_from_cn(vluint32_t uid);
 
@@ -541,7 +545,7 @@ class StimulusGenerator {
                     double mean, double stddev);
 
   // Generate N new commands.
-  std::vector<Command> generate(std::size_t n);
+  std::deque<Command> generate(std::size_t n);
 
  private:
 
@@ -631,9 +635,6 @@ class TB {
 
   // Current operationg cycle.
   vluint64_t cycle_;
-
-  // Simulation model
-  Model model_;
 
   // Testbench options.
   Options opts_;
