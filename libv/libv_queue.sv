@@ -113,7 +113,7 @@ module libv_queue #(
 
       // Architectural read pointer update
       //
-      casez ({flush, commit})
+      case ({flush, commit}) inside
         2'b1_?:  rd_ptr_arch_w  = '0;
         2'b0_1:  rd_ptr_arch_w  = rd_ptr_arch_r + 'b1;
         default: rd_ptr_arch_w  = rd_ptr_arch_r;
@@ -123,7 +123,7 @@ module libv_queue #(
 
       // Speculative read pointer update
       //
-      casez ({flush, replay, pop})
+      case ({flush, replay, pop}) inside
         3'b1??:  rd_ptr_spec_w  = '0;
         3'b01?:  rd_ptr_spec_w  = rd_ptr_arch_r;
         3'b001:  rd_ptr_spec_w  = rd_ptr_spec_r + 'b1;
@@ -136,7 +136,7 @@ module libv_queue #(
 
       // Write pointer update
       //
-      casez ({flush, push})
+      case ({flush, push}) inside
         2'b1_?:  wr_ptr_w  = '0;
         2'b0_1:  wr_ptr_w  = wr_ptr_r + 'b1;
         default: wr_ptr_w  = wr_ptr_r;
@@ -164,13 +164,13 @@ module libv_queue #(
     pop_data  = mem_r [rd_ptr_spec_r.a];
 
   end // block: pop_data_PROC
-  
+
   // ======================================================================== //
   //                                                                          //
   // Flops                                                                    //
   //                                                                          //
   // ======================================================================== //
-  
+
   // ------------------------------------------------------------------------ //
   //
   always_ff @(posedge clk)

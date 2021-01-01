@@ -201,7 +201,7 @@ module ob_mk_table_cnt #(parameter int N = 16) (
         // valid.
         fsm_acc_upt     = (~mux_sel_is_first);
 
-        casez ({// This is the final round in the mux selection.
+        case  ({// This is the final round in the mux selection.
                   mux_sel_is_last
 `ifdef OPT_EARLY_TERMINATION
                 // The partially accumulated result already exceeds
@@ -222,7 +222,7 @@ module ob_mk_table_cnt #(parameter int N = 16) (
                 // timing-path.
                 , 1'b0
 `endif
-                })
+                }) inside
           3'b1??,
           3'b01?,
           3'b001: begin
@@ -234,7 +234,7 @@ module ob_mk_table_cnt #(parameter int N = 16) (
           default: begin
             // Otherwise, continue accumulating.
           end
-        endcase // casez ({...
+        endcase // case ({...
 
       end
 
@@ -272,11 +272,11 @@ module ob_mk_table_cnt #(parameter int N = 16) (
     // Update mux selection on initialization or update.
     mux_sel_en = (fsm_mux_sel_init | fsm_mux_sel_upt);
 
-    casez ({fsm_mux_sel_init, fsm_mux_sel_upt})
+    case ({fsm_mux_sel_init, fsm_mux_sel_upt}) inside
       2'b1?:   mux_sel_w = 'b1;
       2'b01:   mux_sel_w = mux_sel_r << 1;
       default: mux_sel_w = mux_sel_r;
-    endcase // casez ({fsm_mux_sel_init, fsm_mux_sel_upt})
+    endcase // case ({fsm_mux_sel_init, fsm_mux_sel_upt})
 
     // Is first mux select round.
     mux_sel_is_first = mux_sel_r [0];
@@ -321,9 +321,9 @@ module ob_mk_table_cnt #(parameter int N = 16) (
         mux_in_vld [in_idx][mux_id] = 'b0;
 `endif
 
-        casez ({ // Entry is valid
+        case  ({ // Entry is valid
                  tbl_entry_vld
-                })
+                }) inside
           1'b1: begin
             // Current table entry can be considered in the count.
 `ifdef OPT_EARLY_TERMINATION
@@ -335,7 +335,7 @@ module ob_mk_table_cnt #(parameter int N = 16) (
             // Otherwise, invalid and not considered in the current round.
             mux_in [mux_id][in_idx] = '0;
           end
-        endcase
+        endcase // case ({...
 
       end
 

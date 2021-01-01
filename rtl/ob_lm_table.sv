@@ -285,13 +285,13 @@ module ob_lm_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     tbl_en [N]     = (tbl_install_d [N] |  tbl_shift_up_d [N - 1] | head_upt);
 
     // Head value update (unique, no priority)
-    unique casez ({// Controller writes the head.
+    unique case  ({// Controller writes the head.
                    head_upt,
                    // New entry is installed in the head.
                    tbl_install_d [N],
                    // Prior table entry becomes head.
                    tbl_shift_up_d [N]
-                   })
+                   }) inside
       3'b1??:  tbl_w [N]  = head_upt_tbl;
       3'b01?:  tbl_w [N]  = insert_tbl;
       3'b001:  tbl_w [N]  = tbl_r [N - 1];
@@ -310,13 +310,13 @@ module ob_lm_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
         (tbl_install_d [i] | tbl_shift_up_d [i] | tbl_shift_dn_d [i]);
 
       // Next state (unique, no priority)
-      unique casez ({// Install new entry at current location
+      unique case  ({// Install new entry at current location
                      tbl_install_d [i],
                      // Shift entry up
                      tbl_shift_up_d [i],
                      // Shift entry down
                      tbl_shift_dn_d [i]
-                     })
+                     }) inside
         3'b1??: begin
           // Install new state
           tbl_w [i]  = insert_tbl;
@@ -344,7 +344,7 @@ module ob_lm_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
     tbl_en [0] 	    =
       (tbl_install_d [0] | tbl_shift_up_d [0] | tbl_shift_dn_d [0] | reject_pop);
 
-    unique casez ({// Install entry into reject (incoming command is
+    unique case  ({// Install entry into reject (incoming command is
                    // immediately rejected by the table).
                    tbl_install_d [0],
                    // Shift Up; reject buffer is cleared
@@ -353,7 +353,7 @@ module ob_lm_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
                    tbl_shift_dn_d [0],
                    // Controller removes reject entry.
                    reject_pop
-                   })
+                   }) inside
       4'b1???: begin
         tbl_w [0]        = insert_tbl;
       end
@@ -372,7 +372,7 @@ module ob_lm_table #(parameter int N = 16, parameter bit is_ask = 'b1) (
         // Retain prior value.
         tbl_w [0]        = tbl_r [0];
       end
-    endcase // casez ({tbl_install_d [0]})
+    endcase // case ({tbl_install_d [0]})
 
     // Entry is valid whenever it contains a price which is valid.
     tbl_vld_w [0]  = (tbl_w [0].price != INVALID_PRICE);

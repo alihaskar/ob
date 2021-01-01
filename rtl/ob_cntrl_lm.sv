@@ -159,7 +159,7 @@ module ob_cntrl_lm (
       default: begin
         // Otherwise, no trade occurs
       end
-    endcase // casez ({bid_table_vld_r, ask_table_vld_r})
+    endcase // case ({bid_table_vld_r, ask_table_vld_r})
 
     // Enables:
     //
