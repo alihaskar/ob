@@ -56,12 +56,6 @@ module ob_mk_table_cnt #(parameter int N = 16) (
 
 );
 
-  ob_pkg::quantity_t debug_quantity_0;
-  ob_pkg::quantity_t debug_quantity_1;
-
-  always_comb debug_quantity_0 = tbl_r [N - 1].quantity;
-  always_comb debug_quantity_1 = tbl_r [N - 2].quantity;
-
   // ======================================================================== //
   //                                                                          //
   // Parameterizations                                                        //
