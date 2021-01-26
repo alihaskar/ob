@@ -32,6 +32,7 @@ find_path(Verilator_INCLUDE_DIR verilated.h
   PATH_SUFFIXES include
   HINTS /Users/Shared/tools/verilator/latest/share/verilator/include
   HINTS /usr/share/verilator/include
+  HINTS /opt/verilator/latest/share/verilator/include
   DOC "Searching for Verilator installation."
   )
 
@@ -39,6 +40,7 @@ find_path(VerilatorDpi_INCLUDE_DIR svdpi.h
   PATH_SUFFIXES include
   HINTS /Users/Shared/tools/verilator/latest/share/verilator/include/vltstd
   HINTS /usr/share/verilator/include/vltstd
+  HINTS /opt/verilator/latest/share/verilator/include/vltstd
   DOC "Searching for Verilator installation."
   )
 
@@ -46,6 +48,7 @@ find_program(Verilator_EXE
   verilator
   HINTS /Users/Shared/tools/verilator/latest/share/verilator/bin
   HINTS /usr/bin/verilator
+  HINTS /opt/verilator/latest/bin
   DOC "Searching for Verilator executable."
   )
 
@@ -62,6 +65,6 @@ if (Verilator_EXE)
   message(STATUS "Verilator INCLUDE_DIR=${Verilator_INCLUDE_DIR}")
   message(STATUS "Verilator DPI_INCLUDE_DIR=${VerilatorDpi_INCLUDE_DIR}")
   message(STATUS "Verilator EXE=${Verilator_EXE}")
-else ()
-  message(FATAL_ERROR "Verilator NOT found")
+else()
+  message(FATAL "Verilator not found!")
 endif ()
