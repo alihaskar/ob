@@ -28,6 +28,9 @@
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 // ==================================================================== //
 
+`default_nettype none
+`timescale 1ns/1ps
+
 `include "libv_pkg.vh"
 
 module libv_rr #(parameter int W = 32) (

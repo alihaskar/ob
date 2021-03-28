@@ -25,6 +25,9 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //=========================================================================== //
 
+`default_nettype none
+`timescale 1ns/1ps
+
 `include "libv_pkg.vh"
 
 module libv_mux #(parameter int N = 4, parameter int W = 32) (

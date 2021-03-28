@@ -25,6 +25,9 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
+`default_nettype none
+`timescale 1ns/1ps
+
 `include "ob_pkg.vh"
 `include "macros_pkg.vh"
 `include "cfg_pkg.vh"
